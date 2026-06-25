@@ -13,6 +13,7 @@ import type {
   Platform,
 } from "~lib/types";
 import {
+  bulkAddTagToConversations,
   bulkSetConversationFlags,
   deleteConversations,
   getDashboardStats,
@@ -494,6 +495,26 @@ export function TimelinePage({
     }
   }, [handleExitBatchMode, selectedConversations]);
 
+  const handleBulkAddTag = useCallback(
+    async (tag: string) => {
+      if (selectedConversations.length === 0) return;
+      setBatchActionKey("folder");
+      setBatchFeedback(null);
+      try {
+        await bulkAddTagToConversations(
+          selectedConversations.map((conversation) => conversation.id),
+          tag
+        );
+        handleExitBatchMode();
+      } catch (error) {
+        setBatchFeedback({ message: getErrorMessage(error), tone: "error" });
+      } finally {
+        setBatchActionKey(null);
+      }
+    },
+    [handleExitBatchMode, selectedConversations]
+  );
+
   const handleOpenSearch = () => {
     dispatch({ type: "HEADER_MODE_CHANGED", headerMode: "search" });
   };
@@ -785,6 +806,7 @@ export function TimelinePage({
             onCopy={handleCopy}
             onConfirmDelete={handleConfirmDelete}
             onBulkStar={handleBulkStar}
+            onBulkAddTag={handleBulkAddTag}
             onExit={handleExitBatchMode}
           />
         )}
