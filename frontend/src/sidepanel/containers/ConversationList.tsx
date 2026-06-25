@@ -625,6 +625,7 @@ export function ConversationList({
               <ConversationCard
                 key={item.conversation.id}
                 conversation={item.conversation}
+                sortMode={sortMode}
                 matchedInMessagesOnly={item.matchedInMessagesOnly}
                 searchQuery={searchQuery}
                 messageExcerpt={
