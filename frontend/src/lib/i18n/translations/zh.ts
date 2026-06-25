@@ -205,6 +205,7 @@ export const zhTranslations: TranslationsType = {
     firstCapturedToday: "今日首次捕获",
     lastCaptured: "上次捕获",
     conversedAt: "对话于",
+    searchResults: "最相关结果",
     startedToday: "今日",
     startedThisWeek: "本周",
     startedEarlier: "更早",

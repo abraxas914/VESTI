@@ -22,6 +22,7 @@ import {
   updateConversationTitle,
 } from "~lib/services/storageService";
 import { buildMessageFallbackDisplayText } from "~lib/utils/messageContentPackage";
+import { parseQuery, scoreText } from "~lib/search/textSearch";
 import {
   getSearchReadiness,
   normalizeSearchQuery,
@@ -62,6 +63,8 @@ interface FilteredConversationItem {
   conversation: Conversation;
   matchedInMessagesOnly: boolean;
   summary?: ConversationMatchSummary;
+  /** relevance score while a search is active (title + body); 0 otherwise */
+  rankScore: number;
 }
 
 function pad2(value: number): string {
@@ -340,6 +343,11 @@ export function ConversationList({
     shouldRunMessageSearch,
   ]);
 
+  const isSearching = searchReadiness !== "empty";
+  const parsedSearch = useMemo(
+    () => (isSearching ? parseQuery(normalizedSearchQuery) : null),
+    [isSearching, normalizedSearchQuery],
+  );
   const filteredConversations = useMemo(() => {
     const convs = conversations ?? [];
     const items = convs.reduce<FilteredConversationItem[]>((acc, conversation) => {
@@ -358,16 +366,29 @@ export function ConversationList({
       if (selectedPlatforms.size > 0 && !selectedPlatforms.has(conversation.platform)) {
         return acc;
       }
+      // Relevance = title match (weighted) + best body-match score.
+      const titleScore = parsedSearch ? scoreText(conversation.title ?? "", parsedSearch) : 0;
+      const rankScore = parsedSearch ? titleScore * 3 + (summary?.score ?? 0) : 0;
       acc.push({
         conversation,
         matchedInMessagesOnly: textMatch && !baseMatch,
         summary,
+        rankScore,
       });
       return acc;
     }, []);
-    items.sort((a, b) => timeOf(b.conversation) - timeOf(a.conversation));
+    // While searching, rank by relevance (ties: newer first); otherwise by time.
+    if (isSearching) {
+      items.sort(
+        (a, b) => b.rankScore - a.rankScore || timeOf(b.conversation) - timeOf(a.conversation),
+      );
+    } else {
+      items.sort((a, b) => timeOf(b.conversation) - timeOf(a.conversation));
+    }
     return items;
   }, [
+    isSearching,
+    parsedSearch,
     conversations,
     datePreset,
     searchReadiness,
@@ -406,6 +427,11 @@ export function ConversationList({
   }, [filteredConversations, onFilteredConversationsChange]);
 
   const grouped = useMemo(() => {
+    // While searching, show one relevance-ranked list (don't re-bucket by time).
+    if (isSearching) {
+      if (filteredConversations.length === 0) return [];
+      return [{ label: t.timeline.searchResults, items: filteredConversations }];
+    }
     const now = Date.now();
     const today: FilteredConversationItem[] = [];
     const week: FilteredConversationItem[] = [];
@@ -436,7 +462,7 @@ export function ConversationList({
     if (week.length > 0) groups.push({ label: labels.week, items: week });
     if (older.length > 0) groups.push({ label: labels.earlier, items: older });
     return groups;
-  }, [filteredConversations, timeOf, sortMode, t]);
+  }, [filteredConversations, timeOf, sortMode, t, isSearching]);
 
   useEffect(() => {
     if (!anchorConversationId || loading) return;

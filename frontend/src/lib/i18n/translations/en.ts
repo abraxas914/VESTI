@@ -203,6 +203,7 @@ export const enTranslations = {
     firstCapturedToday: "first captured today",
     lastCaptured: "Last captured",
     conversedAt: "Conversation",
+    searchResults: "Top matches",
     startedToday: "Started Today",
     startedThisWeek: "Started This Week",
     startedEarlier: "Started Earlier",
