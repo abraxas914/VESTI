@@ -85,6 +85,9 @@ export const enTranslations = {
     modelAccess: {
       title: "Model Access",
       description: "BYOK & proxy configuration",
+      privacyTitle: "What leaves your device",
+      privacyDisclosure:
+        "Capture, local storage, and keyword search stay 100% on your device. AI features (summaries, Explore, embeddings, prompt tools, roundtable) send the relevant conversation text to the configured model — by default via Vesti's proxy to ModelScope. Add your own API key for direct routing.",
       useCustomApiKey: "Use Custom API Key",
       byokDesc: "BYOK - your key, direct routing",
       proxyActive: "Proxy Active",

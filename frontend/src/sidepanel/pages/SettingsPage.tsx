@@ -1123,6 +1123,14 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
 
           {modelAccessOpen ? (
             <div id="settings-model-access-panel" className="model-access-body">
+              <div className="mb-3 rounded-lg border border-border-subtle bg-bg-secondary/40 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-text-secondary">
+                  {t.settings.modelAccess.privacyTitle}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-text-tertiary">
+                  {t.settings.modelAccess.privacyDisclosure}
+                </p>
+              </div>
               <div className="model-access-mode-row">
                 <div>
                   <p className="model-access-mode-label">{t.settings.modelAccess.useCustomApiKey}</p>

@@ -87,6 +87,9 @@ export const zhTranslations: TranslationsType = {
     modelAccess: {
       title: "模型接入",
       description: "BYOK 与代理配置",
+      privacyTitle: "哪些数据会离开本机",
+      privacyDisclosure:
+        "捕获、本地存储与关键词搜索完全在本机完成。AI 功能（摘要、探索、向量化、提示词工具、圆桌）会把相关对话文本发送给所配置的模型 —— 默认经 Vesti 代理转发至 ModelScope。填入你自己的 API Key 即可直连。",
       useCustomApiKey: "使用自定义 API Key",
       byokDesc: "自带密钥，直接用你的密钥请求",
       proxyActive: "代理已激活",
