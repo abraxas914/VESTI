@@ -36,11 +36,11 @@ export function tokenize(input: string): string[] {
       let j = i + 1;
       while (j < n && isCjk(text[j])) j += 1;
       const run = text.slice(i, j);
-      if (run.length === 1) {
-        tokens.push(run);
-      } else {
-        for (let k = 0; k < run.length - 1; k += 1) tokens.push(run.slice(k, k + 2));
-      }
+      // Emit BOTH unigrams and adjacent bigrams: unigrams let single-character
+      // queries match (一字检索), bigrams preserve phrase precision in multi-char
+      // queries (a query's bigrams gate adjacency; its unigrams are implied).
+      for (let k = 0; k < run.length; k += 1) tokens.push(run[k]);
+      for (let k = 0; k < run.length - 1; k += 1) tokens.push(run.slice(k, k + 2));
       i = j;
     } else {
       i += 1; // separator / punctuation
