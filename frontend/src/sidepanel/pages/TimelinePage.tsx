@@ -13,6 +13,7 @@ import type {
   Platform,
 } from "~lib/types";
 import {
+  bulkSetConversationFlags,
   deleteConversations,
   getDashboardStats,
 } from "~lib/services/storageService";
@@ -476,6 +477,23 @@ export function TimelinePage({
     selectedConversations,
   ]);
 
+  const handleBulkStar = useCallback(async () => {
+    if (selectedConversations.length === 0) return;
+    setBatchActionKey("star");
+    setBatchFeedback(null);
+    try {
+      await bulkSetConversationFlags(
+        selectedConversations.map((conversation) => conversation.id),
+        { is_starred: true }
+      );
+      handleExitBatchMode();
+    } catch (error) {
+      setBatchFeedback({ message: getErrorMessage(error), tone: "error" });
+    } finally {
+      setBatchActionKey(null);
+    }
+  }, [handleExitBatchMode, selectedConversations]);
+
   const handleOpenSearch = () => {
     dispatch({ type: "HEADER_MODE_CHANGED", headerMode: "search" });
   };
@@ -766,6 +784,7 @@ export function TimelinePage({
             onDownload={handleDownload}
             onCopy={handleCopy}
             onConfirmDelete={handleConfirmDelete}
+            onBulkStar={handleBulkStar}
             onExit={handleExitBatchMode}
           />
         )}

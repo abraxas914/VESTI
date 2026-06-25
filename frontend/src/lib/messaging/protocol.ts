@@ -233,6 +233,20 @@ export type RequestMessage =
       payload: { tag: string }
     }
   | {
+      type: "BULK_SET_CONVERSATION_FLAGS"
+      target?: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { ids: number[]; patch: { is_starred?: boolean; is_archived?: boolean } }
+    }
+  | {
+      type: "BULK_ADD_TAG_TO_CONVERSATIONS"
+      target?: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { ids: number[]; tag: string }
+    }
+  | {
       type: "ASK_KNOWLEDGE_BASE"
       target?: "offscreen"
       via?: "background"
@@ -645,6 +659,8 @@ export type ResponseDataMap = {
   RENAME_FOLDER_TAG: { updated: number }
   MOVE_FOLDER_TAG: { updated: number }
   REMOVE_FOLDER_TAG: { updated: number }
+  BULK_SET_CONVERSATION_FLAGS: { updated: number }
+  BULK_ADD_TAG_TO_CONVERSATIONS: { updated: number }
   ASK_KNOWLEDGE_BASE: RagResponse & { sessionId: string }
   RUN_ROUNDTABLE: RoundtableResult
   CREATE_EXPLORE_SESSION: { sessionId: string }

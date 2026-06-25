@@ -254,6 +254,8 @@ export const zhTranslations: TranslationsType = {
       clearSelection: "清除选择",
       export: "导出",
       delete: "删除",
+      star: "收藏",
+      archive: "归档",
       close: "关闭",
       exit: "退出",
       exportPanelTitle: "导出",

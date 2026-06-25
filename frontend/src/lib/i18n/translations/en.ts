@@ -252,6 +252,8 @@ export const enTranslations = {
       clearSelection: "Clear selection",
       export: "Export",
       delete: "Delete",
+      star: "Star",
+      archive: "Archive",
       close: "Close",
       exit: "Exit",
       exportPanelTitle: "Export",

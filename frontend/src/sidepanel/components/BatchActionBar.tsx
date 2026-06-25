@@ -5,6 +5,7 @@ import {
   Download,
   Loader2,
   Square,
+  Star,
   Trash2,
   TriangleAlert,
   X,
@@ -48,6 +49,7 @@ interface BatchActionBarProps {
   onDownload: () => void;
   onCopy: () => void;
   onConfirmDelete: () => void;
+  onBulkStar: () => void;
   onExit: () => void;
 }
 
@@ -121,6 +123,7 @@ export function BatchActionBar({
   onDownload,
   onCopy,
   onConfirmDelete,
+  onBulkStar,
   onExit,
 }: BatchActionBarProps) {
   const { t } = useI18n();
@@ -405,6 +408,15 @@ export function BatchActionBar({
                   className="h-3.5 w-px rounded-full bg-border-subtle"
                 />
                 <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={onBulkStar}
+                    disabled={!hasSelection || Boolean(actionKey)}
+                    className={toolbarNeutralActionClassName}
+                  >
+                    <Star className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    {t.timeline.batch.star}
+                  </button>
                   <button
                     type="button"
                     onClick={onToggleExportPanel}

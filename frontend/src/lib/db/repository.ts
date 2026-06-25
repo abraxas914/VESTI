@@ -1317,6 +1317,70 @@ export async function removeTagFromConversations(tag: string): Promise<number> {
   return replaceTagAcrossConversations(tag, null)
 }
 
+/** Bulk-toggle is_starred / is_archived over the given conversation ids. */
+export async function bulkSetConversationFlags(
+  ids: number[],
+  patch: { is_starred?: boolean; is_archived?: boolean }
+): Promise<number> {
+  const idSet = new Set(ids.filter((value) => Number.isFinite(value)))
+  if (idSet.size === 0) return 0
+  if (patch.is_starred === undefined && patch.is_archived === undefined) return 0
+
+  await enforceStorageWriteGuard()
+  const now = Date.now()
+  let updated = 0
+
+  await db.conversations
+    .where("id")
+    .anyOf(Array.from(idSet))
+    .modify((record: Partial<ConversationRecord>) => {
+      let changed = false
+      if (patch.is_starred !== undefined && record.is_starred !== patch.is_starred) {
+        record.is_starred = patch.is_starred
+        changed = true
+      }
+      if (patch.is_archived !== undefined && record.is_archived !== patch.is_archived) {
+        record.is_archived = patch.is_archived
+        changed = true
+      }
+      if (!changed) return
+      record.updated_at = now
+      updated += 1
+    })
+
+  return updated
+}
+
+/** Bulk-add a tag (folder) to the given conversation ids (respects the 6-tag cap). */
+export async function bulkAddTagToConversations(
+  ids: number[],
+  tag: string
+): Promise<number> {
+  const normalizedTag = tag.trim()
+  if (!normalizedTag) throw new Error("TAG_EMPTY")
+  const idSet = new Set(ids.filter((value) => Number.isFinite(value)))
+  if (idSet.size === 0) return 0
+
+  await enforceStorageWriteGuard()
+  const now = Date.now()
+  let updated = 0
+
+  await db.conversations
+    .where("id")
+    .anyOf(Array.from(idSet))
+    .modify((record: Partial<ConversationRecord>) => {
+      const tags = Array.isArray(record.tags) ? record.tags : []
+      if (tags.includes(normalizedTag)) return
+      const nextTags = dedupeTags([...tags, normalizedTag]).slice(0, 6)
+      if (nextTags.length === tags.length) return // already full / no change
+      record.tags = nextTags
+      record.updated_at = now
+      updated += 1
+    })
+
+  return updated
+}
+
 export async function listConversationsByRange(
   rangeStart: number,
   rangeEnd: number

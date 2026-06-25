@@ -26,6 +26,8 @@ import {
   listConversations,
   listExploreSessions,
   listMessages,
+  bulkAddTagToConversations,
+  bulkSetConversationFlags,
   listNotes,
   moveTagAcrossConversations,
   removeTagFromConversations,
@@ -554,6 +556,20 @@ async function handleOffscreenRequest(
       }
       case "REMOVE_FOLDER_TAG": {
         const updated = await removeTagFromConversations(message.payload.tag)
+        return { ok: true, type: messageType, data: { updated } }
+      }
+      case "BULK_SET_CONVERSATION_FLAGS": {
+        const updated = await bulkSetConversationFlags(
+          message.payload.ids,
+          message.payload.patch
+        )
+        return { ok: true, type: messageType, data: { updated } }
+      }
+      case "BULK_ADD_TAG_TO_CONVERSATIONS": {
+        const updated = await bulkAddTagToConversations(
+          message.payload.ids,
+          message.payload.tag
+        )
         return { ok: true, type: messageType, data: { updated } }
       }
       case "ASK_KNOWLEDGE_BASE": {

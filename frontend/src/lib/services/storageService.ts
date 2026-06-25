@@ -240,6 +240,50 @@ export async function removeFolderTag(
   return result
 }
 
+export async function bulkSetConversationFlags(
+  ids: number[],
+  patch: { is_starred?: boolean; is_archived?: boolean }
+): Promise<{ updated: number }> {
+  const result = (await sendRequest(
+    {
+      type: "BULK_SET_CONVERSATION_FLAGS",
+      target: "offscreen",
+      payload: { ids, patch }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  )) as { updated: number }
+
+  if (result.updated > 0) {
+    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
+      void chrome.runtime.lastError
+    })
+  }
+
+  return result
+}
+
+export async function bulkAddTagToConversations(
+  ids: number[],
+  tag: string
+): Promise<{ updated: number }> {
+  const result = (await sendRequest(
+    {
+      type: "BULK_ADD_TAG_TO_CONVERSATIONS",
+      target: "offscreen",
+      payload: { ids, tag }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  )) as { updated: number }
+
+  if (result.updated > 0) {
+    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
+      void chrome.runtime.lastError
+    })
+  }
+
+  return result
+}
+
 export async function getMessages(conversationId: number): Promise<Message[]> {
   return sendRequest({
     type: "GET_MESSAGES",
