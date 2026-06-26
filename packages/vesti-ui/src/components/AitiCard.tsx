@@ -1,6 +1,66 @@
-import type { AitiProfile, DashboardLabels, StorageApi } from "../types";
+import type { AitiAxisScore, AitiProfile, DashboardLabels, StorageApi } from "../types";
 import { SendToMenu } from "./SendToMenu";
 import { buildAitiMarkdown } from "../lib/exploreMarkdown";
+
+// Lightweight, dependency-free SVG radar of the four AITI axes — a consistent
+// accent-styled overview to complement the per-axis sliders. Degrades to null if
+// the axis set isn't the expected four.
+function AitiRadar({
+  axes,
+  axisMeta,
+}: {
+  axes: AitiAxisScore[];
+  axisMeta: Record<string, { label: string; left: string; right: string }>;
+}) {
+  if (axes.length !== 4) return null;
+  const cx = 100;
+  const cy = 100;
+  const maxR = 60;
+  const deg = [-90, 0, 90, 180]; // top, right, bottom, left
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const at = (frac: number, i: number) => ({
+    x: cx + frac * maxR * Math.cos(rad(deg[i])),
+    y: cy + frac * maxR * Math.sin(rad(deg[i])),
+  });
+  const ring = (frac: number) =>
+    axes.map((_, i) => { const p = at(frac, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
+  const clampFrac = (score: number) => Math.max(0.04, Math.min(1, (score ?? 0) / 100));
+  const scorePts = axes
+    .map((a, i) => { const p = at(clampFrac(a.score), i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; })
+    .join(" ");
+  const dots = axes.map((a, i) => at(clampFrac(a.score), i));
+  const labelsArr = axes.map((a, i) => {
+    const meta = axisMeta[a.key];
+    const p = at(1.22, i);
+    const anchor = i === 1 ? "start" : i === 3 ? "end" : "middle";
+    return {
+      x: p.x,
+      y: p.y + (i === 0 ? -2 : i === 2 ? 7 : 3),
+      text: meta ? (a.score >= 50 ? meta.right : meta.left) : "",
+      anchor,
+    };
+  });
+  return (
+    <svg viewBox="0 0 200 200" className="h-44 w-44" role="img" aria-hidden="true">
+      {[0.33, 0.66, 1].map((f, gi) => (
+        <polygon key={gi} points={ring(f)} fill="none" stroke="currentColor" strokeWidth={0.6} className="text-border-subtle" />
+      ))}
+      {axes.map((_, i) => {
+        const p = at(1, i);
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="currentColor" strokeWidth={0.6} className="text-border-subtle" />;
+      })}
+      <polygon points={scorePts} fill="currentColor" fillOpacity={0.18} stroke="currentColor" strokeWidth={1.5} className="text-accent-primary" />
+      {dots.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="currentColor" className="text-accent-primary" />
+      ))}
+      {labelsArr.map((l, i) => (
+        <text key={i} x={l.x} y={l.y} fontSize={8.5} textAnchor={l.anchor} fill="currentColor" className="text-text-secondary">
+          {l.text}
+        </text>
+      ))}
+    </svg>
+  );
+}
 
 // AITI (个人内向探索): renders the locally-computed "thinking fingerprint" — a
 // type code, four evidence-backed axis sliders, and the user's top obsessions.
@@ -94,6 +154,11 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
           <div className="mt-1 text-[11.5px] text-text-tertiary">
             {labels.sample.replace("{n}", String(profile.sampleSize))}
           </div>
+        </div>
+
+        {/* Radar overview of the four axes */}
+        <div className="mt-5 flex justify-center rounded-2xl border border-border-subtle bg-bg-surface-card py-4">
+          <AitiRadar axes={profile.axes} axisMeta={axisMeta} />
         </div>
 
         {/* Empowering strengths — the dominant pole of each axis, framed positively */}

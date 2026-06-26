@@ -174,8 +174,16 @@ export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePan
                   key={`${turn.personaId}-${i}`}
                   className="rounded-xl border border-border-subtle bg-bg-surface-card p-3.5"
                 >
-                  <div className="mb-1 text-[12.5px] font-semibold text-accent-primary">
-                    {nameOf(turn.personaId)}
+                  <div className="mb-1 flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-primary-light text-[10px] font-semibold text-accent-primary"
+                    >
+                      {nameOf(turn.personaId).slice(0, 1)}
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-accent-primary">
+                      {nameOf(turn.personaId)}
+                    </span>
                   </div>
                   {turn.ok ? (
                     <div
