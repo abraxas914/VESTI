@@ -253,17 +253,22 @@ interface CandidateGroup {
 // a quality gate keeps low-value chatter out; a hard cap keeps the library
 // curated. A small quality-gated singleton top-up ensures a useful minimum on
 // sparse/new libraries without hoarding.
-const FREQUENT_MIN_CONVERSATIONS = 3; // recurs in >= 3 distinct conversations
-const FREQUENT_QUALITY_GATE = 0.55; // recurrence + a strong quality bar
-const SINGLETON_QUALITY_GATE = 0.72; // one-offs must be genuinely excellent
-const MAX_RESULTS = 8; // keep the library small + high-quality, don't hoard
-const MIN_FLOOR = 4; // a small useful minimum even with few repeats
-const MAX_SINGLETON_TOPUP = 4;
+// Curation is deliberately STRICT: only the genuinely most-used AND high-quality
+// prompts earn a slot. Recurrence is required (no one-off top-up) and the bar is
+// high, so the library stays tiny and trustworthy rather than a junk drawer.
+const FREQUENT_MIN_CONVERSATIONS = 4; // must recur across >= 4 distinct conversations
+const FREQUENT_QUALITY_GATE = 0.62; // and clear a high quality bar
+const SINGLETON_QUALITY_GATE = 0.9; // one-offs effectively excluded (kept for safety only)
+const MAX_RESULTS = 6; // hard cap — a handful, not a hoard
+const MIN_FLOOR = 0; // NO singleton top-up: if nothing recurs enough, keep it empty
+const MAX_SINGLETON_TOPUP = 0;
 
 function combinedCurationScore(group: CandidateGroup): number {
   const quality = group.candidate.heuristicScore; // 0..1
-  const freqNorm = Math.min(1, group.conversationIds.size / 5); // 0..1
-  return quality * 0.6 + freqNorm * 0.4;
+  // Frequency weighted equally with quality, and normalized over a higher bar so
+  // "most-used" genuinely dominates the ranking.
+  const freqNorm = Math.min(1, group.conversationIds.size / 6); // 0..1
+  return quality * 0.5 + freqNorm * 0.5;
 }
 
 /**

@@ -158,9 +158,9 @@ export interface DistilledFragment {
 
 const FRAGMENT_CHUNK_SIZE = 15;
 const MAX_FRAGMENT_INPUT = 120;
-const MAX_FRAGMENTS_OUT = 8;
+const MAX_FRAGMENTS_OUT = 6;
 
-const FRAGMENT_CONSOLIDATE_PROMPT = `You are finalizing a small, premium library of reusable PROMPT FRAGMENTS. From the candidate fragments below, KEEP ONLY the best, most broadly-reusable, highest-quality ones — at most {MAX}. Merge near-duplicates, drop anything narrow, vague, or low-value, and lightly polish wording. Keep each fragment's language. Prefer FEWER excellent fragments over hitting the cap.
+const FRAGMENT_CONSOLIDATE_PROMPT = `You are finalizing a TINY, premium library of reusable PROMPT FRAGMENTS — think a curated top shelf, not a collection. From the candidates below, KEEP ONLY the few that are genuinely excellent AND broadly reusable across many tasks — at most {MAX}, and FEWER is strongly preferred (returning 1-3, or even 0 if none are truly reusable, is the right answer most of the time). Ruthlessly drop anything narrow, one-off, vague, or merely okay. Merge near-duplicates. Lightly polish wording. Keep each fragment's language.
 Return ONLY a JSON array: [{"title": "<= 6 words", "body": "...", "category": "<Writing|Coding|Analysis|Learning|Productivity|Translation|Roleplay|Other>"}]. No prose.`;
 
 const fragmentItemSchema = z.object({

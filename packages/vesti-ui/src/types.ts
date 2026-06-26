@@ -1131,6 +1131,10 @@ export interface DashboardLabels {
     myPlazaEmpty: string;
     adopt: string;
     adopted: string;
+    selectAria: string;
+    selectedCount: string;
+    deleteSelected: string;
+    clearSelection: string;
   };
   aiti: {
     modeAsk: string;

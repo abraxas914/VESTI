@@ -928,6 +928,10 @@ export const enTranslations = {
       myPlazaEmpty: "Add prompts from the supermarket below to build your plaza.",
       adopt: "Add",
       adopted: "Added",
+      selectAria: "Select prompt",
+      selectedCount: "{n} selected",
+      deleteSelected: "Delete",
+      clearSelection: "Cancel",
     },
     aiti: {
       modeAsk: "Ask",

@@ -927,6 +927,10 @@ export const zhTranslations: TranslationsType = {
       myPlazaEmpty: "从下方的提示词超市挑选并加入，打造你自己的提示词广场。",
       adopt: "加入",
       adopted: "已加入",
+      selectAria: "选择提示词",
+      selectedCount: "已选 {n} 条",
+      deleteSelected: "删除",
+      clearSelection: "取消",
     },
     aiti: {
       modeAsk: "问答",

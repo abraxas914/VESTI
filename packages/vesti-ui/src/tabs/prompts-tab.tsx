@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Download, ExternalLink, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react";
+import { CheckSquare, Copy, Download, ExternalLink, Plus, Search, Sparkles, Square, Trash2, Upload } from "lucide-react";
 import type {
   DashboardLabels,
   PlazaData,
@@ -61,8 +61,35 @@ export function PromptsTab({
   const [editor, setEditor] = useState<EditorState>(EMPTY_EDITOR);
   const [extractStatus, setExtractStatus] = useState<"idle" | "running">("idle");
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const supportsPrompts = Boolean(storage.listPrompts);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Multi-select for the adopted plaza shelf (我的广场) → bulk remove (un-adopt).
+  const [selectedPlazaIds, setSelectedPlazaIds] = useState<Set<string>>(new Set());
+  const togglePlazaSelect = useCallback((id: string) => {
+    setSelectedPlazaIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const handleBulkRemovePlaza = useCallback(() => {
+    if (!onPlazaAdoptToggle) return;
+    for (const id of selectedPlazaIds) onPlazaAdoptToggle(id, false);
+    setSelectedPlazaIds(new Set());
+  }, [onPlazaAdoptToggle, selectedPlazaIds]);
 
   const load = useCallback(async () => {
     if (!storage.listPrompts) {
@@ -223,6 +250,22 @@ export function PromptsTab({
     },
     [storage, labels, editor.id, closeEditor, load],
   );
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!storage.deletePrompt || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    try {
+      for (const id of ids) {
+        await storage.deletePrompt(id);
+        if (editor.id === id) closeEditor();
+      }
+      setToast(labels.toastDeleted);
+      clearSelection();
+      await load();
+    } catch (deleteError) {
+      setToast((deleteError as Error)?.message ?? labels.toastDeleteFailed);
+    }
+  }, [storage, selectedIds, editor.id, closeEditor, labels, clearSelection, load]);
 
   const handleCopy = useCallback(
     async (prompt: Prompt) => {
@@ -454,14 +497,59 @@ export function PromptsTab({
             )}
           </div>
         )}
+        {selectedIds.size > 0 && (
+          <div className="mb-2 flex items-center justify-between rounded-lg border border-accent-primary/40 bg-accent-primary-light px-3 py-2">
+            <span className="text-[12px] font-medium text-accent-primary">
+              {(labels.selectedCount ?? "{n} selected").replace("{n}", String(selectedIds.size))}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleBulkDelete()}
+                className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2.5 py-1 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+              >
+                <Trash2 strokeWidth={1.7} className="h-3.5 w-3.5" />
+                {labels.deleteSelected ?? "Delete"}
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="rounded-md px-2.5 py-1 text-[12px] text-text-secondary hover:bg-bg-tertiary"
+              >
+                {labels.clearSelection ?? "Cancel"}
+              </button>
+            </div>
+          </div>
+        )}
         {visiblePrompts.length > 0 && (
           <ul className="flex flex-col gap-2">
-            {visiblePrompts.map((prompt) => (
+            {visiblePrompts.map((prompt) => {
+              const selected = prompt.id != null && selectedIds.has(prompt.id);
+              return (
               <li
                 key={prompt.id}
-                className="group flex cursor-pointer items-start gap-3 rounded-xl border border-border-subtle bg-bg-surface-card p-3.5 transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.05)]"
+                className={`group flex cursor-pointer items-start gap-3 rounded-xl border bg-bg-surface-card p-3.5 transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.05)] ${
+                  selected ? "border-accent-primary" : "border-border-subtle"
+                }`}
                 onClick={() => openEdit(prompt)}
               >
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (prompt.id != null) toggleSelect(prompt.id);
+                  }}
+                  className={`mt-0.5 shrink-0 rounded p-0.5 transition-opacity ${
+                    selected ? "text-accent-primary opacity-100" : "text-text-tertiary opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-label={labels.selectAria ?? "Select"}
+                >
+                  {selected ? (
+                    <CheckSquare strokeWidth={1.7} className="h-4 w-4" />
+                  ) : (
+                    <Square strokeWidth={1.7} className="h-4 w-4" />
+                  )}
+                </button>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13.5px] font-medium text-text-primary">
                     {prompt.title}
@@ -495,7 +583,8 @@ export function PromptsTab({
                   </button>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
 
@@ -534,23 +623,67 @@ export function PromptsTab({
 
             {/* 我的广场: prompts the user adopted from the supermarket */}
             <div className="mt-5">
-              <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.myPlaza}</div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[12px] font-medium text-text-secondary">{labels.myPlaza}</span>
+                {selectedPlazaIds.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-accent-primary">
+                      {(labels.selectedCount ?? "{n} selected").replace("{n}", String(selectedPlazaIds.size))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleBulkRemovePlaza}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-medium text-white hover:opacity-90"
+                    >
+                      <Trash2 strokeWidth={1.7} className="h-3 w-3" />
+                      {labels.deleteSelected ?? "Delete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPlazaIds(new Set())}
+                      className="rounded-md px-2 py-0.5 text-[11px] text-text-secondary hover:bg-bg-tertiary"
+                    >
+                      {labels.clearSelection ?? "Cancel"}
+                    </button>
+                  </div>
+                )}
+              </div>
               {adoptedItems.length === 0 ? (
                 <p className="text-[11.5px] text-text-tertiary">{labels.myPlazaEmpty}</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {adoptedItems.map((p) => (
-                    <PlazaCard
-                      key={p.id}
-                      prompt={p}
-                      labels={labels}
-                      adopted
-                      onUse={() => usePlazaPrompt(p)}
-                      onAdopt={
-                        onPlazaAdoptToggle ? () => onPlazaAdoptToggle(p.id, false) : undefined
-                      }
-                    />
-                  ))}
+                  {adoptedItems.map((p) => {
+                    const sel = selectedPlazaIds.has(p.id);
+                    return (
+                      <div key={p.id} className="group relative">
+                        <button
+                          type="button"
+                          onClick={() => togglePlazaSelect(p.id)}
+                          aria-label={labels.selectAria ?? "Select"}
+                          className={`absolute left-1.5 top-1.5 z-10 rounded p-0.5 transition-opacity ${
+                            sel ? "text-accent-primary opacity-100" : "text-text-tertiary opacity-0 group-hover:opacity-100"
+                          }`}
+                        >
+                          {sel ? (
+                            <CheckSquare strokeWidth={1.7} className="h-4 w-4" />
+                          ) : (
+                            <Square strokeWidth={1.7} className="h-4 w-4" />
+                          )}
+                        </button>
+                        <div className={sel ? "rounded-xl ring-1 ring-accent-primary" : ""}>
+                          <PlazaCard
+                            prompt={p}
+                            labels={labels}
+                            adopted
+                            onUse={() => usePlazaPrompt(p)}
+                            onAdopt={
+                              onPlazaAdoptToggle ? () => onPlazaAdoptToggle(p.id, false) : undefined
+                            }
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
