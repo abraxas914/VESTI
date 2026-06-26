@@ -260,10 +260,12 @@ export function PromptsTab({
         if (editor.id === id) closeEditor();
       }
       setToast(labels.toastDeleted);
-      clearSelection();
-      await load();
     } catch (deleteError) {
       setToast((deleteError as Error)?.message ?? labels.toastDeleteFailed);
+    } finally {
+      // Always reconcile the UI to the DB, even on partial failure.
+      clearSelection();
+      await load();
     }
   }, [storage, selectedIds, editor.id, closeEditor, labels, clearSelection, load]);
 

@@ -272,18 +272,31 @@ function combinedCurationScore(group: CandidateGroup): number {
 }
 
 /**
- * Remove the previously auto-extracted prompts so each extraction refreshes a
- * small, curated set instead of accumulating across runs. User-authored prompts
- * (source !== "extracted") are preserved; editing an extracted prompt promotes
- * it to "manual" (see updatePrompt), so edits survive a refresh.
+ * Snapshot the ids of the currently auto-extracted prompts. Extraction refreshes
+ * the set by DIFFING against this snapshot (see pruneStaleExtracted) rather than
+ * wiping up-front — so re-selected prompts and manual promotions are never lost,
+ * and a mid-run failure can't half-wipe the library.
  */
-async function clearExtractedPrompts(): Promise<number> {
+async function getExtractedPromptIds(): Promise<number[]> {
   const all = await db.prompts.toArray();
-  const ids = all
+  return all
     .filter((p) => p.source === "extracted" && typeof p.id === "number")
     .map((p) => p.id as number);
-  if (ids.length > 0) await db.prompts.bulkDelete(ids);
-  return ids.length;
+}
+
+/**
+ * Delete only the previously-extracted rows that the new run did NOT re-produce
+ * (kept = ids createPrompt returned this run, whether newly created or matched an
+ * existing prompt by body_hash). Never wipes to nothing on collision; safe to skip
+ * if nothing changed.
+ */
+async function pruneStaleExtracted(
+  oldExtractedIds: number[],
+  keepIds: Set<number>,
+): Promise<number> {
+  const stale = oldExtractedIds.filter((id) => !keepIds.has(id));
+  if (stale.length > 0) await db.prompts.bulkDelete(stale);
+  return stale.length;
 }
 
 /**
@@ -362,8 +375,11 @@ export async function extractPromptsFromLibrary(
       });
     }
     if (fragments.length > 0) {
-      // Refresh, don't accumulate: drop the prior auto-extracted set first.
-      await clearExtractedPrompts();
+      // Refresh by DIFF, not up-front wipe: install the new set, then prune only
+      // the old extracted rows the new set didn't reproduce (keepIds covers both
+      // newly-created and existing-by-hash matches, so nothing is lost).
+      const oldExtractedIds = await getExtractedPromptIds();
+      const keepIds = new Set<number>();
       let created = 0;
       let skipped = 0;
       for (const fragment of fragments.slice(0, MAX_RESULTS)) {
@@ -379,9 +395,11 @@ export async function extractPromptsFromLibrary(
           source: "extracted",
           quality_score: scorePrompt(body),
         });
+        if (result.prompt.id != null) keepIds.add(result.prompt.id);
         if (result.created) created += 1;
         else skipped += 1;
       }
+      await pruneStaleExtracted(oldExtractedIds, keepIds);
       logger.info("service", "Prompt fragment distillation complete", {
         scope,
         candidates: allGroups.length,
@@ -422,9 +440,10 @@ export async function extractPromptsFromLibrary(
     selected = [...selected, ...topUp];
   }
 
-  // Refresh, don't accumulate (only when we actually have a new set to install).
-  if (selected.length > 0) await clearExtractedPrompts();
-
+  // Refresh by DIFF (same safe strategy as the distill path): install, then prune
+  // only the old extracted rows the new set didn't reproduce.
+  const oldExtractedIds = await getExtractedPromptIds();
+  const keepIds = new Set<number>();
   let created = 0;
   let skipped = 0;
   for (const group of selected) {
@@ -439,9 +458,11 @@ export async function extractPromptsFromLibrary(
       source_message_id: candidate.messageId,
       quality_score: candidate.heuristicScore,
     });
+    if (result.prompt.id != null) keepIds.add(result.prompt.id);
     if (result.created) created += 1;
     else skipped += 1;
   }
+  await pruneStaleExtracted(oldExtractedIds, keepIds);
 
   logger.info("service", "Prompt extraction complete", {
     scope,
