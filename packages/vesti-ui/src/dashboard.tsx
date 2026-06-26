@@ -820,7 +820,12 @@ export function VestiDashboard({
               </div>
               {exploreMode === "aiti" && (
                 <div className="min-h-0 flex-1">
-                  <AitiCard profile={aiti} labels={labels.aiti} />
+                  <AitiCard
+                    profile={aiti}
+                    labels={labels.aiti}
+                    storage={storage}
+                    sendToLabels={labels.library}
+                  />
                 </div>
               )}
               {exploreMode === "learn" && (
@@ -829,12 +834,19 @@ export function VestiDashboard({
                     profile={learn}
                     labels={labels.learn}
                     onOpenConversation={handleOpenConversation}
+                    storage={storage}
+                    sendToLabels={labels.library}
                   />
                 </div>
               )}
               {exploreMode === "roundtable" && (
                 <div className="min-h-0 flex-1">
-                  <RoundtablePanel storage={storage} themeMode={themeMode} labels={labels.roundtable} />
+                  <RoundtablePanel
+                    storage={storage}
+                    themeMode={themeMode}
+                    labels={labels.roundtable}
+                    sendToLabels={labels.library}
+                  />
                 </div>
               )}
             </div>

@@ -9,6 +9,8 @@ import type {
   StorageApi,
   UiThemeMode,
 } from "../types";
+import { SendToMenu } from "./SendToMenu";
+import { buildRoundtableMarkdown } from "../lib/exploreMarkdown";
 
 // AI 圆桌 (Roundtable): a self-contained Explore sub-mode. Convene 2-3 persona
 // "seats" on the configured LLM + a Moderator synthesis. The host wires
@@ -18,6 +20,8 @@ interface RoundtablePanelProps {
   storage: StorageApi;
   themeMode?: UiThemeMode;
   labels: DashboardLabels["roundtable"];
+  /** Localized "Send to…" labels (from the library block) for exporting the synthesis. */
+  sendToLabels?: DashboardLabels["library"];
 }
 
 const SELECTABLE: RoundtablePersonaId[] = [
@@ -37,7 +41,7 @@ function renderMarkdown(text: string): { __html: string } {
   }
 }
 
-export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
+export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePanelProps) {
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<RoundtablePersonaId[]>([
     "skeptic",
@@ -149,6 +153,19 @@ export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
 
         {result ? (
           <div className="mt-6">
+            {/* Promote the synthesis into the user's workflow */}
+            {sendToLabels ? (
+              <div className="mb-2 flex justify-end">
+                <SendToMenu
+                  storage={storage}
+                  labels={sendToLabels}
+                  payload={{
+                    title: `${labels.title} — ${result.question}`.slice(0, 120),
+                    markdown: buildRoundtableMarkdown(result, labels),
+                  }}
+                />
+              </div>
+            ) : null}
             {/* Seats */}
             <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.seatsTitle}</div>
             <div className="flex flex-col gap-3">

@@ -1,4 +1,6 @@
-import type { DashboardLabels, LearnProfile } from "../types";
+import type { DashboardLabels, LearnProfile, StorageApi } from "../types";
+import { SendToMenu } from "./SendToMenu";
+import { buildLearnMarkdown } from "../lib/exploreMarkdown";
 
 // "学习 Learn": presentational view of the locally-computed learning map —
 // knowledge domains (with a depth mix), a glossary of things learned, and open
@@ -8,9 +10,11 @@ interface LearnCardProps {
   profile?: LearnProfile;
   labels: DashboardLabels["learn"];
   onOpenConversation?: (conversationId: number) => void;
+  storage?: StorageApi;
+  sendToLabels?: DashboardLabels["library"];
 }
 
-export function LearnCard({ profile, labels, onOpenConversation }: LearnCardProps) {
+export function LearnCard({ profile, labels, onOpenConversation, storage, sendToLabels }: LearnCardProps) {
   if (!profile || !profile.available) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-10 text-center">
@@ -23,7 +27,16 @@ export function LearnCard({ profile, labels, onOpenConversation }: LearnCardProp
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
-        <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+          {storage && sendToLabels ? (
+            <SendToMenu
+              storage={storage}
+              labels={sendToLabels}
+              payload={{ title: labels.title, markdown: buildLearnMarkdown(profile, labels) }}
+            />
+          ) : null}
+        </div>
         <p className="mt-1 text-[12px] text-text-tertiary">{labels.subtitle}</p>
         <p className="mt-1 text-[11.5px] text-text-tertiary">
           {labels.sample.replace("{n}", String(profile.sampleSize))}

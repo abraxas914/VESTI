@@ -1,4 +1,6 @@
-import type { AitiProfile, DashboardLabels } from "../types";
+import type { AitiProfile, DashboardLabels, StorageApi } from "../types";
+import { SendToMenu } from "./SendToMenu";
+import { buildAitiMarkdown } from "../lib/exploreMarkdown";
 
 // AITI (个人内向探索): renders the locally-computed "thinking fingerprint" — a
 // type code, four evidence-backed axis sliders, and the user's top obsessions.
@@ -7,9 +9,11 @@ import type { AitiProfile, DashboardLabels } from "../types";
 interface AitiCardProps {
   profile?: AitiProfile;
   labels: DashboardLabels["aiti"];
+  storage?: StorageApi;
+  sendToLabels?: DashboardLabels["library"];
 }
 
-export function AitiCard({ profile, labels }: AitiCardProps) {
+export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardProps) {
   type AxisMeta = {
     label: string;
     left: string;
@@ -70,7 +74,16 @@ export function AitiCard({ profile, labels }: AitiCardProps) {
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
-        <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+          {storage && sendToLabels ? (
+            <SendToMenu
+              storage={storage}
+              labels={sendToLabels}
+              payload={{ title: labels.title, markdown: buildAitiMarkdown(profile, labels) }}
+            />
+          ) : null}
+        </div>
         <p className="mt-1 text-[12px] text-text-tertiary">{labels.subtitle}</p>
 
         {/* Type code */}
