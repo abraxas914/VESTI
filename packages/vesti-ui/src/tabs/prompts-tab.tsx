@@ -21,6 +21,9 @@ interface PromptsTabProps {
   plaza?: PlazaData;
   /** Toggle adoption of a catalog prompt into the user's personal plaza. */
   onPlazaAdoptToggle?: (id: string, adopt: boolean) => void;
+  /** Toggle adoption for MANY ids atomically (bulk select). Avoids the
+   * read-modify-write race of calling onPlazaAdoptToggle in a loop. */
+  onPlazaAdoptToggleMany?: (ids: string[], adopt: boolean) => void;
 }
 
 type LoadStatus = "idle" | "loading" | "ready" | "error";
@@ -53,6 +56,7 @@ export function PromptsTab({
   labels,
   plaza,
   onPlazaAdoptToggle,
+  onPlazaAdoptToggleMany,
 }: PromptsTabProps) {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [status, setStatus] = useState<LoadStatus>("idle");
@@ -86,10 +90,19 @@ export function PromptsTab({
     });
   }, []);
   const handleBulkRemovePlaza = useCallback(() => {
-    if (!onPlazaAdoptToggle) return;
-    for (const id of selectedPlazaIds) onPlazaAdoptToggle(id, false);
+    const ids = Array.from(selectedPlazaIds);
+    if (ids.length === 0) return;
+    // Prefer the atomic bulk path; the per-id loop races (each call does its own
+    // read-modify-write so only one removal would survive).
+    if (onPlazaAdoptToggleMany) {
+      onPlazaAdoptToggleMany(ids, false);
+    } else if (onPlazaAdoptToggle) {
+      for (const id of ids) onPlazaAdoptToggle(id, false);
+    } else {
+      return;
+    }
     setSelectedPlazaIds(new Set());
-  }, [onPlazaAdoptToggle, selectedPlazaIds]);
+  }, [onPlazaAdoptToggle, onPlazaAdoptToggleMany, selectedPlazaIds]);
 
   const load = useCallback(async () => {
     if (!storage.listPrompts) {
@@ -254,19 +267,23 @@ export function PromptsTab({
   const handleBulkDelete = useCallback(async () => {
     if (!storage.deletePrompt || selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
-    try {
-      for (const id of ids) {
+    let deleted = 0;
+    // Delete each independently so one failure doesn't abort the rest.
+    for (const id of ids) {
+      try {
         await storage.deletePrompt(id);
+        deleted += 1;
         if (editor.id === id) closeEditor();
+      } catch {
+        // keep going; the partial count is reported below
       }
-      setToast(labels.toastDeleted);
-    } catch (deleteError) {
-      setToast((deleteError as Error)?.message ?? labels.toastDeleteFailed);
-    } finally {
-      // Always reconcile the UI to the DB, even on partial failure.
-      clearSelection();
-      await load();
     }
+    if (deleted === ids.length) setToast(labels.toastDeleted);
+    else if (deleted === 0) setToast(labels.toastDeleteFailed);
+    else setToast(`${labels.toastDeleted} · ${deleted}/${ids.length}`);
+    // Always reconcile the UI to the DB, even on partial failure.
+    clearSelection();
+    await load();
   }, [storage, selectedIds, editor.id, closeEditor, labels, clearSelection, load]);
 
   const handleCopy = useCallback(

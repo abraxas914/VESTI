@@ -1242,12 +1242,15 @@ async function retrieveRagContext(
 
   const queryVector = toFloat32Array(await embedText(preparedQuery));
   const vectors = await db.vectors.toArray();
-  const scored: Array<{ id: number; similarity: number }> = [];
   const scopedConversationIds = getScopedConversationIds(searchScope);
   const scopedConversationIdSet = scopedConversationIds
     ? new Set(scopedConversationIds)
     : undefined;
 
+  // Accumulate the BEST similarity per conversation. A conversation can hold
+  // more than one vector row (e.g. a concurrent re-vectorize race), which would
+  // otherwise produce duplicate source chips and crowd out other conversations.
+  const bestByConversation = new Map<number, number>();
   for (const vector of vectors) {
     if (
       scopedConversationIdSet &&
@@ -1259,8 +1262,15 @@ async function retrieveRagContext(
     if (embedding.length !== queryVector.length || embedding.length === 0) continue;
     const similarity = cosineSimilarity(queryVector, embedding);
     if (similarity < 0.15) continue;
-    scored.push({ id: vector.conversation_id, similarity });
+    const prev = bestByConversation.get(vector.conversation_id);
+    if (prev === undefined || similarity > prev) {
+      bestByConversation.set(vector.conversation_id, similarity);
+    }
   }
+  const scored: Array<{ id: number; similarity: number }> = Array.from(
+    bestByConversation,
+    ([id, similarity]) => ({ id, similarity })
+  );
 
   const safeLimit = Math.max(1, limit);
   const top = scored.sort((a, b) => b.similarity - a.similarity).slice(0, safeLimit);
@@ -1969,10 +1979,12 @@ export async function ensureVectorForConversation(
   const embedding = await embedText(preparedText);
 
   await db.transaction("rw", db.vectors, async () => {
+    // Delete ALL existing rows for this conversation (not just stale-hash ones):
+    // a concurrent vectorize can leave two same-hash rows, so replacing the whole
+    // set guarantees exactly one vector per conversation.
     await db.vectors
       .where("conversation_id")
       .equals(conversationId)
-      .and((record) => record.text_hash !== textHash)
       .delete();
 
     await db.vectors.add({
@@ -2019,13 +2031,24 @@ export async function findRelatedConversations(
   const vectors = await db.vectors.toArray();
   const targetEmbedding = toFloat32Array(targetVector.embedding);
 
-  const scores: Array<{ id: number; similarity: number }> = [];
+  // Best similarity per conversation, with the same 0.15 floor retrieval uses —
+  // without a floor this always returns `limit` rows even when nothing is truly
+  // related (including near-zero / negative matches).
+  const bestByConversation = new Map<number, number>();
   for (const vector of vectors) {
     if (vector.conversation_id === conversationId) continue;
     const embedding = toFloat32Array(vector.embedding as Float32Array | number[]);
     const similarity = cosineSimilarity(targetEmbedding, embedding);
-    scores.push({ id: vector.conversation_id, similarity });
+    if (similarity < 0.15) continue;
+    const prev = bestByConversation.get(vector.conversation_id);
+    if (prev === undefined || similarity > prev) {
+      bestByConversation.set(vector.conversation_id, similarity);
+    }
   }
+  const scores: Array<{ id: number; similarity: number }> = Array.from(
+    bestByConversation,
+    ([id, similarity]) => ({ id, similarity })
+  );
 
   const top = scores.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
   const conversations = await db.conversations.bulkGet(top.map((item) => item.id));
@@ -2044,7 +2067,7 @@ export async function findRelatedConversations(
         id: conversation.id,
         title: conversation.title,
         platform: conversation.platform,
-        similarity: Math.round(item.similarity * 100),
+        similarity: Math.max(0, Math.round(item.similarity * 100)),
       } as RelatedConversation;
     })
     .filter(Boolean) as RelatedConversation[];

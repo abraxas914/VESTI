@@ -25,10 +25,13 @@ function AitiRadar({
   const ring = (frac: number) =>
     axes.map((_, i) => { const p = at(frac, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
   const clampFrac = (score: number) => Math.max(0.04, Math.min(1, (score ?? 0) / 100));
+  // No-signal axes sit at the neutral mid-ring (and carry no pole label) so the
+  // shape doesn't assert a lean the data doesn't support.
+  const fracFor = (a: AitiAxisScore) => (a.hasSignal === false ? 0.5 : clampFrac(a.score));
   const scorePts = axes
-    .map((a, i) => { const p = at(clampFrac(a.score), i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; })
+    .map((a, i) => { const p = at(fracFor(a), i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; })
     .join(" ");
-  const dots = axes.map((a, i) => at(clampFrac(a.score), i));
+  const dots = axes.map((a, i) => at(fracFor(a), i));
   const labelsArr = axes.map((a, i) => {
     const meta = axisMeta[a.key];
     const p = at(1.22, i);
@@ -36,12 +39,12 @@ function AitiRadar({
     return {
       x: p.x,
       y: p.y + (i === 0 ? -2 : i === 2 ? 7 : 3),
-      text: meta ? (a.score >= 50 ? meta.right : meta.left) : "",
+      text: meta && a.hasSignal !== false ? (a.score >= 50 ? meta.right : meta.left) : "",
       anchor,
     };
   });
   return (
-    <svg viewBox="0 0 200 200" className="h-44 w-44" role="img" aria-hidden="true">
+    <svg viewBox="-30 0 260 200" className="h-44 w-52" aria-hidden="true">
       {[0.33, 0.66, 1].map((f, gi) => (
         <polygon key={gi} points={ring(f)} fill="none" stroke="currentColor" strokeWidth={0.6} className="text-border-subtle" />
       ))}
@@ -124,7 +127,9 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
   const typeCode = profile.axes
     .map((a) => {
       const meta = axisMeta[a.key];
-      if (!meta) return null;
+      // Don't fold an unsupported axis into the "type" — it would read as a
+      // confident trait drawn from zero evidence.
+      if (!meta || a.hasSignal === false) return null;
       return a.score >= 50 ? meta.right : meta.left;
     })
     .filter(Boolean)
@@ -169,6 +174,16 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
             {profile.axes.map((axis) => {
               const meta = axisMeta[axis.key];
               if (!meta) return null;
+              if (axis.hasSignal === false) {
+                return (
+                  <li key={axis.key} className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-text-tertiary/40" />
+                    <span className="text-[13px] leading-relaxed text-text-tertiary">
+                      {meta.label} — {labels.axisNeedsSignal}
+                    </span>
+                  </li>
+                );
+              }
               const strength = axis.score >= 50 ? meta.rightStrength : meta.leftStrength;
               return (
                 <li key={axis.key} className="flex items-start gap-2.5">
@@ -185,25 +200,30 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
           {profile.axes.map((axis) => {
             const meta = axisMeta[axis.key];
             if (!meta) return null;
+            const muted = axis.hasSignal === false;
             return (
               <div key={axis.key}>
                 <div className="mb-1 flex items-baseline justify-between">
                   <span className="text-[12px] font-medium text-text-secondary">{meta.label}</span>
                   <span className="text-[11px] text-text-tertiary">
-                    {labels.evidence.replace("{n}", String(axis.evidenceConversationIds.length))}
+                    {muted
+                      ? labels.axisNeedsSignal
+                      : labels.evidence.replace("{n}", String(axis.evidenceConversationIds.length))}
                   </span>
                 </div>
                 <div className="relative h-1.5 rounded-full bg-bg-tertiary">
                   <div
-                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-primary"
-                    style={{ left: `${axis.score}%` }}
+                    className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+                      muted ? "bg-text-tertiary/40" : "bg-accent-primary"
+                    }`}
+                    style={{ left: `${muted ? 50 : axis.score}%` }}
                   />
                 </div>
                 <div className="mt-1 flex justify-between text-[11px] text-text-tertiary">
-                  <span className={axis.score < 50 ? "font-medium text-text-secondary" : ""}>
+                  <span className={!muted && axis.score < 50 ? "font-medium text-text-secondary" : ""}>
                     {meta.left}
                   </span>
-                  <span className={axis.score >= 50 ? "font-medium text-text-secondary" : ""}>
+                  <span className={!muted && axis.score >= 50 ? "font-medium text-text-secondary" : ""}>
                     {meta.right}
                   </span>
                 </div>

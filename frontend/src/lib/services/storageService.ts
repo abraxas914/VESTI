@@ -47,6 +47,9 @@ import type { LlmDiagnostic } from "./llmService"
 const LONG_RUNNING_TIMEOUT_MS = 120000
 const TEST_CONNECTION_TIMEOUT_MS = 45000
 const FULL_TEXT_SEARCH_TIMEOUT_MS = 15000
+// Dashboard reads can run during a cold service-worker spin-up or over a large
+// KB; the 4 s default request timeout then spuriously fails them as "load failed".
+const READ_TIMEOUT_MS = 20000
 
 export async function getConversations(filters?: {
   platform?: Platform
@@ -57,14 +60,14 @@ export async function getConversations(filters?: {
     type: "GET_CONVERSATIONS",
     target: "offscreen",
     payload: filters
-  }) as Promise<Conversation[]>
+  }, READ_TIMEOUT_MS) as Promise<Conversation[]>
 }
 
 export async function getTopics(): Promise<Topic[]> {
   return sendRequest({
     type: "GET_TOPICS",
     target: "offscreen"
-  }) as Promise<Topic[]>
+  }, READ_TIMEOUT_MS) as Promise<Topic[]>
 }
 
 export async function createTopic(
@@ -289,7 +292,7 @@ export async function getMessages(conversationId: number): Promise<Message[]> {
     type: "GET_MESSAGES",
     target: "offscreen",
     payload: { conversationId }
-  }) as Promise<Message[]>
+  }, READ_TIMEOUT_MS) as Promise<Message[]>
 }
 
 export async function getAnnotationsByConversation(
@@ -630,21 +633,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return sendRequest({
     type: "GET_DASHBOARD_STATS",
     target: "offscreen"
-  }) as Promise<DashboardStats>
+  }, READ_TIMEOUT_MS) as Promise<DashboardStats>
 }
 
 export async function getStorageUsage(): Promise<StorageUsageSnapshot> {
   return sendRequest({
     type: "GET_STORAGE_USAGE",
     target: "offscreen"
-  }) as Promise<StorageUsageSnapshot>
+  }, READ_TIMEOUT_MS) as Promise<StorageUsageSnapshot>
 }
 
 export async function getDataOverview(): Promise<DataOverviewSnapshot> {
   return sendRequest({
     type: "GET_DATA_OVERVIEW",
     target: "offscreen"
-  }) as Promise<DataOverviewSnapshot>
+  }, READ_TIMEOUT_MS) as Promise<DataOverviewSnapshot>
 }
 
 export async function exportData(
@@ -827,7 +830,7 @@ export async function listPrompts(filter?: PromptListFilter): Promise<Prompt[]> 
     type: "LIST_PROMPTS",
     target: "offscreen",
     payload: { filter }
-  }) as Promise<Prompt[]>
+  }, READ_TIMEOUT_MS) as Promise<Prompt[]>
 }
 
 export async function searchPrompts(

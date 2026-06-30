@@ -1006,23 +1006,25 @@ export async function listConversations(
     )
   }
 
+  // Convert once: toConversation + getConversationOriginAt were previously
+  // recomputed inside the dateRange filter AND twice per sort comparison
+  // (~2N·logN conversions on large libraries).
+  let decorated = results.map((record) => {
+    const conversation = toConversation(record)
+    return { conversation, originAt: getConversationOriginAt(conversation) }
+  })
+
   if (filters?.dateRange) {
-    results = results.filter((c) => {
-      const originAt = getConversationOriginAt(toConversation(c))
-      return (
-        originAt >= filters.dateRange!.start &&
-        originAt <= filters.dateRange!.end
-      )
-    })
+    decorated = decorated.filter(
+      (item) =>
+        item.originAt >= filters.dateRange!.start &&
+        item.originAt <= filters.dateRange!.end
+    )
   }
 
-  return results
-    .sort(
-      (a, b) =>
-        getConversationOriginAt(toConversation(b)) -
-        getConversationOriginAt(toConversation(a))
-    )
-    .map(toConversation)
+  return decorated
+    .sort((a, b) => b.originAt - a.originAt)
+    .map((item) => item.conversation)
 }
 
 export async function getConversationById(
@@ -1664,6 +1666,10 @@ export async function searchConversationMatchesByText(
   })
 
   return Array.from(matchMap.entries())
+    // Most relevant conversations first (ties: more recent first). Sort on the
+    // entries so the createdAt tie-break the comment promises is actually applied
+    // without leaking createdAt into the returned shape.
+    .sort(([, a], [, b]) => b.score - a.score || b.createdAt - a.createdAt)
     .map(([conversationId, match]) => ({
       conversationId,
       firstMatchedMessageId: match.messageId,
@@ -1674,8 +1680,6 @@ export async function searchConversationMatchesByText(
       ),
       score: match.score
     }))
-    // Most relevant conversations first (ties: more recent first).
-    .sort((a, b) => b.score - a.score)
 }
 
 export async function deleteConversation(id: number): Promise<boolean> {

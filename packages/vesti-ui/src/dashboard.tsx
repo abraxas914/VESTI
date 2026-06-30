@@ -258,6 +258,7 @@ const DEFAULT_LABELS: DashboardLabels = {
     empoweringIntro: "Across your AI conversations, these strengths shine through:",
     obsessionsTitle: "What you keep investing in",
     evidence: "seen in {n} conversations",
+    axisNeedsSignal: "Needs more signal",
     axisDepthLabel: "Breadth ↔ Depth",
     axisDepthLeft: "Explorer",
     axisDepthRight: "Excavator",
@@ -277,7 +278,7 @@ const DEFAULT_LABELS: DashboardLabels = {
     axisAffectLeft: "Cool-headed",
     axisAffectRight: "Spirited",
     axisAffectLeftStrength: "You stay calm and keep clear judgment under complexity.",
-    axisAffectRightStrength: "You bring real passion and energy to what you explore.",
+    axisAffectRightStrength: "You bring strong emotional engagement to what you explore.",
   },
   learn: {
     modeLearn: "Learn",

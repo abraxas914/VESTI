@@ -399,7 +399,12 @@ export async function extractPromptsFromLibrary(
         if (result.created) created += 1;
         else skipped += 1;
       }
-      await pruneStaleExtracted(oldExtractedIds, keepIds);
+      // Only prune when this run actually produced/reproduced a set. An empty
+      // result almost always means the run found nothing this time (not that the
+      // user's whole extracted library should be wiped) — keep it intact.
+      if (keepIds.size > 0 || oldExtractedIds.length === 0) {
+        await pruneStaleExtracted(oldExtractedIds, keepIds);
+      }
       logger.info("service", "Prompt fragment distillation complete", {
         scope,
         candidates: allGroups.length,
@@ -462,7 +467,10 @@ export async function extractPromptsFromLibrary(
     if (result.created) created += 1;
     else skipped += 1;
   }
-  await pruneStaleExtracted(oldExtractedIds, keepIds);
+  // Only prune when this run actually produced/reproduced a set (see distill path).
+  if (keepIds.size > 0 || oldExtractedIds.length === 0) {
+    await pruneStaleExtracted(oldExtractedIds, keepIds);
+  }
 
   logger.info("service", "Prompt extraction complete", {
     scope,

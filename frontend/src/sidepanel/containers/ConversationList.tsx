@@ -198,7 +198,7 @@ export function ConversationList({
   const timeOf = useCallback(
     (conversation: Conversation) =>
       sortMode === "capture"
-        ? getConversationFirstCapturedAt(conversation)
+        ? getConversationCaptureFreshnessAt(conversation)
         : getConversationOriginAt(conversation),
     [sortMode],
   );
@@ -576,26 +576,18 @@ export function ConversationList({
   const handleConversationUpdated = useCallback(
     (updatedConversation: Conversation) => {
       setConversations((prev) => {
-        let next = prev.map((item) =>
+        const next = prev.map((item) =>
           item.id === updatedConversation.id
             ? { ...item, ...updatedConversation }
             : item
         );
-
-        next = next.sort((a, b) => timeOf(b) - timeOf(a));
-
-        if (!normalizedSearchQuery) {
-          return next;
-        }
-
-        return next.filter((item) => {
-          const baseMatch = matchesSearch(item, normalizedSearchQuery);
-          const textMatch = shouldRunMessageSearch && resultSummaryMap[item.id];
-          return baseMatch || Boolean(textMatch);
-        });
+        // Update the MASTER list only. Search filtering lives in the
+        // filteredConversations memo; filtering here would permanently prune
+        // non-matching threads from state until a reload.
+        return next.sort((a, b) => timeOf(b) - timeOf(a));
       });
     },
-    [normalizedSearchQuery, resultSummaryMap, shouldRunMessageSearch, timeOf]
+    [timeOf]
   );
 
   if (loading) {
@@ -614,13 +606,15 @@ export function ConversationList({
   if (conversations.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <p className="text-vesti-sm text-text-tertiary">No conversations yet</p>
+        <p className="text-vesti-sm text-text-tertiary">{t.timeline.noConversations}</p>
       </div>
     );
   }
 
   if (filteredConversations.length === 0) {
-    const emptyLabel = isMessageSearchPending ? "Searching messages..." : "No matches";
+    const emptyLabel = isMessageSearchPending
+      ? t.timeline.searchingMessages
+      : t.timeline.noMatches;
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="flex items-center gap-2 text-vesti-sm text-text-tertiary">

@@ -31,7 +31,7 @@ type PmResult = {
   fromPlaza?: boolean;
 };
 import type { ActiveCaptureStatus, Platform, Prompt, UiThemeMode } from "../lib/types";
-import { resolveCapsuleLogoSrc } from "../lib/ui/capsuleLogo";
+import { LOGO_BASE64 } from "../lib/ui/logo";
 import { logger } from "../lib/utils/logger";
 import { detectAndSetLanguage } from "../lib/services/languageSettingsService";
 
@@ -270,6 +270,9 @@ const capsuleEn = {
   openVestiCapsule: "Open Vesti capsule",
   openVestiDock: "Open Vesti Dock",
   openDock: "Open Dock",
+  collapseAria: "Collapse capsule",
+  collapseTitle: "Collapse",
+  waitingForStatus: "Waiting for status...",
   pm: {
     heading: "Prompt Assistant",
     optimize: "Optimize",
@@ -316,6 +319,9 @@ const capsuleZh = {
   openVestiCapsule: "打开 Vesti 胶囊",
   openVestiDock: "打开 Vesti 面板",
   openDock: "打开面板",
+  collapseAria: "收起胶囊",
+  collapseTitle: "收起",
+  waitingForStatus: "正在获取状态…",
   pm: {
     heading: "提示词助手",
     optimize: "优化",
@@ -480,10 +486,6 @@ const SHADOW_STYLE = `
   --capsule-text3: hsl(224 7% 56%);
   --capsule-shadow: 0 8px 22px rgba(28, 20, 15, 0.1), 0 2px 6px rgba(28, 20, 15, 0.08);
   --capsule-shadow-hover: 0 10px 28px rgba(28, 20, 15, 0.12), 0 3px 9px rgba(28, 20, 15, 0.1);
-  --capsule-ball-border: hsl(0 0% 100% / 0.6);
-  --capsule-ball-bg-start: hsl(0 0% 100% / 0.84);
-  --capsule-ball-bg-end: hsl(220 30% 92% / 0.62);
-  --capsule-ball-shadow: 0 16px 28px rgba(28, 20, 15, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.66), inset 0 -10px 18px rgba(182, 190, 207, 0.3);
   --status-held-bg: hsl(36 90% 43% / 0.12);
   --status-held-text: hsl(36 90% 43%);
   --status-held-border: hsl(36 90% 43% / 0.28);
@@ -531,10 +533,6 @@ const SHADOW_STYLE = `
   --capsule-text3: hsl(0 0% 62%);
   --capsule-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
   --capsule-shadow-hover: 0 10px 28px rgba(0, 0, 0, 0.35), 0 3px 9px rgba(0, 0, 0, 0.25);
-  --capsule-ball-border: hsl(0 0% 100% / 0.14);
-  --capsule-ball-bg-start: hsl(0 0% 26% / 0.72);
-  --capsule-ball-bg-end: hsl(0 0% 10% / 0.48);
-  --capsule-ball-shadow: 0 18px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -12px 20px rgba(0, 0, 0, 0.26);
   --status-held-bg: hsl(40 85% 58% / 0.2);
   --status-held-text: hsl(40 85% 58%);
   --status-held-border: hsl(40 85% 58% / 0.34);
@@ -572,16 +570,10 @@ const SHADOW_STYLE = `
 .capsule-collapsed {
   width: ${COLLAPSED_SIZE}px;
   height: ${COLLAPSED_SIZE}px;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  border: 1px solid var(--capsule-ball-border);
+  border: 1px solid hsl(220 17% 84%);
   border-radius: 9999px;
-  background:
-    radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.08) 34%, transparent 58%),
-    linear-gradient(145deg, var(--capsule-ball-bg-start), var(--capsule-ball-bg-end));
-  box-shadow: var(--capsule-ball-shadow);
-  backdrop-filter: blur(18px) saturate(1.22);
+  background: hsl(220 24% 95%);
+  box-shadow: 0 3px 9px rgba(28, 20, 15, 0.16), 0 1px 2px rgba(28, 20, 15, 0.1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -592,37 +584,9 @@ const SHADOW_STYLE = `
   touch-action: none;
 }
 
-.capsule-collapsed::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 31% 21%, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.26) 28%, transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 68%);
-  opacity: 0.9;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.capsule-collapsed::after {
-  content: "";
-  position: absolute;
-  inset: 17% 18% auto 22%;
-  height: 26%;
-  border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0));
-  opacity: 0.72;
-  pointer-events: none;
-  z-index: 0;
-}
-
 .capsule-collapsed:hover {
   transform: translateY(-1px) scale(1.02);
-  box-shadow:
-    0 18px 32px rgba(28, 20, 15, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -12px 22px rgba(182, 190, 207, 0.32);
+  box-shadow: 0 6px 14px rgba(28, 20, 15, 0.2), 0 2px 5px rgba(28, 20, 15, 0.12);
 }
 
 .capsule-collapsed:active {
@@ -635,8 +599,6 @@ const SHADOW_STYLE = `
   object-fit: contain;
   -webkit-user-drag: none;
   user-select: none;
-  position: relative;
-  z-index: 1;
 }
 
 .capsule-panel {
@@ -1370,9 +1332,14 @@ const openSidepanel = async (): Promise<boolean> => {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
       { type: "OPEN_SIDEPANEL", source: "capsule-ui" },
-      () => {
-        const lastError = chrome.runtime.lastError;
-        resolve(!lastError);
+      (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(false);
+          return;
+        }
+        // Trust the background's honest ok flag — sidePanel.open can fail even
+        // when the message itself round-trips successfully.
+        resolve((response as { ok?: boolean } | undefined)?.ok === true);
       }
     );
   });
@@ -1495,7 +1462,7 @@ const mount = async () => {
     : capsuleT.openVestiDock;
   const logo = document.createElement("img");
   logo.className = "capsule-logo";
-  logo.src = resolveCapsuleLogoSrc(themeMode);
+  logo.src = LOGO_BASE64;
   logo.alt = "Vesti";
   logo.draggable = false;
   collapsedButton.appendChild(logo);
@@ -1532,8 +1499,8 @@ const mount = async () => {
   collapseBtn.type = "button";
   collapseBtn.className = "capsule-collapse-btn";
   collapseBtn.textContent = "⌃";
-  collapseBtn.setAttribute("aria-label", "Collapse capsule");
-  collapseBtn.title = "Collapse";
+  collapseBtn.setAttribute("aria-label", capsuleT.collapseAria);
+  collapseBtn.title = capsuleT.collapseTitle;
 
   header.appendChild(dragHandle);
   header.appendChild(collapseBtn);
@@ -1561,7 +1528,7 @@ const mount = async () => {
 
   const reasonLine = document.createElement("div");
   reasonLine.className = "capsule-reason";
-  reasonLine.textContent = "Waiting for status...";
+  reasonLine.textContent = capsuleT.waitingForStatus;
 
   const actions = document.createElement("div");
   actions.className = "capsule-actions";
@@ -1682,6 +1649,9 @@ const mount = async () => {
   let pmResults: PmResult[] = [];
   let pmPreviewBody = "";
   let pmSearchDebounce: number | null = null;
+  // Monotonic search token: a slower earlier query must not overwrite the
+  // results of a newer one once its awaited lookups resolve.
+  let pmSearchSeq = 0;
   let unsubscribePromptAssist: (() => void) | null = null;
   // The composer the user last typed in. Clicking the shadow panel moves
   // document.activeElement to the shadow host, so resolveComposer() can miss the
@@ -1876,7 +1846,6 @@ const mount = async () => {
     shell.dataset.view = viewMode;
     shell.dataset.state = uiState;
     shell.dataset.theme = themeMode;
-    logo.src = resolveCapsuleLogoSrc(themeMode);
 
     if (!isPrimaryRolloutHost) {
       shell.classList.add("fallback-shell");
@@ -1973,12 +1942,15 @@ const mount = async () => {
 
   const renderPromptResults = async (query: string) => {
     if (!pmEnabled) return;
+    const seq = ++pmSearchSeq;
     const trimmed = query.trim();
     // Search the user's saved 常用提示词 (DB) AND the curated 优质提示词 (plaza).
     const [saved, curated] = await Promise.all([
       pmSearchPrompts(trimmed),
       Promise.resolve(searchCuratedPrompts(trimmed, capsuleLocale, 6)),
     ]);
+    // A newer keystroke superseded this search while it was in flight.
+    if (seq !== pmSearchSeq) return;
     const seen = new Set<string>();
     const merged: PmResult[] = [];
     for (const p of saved) {
@@ -2364,12 +2336,29 @@ const mount = async () => {
       unsubscribePromptAssist = null;
     }
     window.removeEventListener("resize", onResize);
-    window.removeEventListener("pagehide", destroy);
+    window.removeEventListener("pagehide", onPageHide);
     window.removeEventListener("beforeunload", destroy);
+    document.removeEventListener("input", onDocInput, true);
     if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
       chrome.storage.onChanged.removeListener(onStorageChanged);
     }
     host.remove();
+  };
+
+  // Track the composer the user last typed in (rich editors lose focus when the
+  // shadow panel is clicked). Hoisted (not anonymous) so destroy() can remove it —
+  // otherwise it leaks and runs composer resolution on every page keystroke.
+  const onDocInput = (event: Event) => {
+    const target = resolveComposerFromEvent(event.target, window.location.hostname);
+    if (target) lastComposer = target;
+  };
+
+  const onPageHide = (event: PageTransitionEvent) => {
+    // Skip teardown for bfcache: the page (and capsule) is frozen, not unloaded,
+    // and resumes intact on pageshow. Destroying here would leave the dock gone
+    // until a full reload after a back/forward navigation.
+    if (event.persisted) return;
+    destroy();
   };
 
   collapsedButton.addEventListener("keydown", (event) => {
@@ -2463,20 +2452,13 @@ const mount = async () => {
       hidePmPreview();
     });
 
-    // Track the composer the user last typed in (rich editors lose focus when
-    // the shadow panel is clicked). Capture phase to see nested editor nodes.
-    document.addEventListener(
-      "input",
-      (event) => {
-        const target = resolveComposerFromEvent(event.target, window.location.hostname);
-        if (target) lastComposer = target;
-      },
-      true,
-    );
+    // Capture phase to see nested editor nodes (handler hoisted as onDocInput so
+    // destroy() can detach it).
+    document.addEventListener("input", onDocInput, true);
   }
 
   window.addEventListener("resize", onResize);
-  window.addEventListener("pagehide", destroy);
+  window.addEventListener("pagehide", onPageHide);
   window.addEventListener("beforeunload", destroy);
   if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener(onStorageChanged);

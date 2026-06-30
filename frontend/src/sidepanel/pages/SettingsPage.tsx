@@ -698,9 +698,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
         setNotionDatabases(results)
         setNotionDatabasesStatus("ready")
         setNotionDatabasesMessage(
-          results.length === 0
-            ? "No shared databases found yet. Share the database with the integration, then refresh."
-            : null
+          results.length === 0 ? t.settings.notionExport.noDatabases : null
         )
       } catch (error) {
         setNotionDatabasesStatus("error")
@@ -915,7 +913,10 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
           time: Date.now()
         })
         setArchiveMessage(
-          `Saved (${result.decision.reason}) \u00b7 ${result.decision.messageCount} messages`
+          t.settings.captureEngine.archivedSummary.replace(
+            "{count}",
+            String(result.decision.messageCount)
+          )
         )
       } else {
         setArchiveStatus("error")

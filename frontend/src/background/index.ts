@@ -881,19 +881,28 @@ if (chrome?.alarms?.create) {
   })
 }
 
-function openSidepanelForTab(tabId: number): void {
+function openSidepanelForTab(tabId: number, done?: (ok: boolean) => void): void {
   if (!chrome?.sidePanel?.open) {
     logger.warn("background", "sidePanel API not available")
+    done?.(false)
     return
   }
+  // Configure the panel (async completion is fine), then open it SYNCHRONOUSLY
+  // in the same tick: open() consumes the user gesture, and nesting it inside
+  // setOptions' callback drops the gesture so the panel never appears.
   chrome.sidePanel.setOptions(
     { tabId, path: "sidepanel.html", enabled: true },
     () => {
-      chrome.sidePanel.open({ tabId }, () => {
-        void chrome.runtime.lastError
-      })
+      void chrome.runtime.lastError
     }
   )
+  chrome.sidePanel.open({ tabId }, () => {
+    const lastError = chrome.runtime.lastError
+    if (lastError) {
+      logger.warn("background", "sidePanel.open failed", { error: lastError.message })
+    }
+    done?.(!lastError)
+  })
 }
 
 // Clicking the toolbar icon opens our standalone web UI (the full Dashboard at
@@ -952,17 +961,17 @@ chrome.runtime.onMessage.addListener(
 
     const tabId = sender.tab?.id
     if (typeof tabId === "number") {
-      openSidepanelForTab(tabId)
-      sendResponse?.({ ok: true })
-      return
+      openSidepanelForTab(tabId, (ok) => sendResponse?.({ ok }))
+      return true
     }
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const activeId = tabs[0]?.id
       if (typeof activeId === "number") {
-        openSidepanelForTab(activeId)
+        openSidepanelForTab(activeId, (ok) => sendResponse?.({ ok }))
+      } else {
+        sendResponse?.({ ok: false })
       }
-      sendResponse?.({ ok: true })
     })
 
     return true

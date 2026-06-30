@@ -154,11 +154,24 @@ export async function runRoundtablePanel(
         systemPrompt: systemPromptFor("moderator", lang),
         responseFormat: "json_object",
       });
-      synthesisRaw = (result.content ?? "").trim();
+      const rawContent = (result.content ?? "").trim();
       try {
-        synthesis = normalizeSynthesis(JSON.parse(extractJsonObject(synthesisRaw)));
+        synthesis = normalizeSynthesis(JSON.parse(extractJsonObject(rawContent)));
       } catch {
         synthesis = null;
+      }
+      if (synthesis) {
+        synthesisRaw = "";
+      } else {
+        // Never surface the raw moderator JSON to the UI / exported note — keep
+        // it only for debugging and show a friendly fallback instead.
+        logger.debug("service", "Roundtable synthesis produced no structure", {
+          raw: rawContent.slice(0, 500),
+        });
+        synthesisRaw =
+          lang === "zh"
+            ? "未能将圆桌结论整理成结构化形式，请重试。"
+            : "Couldn't structure the panel's synthesis. Please try again.";
       }
     } catch (error) {
       synthesisRaw =
