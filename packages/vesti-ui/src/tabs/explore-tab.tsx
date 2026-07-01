@@ -31,6 +31,7 @@ import type {
   ExploreAgentPlan,
   ExploreAskOptions,
   ExploreContextCandidate,
+  ExploreLabels,
   ExploreMessage,
   ExploreMode,
   ExploreSearchScope,
@@ -42,145 +43,15 @@ import type {
   UiThemeMode,
 } from "../types";
 
-const MODE_STAGES: Record<ExploreMode, string[]> = {
-  agent: [
-    "Planning the route...",
-    "Scanning lightweight library cues...",
-    "Collecting source evidence...",
-    "Compiling context draft...",
-    "Synthesizing a longer answer...",
-  ],
-  classic: [
-    "Understanding your question...",
-    "Searching indexed context...",
-    "Synthesizing a longer answer...",
-  ],
-};
-
-const STARTER_DECKS: StarterDeck[] = [
-  {
-    eyebrow: "Start with a task",
-    title: "Explore your library with a lighter touch.",
-    description:
-      "Ask a focused question, then let Explore search, summarize, and stitch together the minimal context needed.",
-    privacyTip:
-      "Keep prompts narrow. Ask for themes, decisions, or one time window instead of raw transcripts.",
-    capabilityHint:
-      "Summaries, weekly digests, and source-grounded answers are all available here.",
-    prompts: [
-      {
-        title: "Summarize this week",
-        prompt: "Summarize what I worked on this week and highlight the main decisions.",
-        detail:
-          "Great for rolling up a recent batch of conversations into a concise review.",
-      },
-      {
-        title: "Find the decision trail",
-        prompt:
-          "Show the conversations that explain how we reached the final decision.",
-        detail:
-          "Use this when you want the context behind a conclusion, not just the conclusion.",
-      },
-      {
-        title: "Group related threads",
-        prompt:
-          "Group the most related conversations about this topic and explain why they belong together.",
-        detail:
-          "Useful for clustering a topic without exposing the full raw conversation history.",
-      },
-      {
-        title: "Build a quick brief",
-        prompt:
-          "Create a short brief from the most relevant conversations and keep it source-grounded.",
-        detail: "A compact starting point when you want a clean handoff or a summary note.",
-      },
-    ],
-  },
-  {
-    eyebrow: "Private by default",
-    title: "Ask for the shape of the work, not the whole transcript.",
-    description:
-      "Explore is most useful when it compresses a library into a narrow, trustworthy answer you can inspect.",
-    privacyTip:
-      "Favor descriptors like themes, blockers, or outcomes. Avoid asking for everything at once.",
-    capabilityHint:
-      "You can search across all conversations or a selected subset, then refine sources afterward.",
-    prompts: [
-      {
-        title: "What changed?",
-        prompt: "What changed across my conversations over the last week?",
-        detail:
-          "A safe way to surface progress without pulling in more than you need.",
-      },
-      {
-        title: "Cluster the blockers",
-        prompt: "Cluster the repeated blockers or open questions across my conversations.",
-        detail:
-          "Helps reveal recurring pain points and where the discussion kept circling back.",
-      },
-      {
-        title: "Trace one topic",
-        prompt: "Trace the main discussion around privacy or search and summarize the arc.",
-        detail:
-          "Good for following a single thread through multiple conversations.",
-      },
-      {
-        title: "Surface next steps",
-        prompt: "Surface the next actions implied by the most relevant conversations.",
-        detail:
-          "Turns scattered discussion into a practical follow-up list.",
-      },
-    ],
-  },
-  {
-    eyebrow: "Work in layers",
-    title: "Start broad, then narrow to the sources that matter.",
-    description:
-      "Use a starter prompt to get a compact answer, then inspect the source conversations if you need verification.",
-    privacyTip:
-      "Short prompts usually reveal less than a fully detailed request, which helps keep exploration focused.",
-    capabilityHint:
-      "Ask for weekly summaries, cross-conversation themes, or a source list you can inspect manually.",
-    prompts: [
-      {
-        title: "Weekly recap",
-        prompt: "Give me a compact weekly recap with the main themes and follow-ups.",
-        detail:
-          "Designed for a weekly digest that stays concise but still useful.",
-      },
-      {
-        title: "Theme map",
-        prompt:
-          "Map the main themes across my conversations about architecture and tooling.",
-        detail:
-          "Useful when the goal is to understand the library at a higher level first.",
-      },
-      {
-        title: "Evidence first",
-        prompt:
-          "List the most relevant conversations for this topic and summarize each one briefly.",
-        detail:
-          "A good bridge between search and review when you want a source-backed answer.",
-      },
-      {
-        title: "Decision summary",
-        prompt: "Summarize the decision and the evidence that led to it.",
-        detail:
-          "Short, inspectable, and suitable for quick handoff notes.",
-      },
-    ],
-  },
-];
-
-function rotateArray<T>(items: T[], offset: number): T[] {
-  if (items.length === 0) return items;
+function rotateArray<T>(items: readonly T[], offset: number): T[] {
+  if (items.length === 0) return items.slice();
   const normalized = ((offset % items.length) + items.length) % items.length;
-  if (normalized === 0) return items;
+  if (normalized === 0) return items.slice();
   return [...items.slice(normalized), ...items.slice(0, normalized)];
 }
 
-function getStarterDeck(seed: number): StarterDeck {
-  return STARTER_DECKS[((seed % STARTER_DECKS.length) + STARTER_DECKS.length) % STARTER_DECKS.length];
+function getStarterDeck(decks: readonly StarterDeck[], seed: number): StarterDeck {
+  return decks[((seed % decks.length) + decks.length) % decks.length];
 }
 
 function normalizeStarterSeed(text: string, max = 44): string {
@@ -193,9 +64,14 @@ function normalizeStarterSeed(text: string, max = 44): string {
   return `${normalized.slice(0, max).trim()}...`;
 }
 
-function extractConversationCue(conversation: Conversation): string {
+function extractConversationCue(conversation: Conversation, untitledLabel: string): string {
   const title = normalizeStarterSeed(conversation.title || "");
-  if (title && title.toLowerCase() !== "untitled") {
+  const normalizedUntitled = untitledLabel.trim().toLowerCase();
+  if (
+    title &&
+    title.toLowerCase() !== "untitled" &&
+    title.toLowerCase() !== normalizedUntitled
+  ) {
     return title;
   }
 
@@ -205,14 +81,15 @@ function extractConversationCue(conversation: Conversation): string {
 function buildLibraryStarterPrompts(
   conversations: Conversation[],
   fallbackPrompts: StarterPromptCard[],
-  revision: number
+  revision: number,
+  labels: ExploreLabels
 ): StarterPromptCard[] {
   const rotatedConversations = rotateArray(conversations, revision);
   const prompts: StarterPromptCard[] = [];
   const seen = new Set<string>();
 
   for (const conversation of rotatedConversations) {
-    const cue = extractConversationCue(conversation);
+    const cue = extractConversationCue(conversation, labels.untitled);
     if (!cue) continue;
 
     const key = cue.toLowerCase();
@@ -220,10 +97,9 @@ function buildLibraryStarterPrompts(
     seen.add(key);
 
     prompts.push({
-      title: `Continue "${cue}"`,
-      prompt: `Continue "${cue}" and search the related context before summarizing the key points.`,
-      detail:
-        "Built from recent library cues using only lightweight title and snippet context.",
+      title: labels.libraryStarter.titleTemplate.replace("{cue}", cue),
+      prompt: labels.libraryStarter.promptTemplate.replace("{cue}", cue),
+      detail: labels.libraryStarter.detail,
     });
 
     if (prompts.length >= 2) {
@@ -245,7 +121,7 @@ type ExploreTabProps = {
   storage: StorageApi;
   themeMode?: UiThemeMode;
   onOpenConversation?: (conversationId: number) => void;
-  labels?: Record<string, string>;
+  labels: ExploreLabels;
 };
 
 type DrawerTab = "plan" | "tool_calls" | "sources" | "context_draft";
@@ -264,52 +140,8 @@ interface StarterDeck {
   description: string;
   privacyTip: string;
   capabilityHint: string;
-  prompts: StarterPromptCard[];
+  prompts: readonly StarterPromptCard[];
 }
-
-const TOOL_LABELS: Record<ExploreToolName, string> = {
-  intent_planner: "Intent Planner",
-  time_scope_resolver: "Time Scope Resolver",
-  weekly_summary_tool: "Weekly Summary Tool",
-  query_planner: "Query Planner (Legacy)",
-  search_rag: "Semantic Search",
-  summary_tool: "Summary Tool",
-  context_compiler: "Context Compiler",
-  answer_synthesizer: "Answer Synthesizer",
-};
-
-const TOOL_EXPLANATIONS: Record<ExploreToolName, string> = {
-  intent_planner:
-    "Uses the model to decide what the user is asking for, which route to run, and whether a time window is required.",
-  time_scope_resolver:
-    "Turns phrases like 'this week' into a concrete date range so the answer is auditable.",
-  weekly_summary_tool:
-    "Finds the conversations in that period, then reuses or generates a week-level digest.",
-  query_planner:
-    "Legacy fixed planning step from the earlier Explore pipeline.",
-  search_rag:
-    "Searches the knowledge base by semantic similarity to retrieve the most relevant conversations.",
-  summary_tool:
-    "Fills in missing conversation summaries so multi-source answers are easier to synthesize and inspect.",
-  context_compiler:
-    "Builds the editable context draft and source set shown in the drawer.",
-  answer_synthesizer:
-    "Produces the final answer from the collected evidence and tells the user where to inspect the result.",
-};
-
-const INTENT_LABELS: Record<ExploreAgentPlan["intent"], string> = {
-  fact_lookup: "Fact Lookup",
-  cross_conversation_summary: "Cross-Conversation Summary",
-  weekly_review: "Weekly Review",
-  timeline: "Timeline",
-  clarification_needed: "Clarification Needed",
-};
-
-const PATH_LABELS: Record<ExploreAgentPlan["preferredPath"], string> = {
-  rag: "Semantic Search",
-  weekly_summary: "Weekly Summary",
-  clarify: "Clarify First",
-};
 
 function generateId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -343,14 +175,20 @@ function groupSessionsByTime(sessions: ExploreSession[]): {
   );
 }
 
-function summarizeToolCalls(toolCalls: ExploreToolCall[]): string {
-  if (!toolCalls.length) return "No tool calls";
+function summarizeToolCalls(toolCalls: ExploreToolCall[], labels: ExploreLabels): string {
+  if (!toolCalls.length) return labels.noToolCalls;
   const failed = toolCalls.filter((toolCall) => toolCall.status === "failed").length;
   const totalMs = toolCalls.reduce((sum, toolCall) => sum + (toolCall.durationMs || 0), 0);
+  const seconds = (totalMs / 1000).toFixed(1);
   if (failed > 0) {
-    return `${toolCalls.length} steps · ${failed} failed · ${(totalMs / 1000).toFixed(1)}s`;
+    return labels.toolCallsSummaryFailed
+      .replace("{count}", String(toolCalls.length))
+      .replace("{failed}", String(failed))
+      .replace("{seconds}", seconds);
   }
-  return `${toolCalls.length} steps · ${(totalMs / 1000).toFixed(1)}s`;
+  return labels.toolCallsSummary
+    .replace("{count}", String(toolCalls.length))
+    .replace("{seconds}", seconds);
 }
 
 function buildSearchScope(
@@ -367,22 +205,22 @@ function buildSearchScope(
   return { mode: "all" };
 }
 
-function getSearchScopeSummary(searchScope?: ExploreSearchScope, labels?: Record<string, string>): string {
+function getSearchScopeSummary(searchScope: ExploreSearchScope | undefined, labels: ExploreLabels): string {
   if (searchScope?.mode === "selected") {
     const count = searchScope.conversationIds?.length ?? 0;
-    return count > 0 ? `${count} ${labels?.selected ?? "selected"}` : (labels?.selected ?? "Selected");
+    return count > 0 ? `${count} ${labels.selected}` : labels.selected;
   }
-  return labels?.allConversations ?? "All conversations";
+  return labels.allConversations;
 }
 
-function getIntentLabel(plan?: ExploreAgentPlan): string {
-  if (!plan) return "Unknown";
-  return INTENT_LABELS[plan.intent];
+function getIntentLabel(plan: ExploreAgentPlan | undefined, labels: ExploreLabels): string {
+  if (!plan) return labels.unknown;
+  return labels.intentLabels[plan.intent];
 }
 
-function getPathLabel(plan?: ExploreAgentPlan): string {
-  if (!plan) return "Unknown";
-  return PATH_LABELS[plan.preferredPath];
+function getPathLabel(plan: ExploreAgentPlan | undefined, labels: ExploreLabels): string {
+  if (!plan) return labels.unknown;
+  return labels.pathLabels[plan.preferredPath];
 }
 
 function getResolvedTimeScopeLabel(plan?: ExploreAgentPlan): string | null {
@@ -407,10 +245,11 @@ function isTimeScopedPlan(plan?: ExploreAgentPlan): boolean {
 
 function getSourceBadgeLabel(
   candidateOrSource: Pick<ExploreContextCandidate, "similarity" | "matchType">,
-  plan?: ExploreAgentPlan
+  plan: ExploreAgentPlan | undefined,
+  labels: ExploreLabels
 ): string {
   if (candidateOrSource.matchType === "time_scope" || isTimeScopedPlan(plan)) {
-    return "In range";
+    return labels.inRange;
   }
   return `${candidateOrSource.similarity}%`;
 }
@@ -429,9 +268,10 @@ export function ExploreTab({
   storage,
   themeMode = "light",
   onOpenConversation,
-  labels: providedLabels,
+  labels,
 }: ExploreTabProps) {
-  const labels = providedLabels ?? ({} as Record<string, string>);
+  const modeStages = labels.modeStages;
+  const starterDecks = labels.starterDecks;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mode, setMode] = useState<ExploreMode>("agent");
   const [sessions, setSessions] = useState<ExploreSession[]>([]);
@@ -511,8 +351,8 @@ export function ExploreTab({
   const drawerCandidates = drawerMessage?.agentMeta?.contextCandidates ?? [];
   const drawerToolCalls = drawerMessage?.agentMeta?.toolCalls ?? [];
   const starterDeck = useMemo(
-    () => getStarterDeck(starterDeckRevision),
-    [starterDeckRevision]
+    () => getStarterDeck(starterDecks, starterDeckRevision),
+    [starterDecks, starterDeckRevision]
   );
   const starterPrompts = useMemo(
     () => rotateArray(starterDeck.prompts, starterDeckRevision),
@@ -563,7 +403,7 @@ export function ExploreTab({
       let nextCards = starterPrompts;
       try {
         const conversations = await storage.getConversations();
-        nextCards = buildLibraryStarterPrompts(conversations, starterPrompts, starterDeckRevision);
+        nextCards = buildLibraryStarterPrompts(conversations, starterPrompts, starterDeckRevision, labels);
       } catch {
         nextCards = starterPrompts;
       }
@@ -581,7 +421,7 @@ export function ExploreTab({
         starterDeckTimerRef.current = null;
       }
     };
-  }, [currentSessionId, starterDeckRevision, starterPrompts, storage.getConversations]);
+  }, [currentSessionId, starterDeckRevision, starterPrompts, storage.getConversations, labels]);
 
   useEffect(() => {
     if (renameTarget && renameInputRef.current) {
@@ -595,12 +435,12 @@ export function ExploreTab({
       setSearchStageIndex(0);
       return;
     }
-    const stages = MODE_STAGES[submitMode];
+    const stages = modeStages[submitMode];
     const timer = setInterval(() => {
       setSearchStageIndex((prev) => (prev + 1) % stages.length);
     }, 900);
     return () => clearInterval(timer);
-  }, [isSubmitting, submitMode]);
+  }, [isSubmitting, submitMode, modeStages]);
 
   useEffect(() => {
     if (!scopeChooserOpen) return;
@@ -619,7 +459,7 @@ export function ExploreTab({
         } catch (err) {
           if (cancelled) return;
           console.error("[Explore] Failed to load scope conversations:", err);
-          setScopeError((err as Error)?.message ?? "Failed to load conversations.");
+          setScopeError((err as Error)?.message ?? labels.failedToLoadConversations);
         } finally {
           if (!cancelled) {
             setScopeLoading(false);
@@ -632,7 +472,7 @@ export function ExploreTab({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [scopeChooserOpen, scopeSearchQuery, storage]);
+  }, [scopeChooserOpen, scopeSearchQuery, storage, labels]);
 
   const loadSessions = async () => {
     if (!storage.listExploreSessions) return;
@@ -733,12 +573,12 @@ export function ExploreTab({
     if (!trimmed || isSubmitting) return;
 
     if (!storage.askKnowledgeBase) {
-      setError("Explore is unavailable in the current environment.");
+      setError(labels.exploreUnavailable);
       return;
     }
 
     if (searchScopeMode === "selected" && selectedScopeConversationIds.length === 0) {
-      setError("Choose at least one conversation before using Selected scope.");
+      setError(labels.chooseAtLeastOne);
       setScopeChooserOpen(true);
       return;
     }
@@ -797,7 +637,7 @@ export function ExploreTab({
       await loadSessions();
     } catch (err) {
       console.error("[Explore] Submit error:", err);
-      setError((err as Error)?.message ?? "Failed to retrieve answer.");
+      setError((err as Error)?.message ?? labels.failedToRetrieveAnswer);
       setMessages((prev) => prev.filter((message) => message.id !== optimisticUserMessage.id));
     } finally {
       setIsSubmitting(false);
@@ -807,7 +647,7 @@ export function ExploreTab({
   const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (!storage.deleteExploreSession) return;
-    if (!confirm("Delete this conversation?")) return;
+    if (!confirm(labels.deleteConversationConfirm)) return;
 
     try {
       await storage.deleteExploreSession(sessionId);
@@ -896,13 +736,13 @@ export function ExploreTab({
       setContextSaveStatus("saved");
       setDrawerNotice(
         storage.updateExploreMessageContext
-          ? "Context draft saved."
-          : "Saved locally for this view (storage adapter unavailable)."
+          ? labels.contextDraftSaved
+          : labels.savedLocally
       );
     } catch (err) {
       console.error("[Explore] Failed to save context draft:", err);
       setContextSaveStatus("error");
-      setDrawerNotice((err as Error)?.message ?? "Failed to save context draft.");
+      setDrawerNotice((err as Error)?.message ?? labels.failedToSaveContext);
     }
   };
 
@@ -910,9 +750,9 @@ export function ExploreTab({
     if (!contextDraft.trim()) return;
     try {
       await navigator.clipboard.writeText(contextDraft);
-      setDrawerNotice("Copied to clipboard.");
+      setDrawerNotice(labels.copiedToClipboard);
     } catch {
-      setDrawerNotice("Clipboard is unavailable in this environment.");
+      setDrawerNotice(labels.clipboardUnavailable);
     }
   };
 
@@ -920,7 +760,7 @@ export function ExploreTab({
     if (!contextDraft.trim()) return;
     const filename = `explore-context-${Date.now()}.txt`;
     triggerTxtDownload(contextDraft, filename);
-    setDrawerNotice(`Downloaded ${filename}.`);
+    setDrawerNotice(labels.downloaded.replace("{filename}", filename));
   };
 
   const handleStartChatWithContext = () => {
@@ -938,13 +778,13 @@ export function ExploreTab({
     );
 
     if (normalizedIds.length === 0) {
-      setDrawerNotice("Select at least one source before regenerating.");
+      setDrawerNotice(labels.selectAtLeastOneSource);
       return;
     }
 
     const query = getAssistantQuery(drawerMessage);
     if (!query) {
-      setDrawerNotice("Could not determine the query for this answer.");
+      setDrawerNotice(labels.couldNotDetermineQuery);
       return;
     }
 
@@ -977,13 +817,11 @@ export function ExploreTab({
       await loadMessages(currentSessionId);
       await loadSessions();
       setDrawerNotice(
-        `Regenerated as a new turn using ${normalizedIds.length} selected source${
-          normalizedIds.length === 1 ? "" : "s"
-        }.`
+        labels.regeneratedNotice.replace("{count}", String(normalizedIds.length))
       );
     } catch (err) {
       console.error("[Explore] Failed to regenerate from selected sources:", err);
-      setDrawerNotice((err as Error)?.message ?? "Failed to regenerate answer.");
+      setDrawerNotice((err as Error)?.message ?? labels.failedToRegenerate);
     } finally {
       setIsRegeneratingSources(false);
     }
@@ -1019,9 +857,9 @@ export function ExploreTab({
             </div>
           ) : (
             <>
-              <p className="truncate text-sm font-sans text-text-primary">{session.title || "Untitled"}</p>
+              <p className="truncate text-sm font-sans text-text-primary">{session.title || labels.untitledSession}</p>
               <p className="truncate text-xs font-sans text-text-tertiary">
-                {session.preview || "No messages"}
+                {session.preview || labels.noMessages}
               </p>
             </>
           )}
@@ -1032,14 +870,14 @@ export function ExploreTab({
             <button
               onClick={(event) => handleStartRename(session, event)}
               className="rounded p-1 text-text-tertiary hover:bg-bg-surface-card hover:text-text-primary"
-              title="Rename"
+              title={labels.rename}
             >
               <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
             <button
               onClick={(event) => handleDeleteSession(session.id, event)}
               className="rounded p-1 text-text-tertiary hover:bg-bg-surface-card hover:text-[#B42318]"
-              title="Delete"
+              title={labels.delete}
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
@@ -1056,16 +894,20 @@ export function ExploreTab({
         : toolCall.status === "completed"
           ? "text-success"
           : "text-text-tertiary";
-    const description = toolCall.description || TOOL_EXPLANATIONS[toolCall.name];
+    const description = toolCall.description || labels.toolExplanations[toolCall.name];
 
     return (
       <div key={toolCall.id} className="rounded-lg border border-border-subtle bg-bg-surface-card p-3">
         <div className="mb-1 flex items-center justify-between">
           <p className="text-[13px] font-medium text-text-primary">
-            {index + 1}. {TOOL_LABELS[toolCall.name]}
+            {index + 1}. {labels.toolLabels[toolCall.name]}
           </p>
           <span className={`text-[11px] font-sans uppercase ${statusTone}`}>
-            {toolCall.status}
+            {toolCall.status === "completed"
+              ? labels.toolStatus.completed
+              : toolCall.status === "failed"
+                ? labels.toolStatus.failed
+                : toolCall.status}
           </span>
         </div>
         <p className="mb-2 text-[11px] font-sans text-text-tertiary">
@@ -1076,17 +918,17 @@ export function ExploreTab({
         )}
         {toolCall.inputSummary && (
           <p className="mb-1 text-xs font-sans text-text-secondary">
-            <span className="font-medium text-text-primary">Input:</span> {toolCall.inputSummary}
+            <span className="font-medium text-text-primary">{labels.inputLabel}</span> {toolCall.inputSummary}
           </p>
         )}
         {toolCall.outputSummary && (
           <p className="text-xs font-sans text-text-secondary">
-            <span className="font-medium text-text-primary">Output:</span> {toolCall.outputSummary}
+            <span className="font-medium text-text-primary">{labels.outputLabel}</span> {toolCall.outputSummary}
           </p>
         )}
         {toolCall.error && (
           <p className="mt-1 text-xs font-sans text-danger">
-            <span className="font-medium">Error:</span> {toolCall.error}
+            <span className="font-medium">{labels.errorLabel}</span> {toolCall.error}
           </p>
         )}
       </div>
@@ -1114,7 +956,7 @@ export function ExploreTab({
               <div
                 className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
                   isUser
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "border border-border-subtle bg-bg-surface-card"
                 }`}
               >
@@ -1126,7 +968,7 @@ export function ExploreTab({
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="mb-1 text-xs font-sans text-text-tertiary">{isUser ? "You" : "Vesti"}</p>
+                <p className="mb-1 text-xs font-sans text-text-tertiary">{isUser ? labels.you : labels.assistantName}</p>
 
                 {isUser ? (
                   <p className="whitespace-pre-wrap text-base font-sans text-text-primary">
@@ -1134,7 +976,7 @@ export function ExploreTab({
                   </p>
                 ) : (
                   <div
-                    className="prose prose-slate max-w-none prose-p:leading-relaxed prose-p:text-text-primary prose-li:leading-relaxed prose-li:text-text-primary"
+                    className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-text-primary prose-p:leading-relaxed prose-p:text-text-primary prose-li:leading-relaxed prose-li:text-text-primary prose-strong:text-text-primary prose-em:text-text-primary prose-code:text-text-primary prose-a:text-accent-primary prose-blockquote:text-text-secondary"
                     dangerouslySetInnerHTML={{ __html: html || "" }}
                   />
                 )}
@@ -1149,7 +991,7 @@ export function ExploreTab({
                             className="inline-flex items-center gap-1.5 text-xs font-sans text-text-secondary hover:text-text-primary"
                           >
                             <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />
-                            Plan
+                            {labels.plan}
                           </button>
                         )}
                         <button
@@ -1157,38 +999,38 @@ export function ExploreTab({
                           className="inline-flex items-center gap-1.5 text-xs font-sans text-text-secondary hover:text-text-primary"
                         >
                           <Wrench className="h-3.5 w-3.5" strokeWidth={1.75} />
-                          Tool Calls
+                          {labels.toolCalls}
                         </button>
                       </div>
                       <p className="text-xs font-sans text-text-tertiary">
-                        {summarizeToolCalls(toolCalls)}
+                        {summarizeToolCalls(toolCalls, labels)}
                       </p>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-3">
                       {plan && (
                         <>
                           <p className="text-[11px] font-sans text-text-tertiary">
-                            Intent: {getIntentLabel(plan)}
+                            {labels.intentPrefix} {getIntentLabel(plan, labels)}
                           </p>
                           <p className="text-[11px] font-sans text-text-tertiary">
-                            Route: {getPathLabel(plan)}
+                            {labels.routePrefix} {getPathLabel(plan, labels)}
                           </p>
                         </>
                       )}
                       {timeScopeLabel && (
                         <p className="text-[11px] font-sans text-text-tertiary">
-                          Time: {timeScopeLabel}
+                          {labels.timePrefix} {timeScopeLabel}
                         </p>
                       )}
                       <p className="text-[11px] font-sans text-text-tertiary">
-                        Scope: {scopeSummary}
+                        {labels.scopePrefix} {scopeSummary}
                       </p>
                       <button
                         onClick={() => openDrawer(message, "sources")}
                         className="inline-flex items-center gap-1.5 text-xs font-sans text-text-secondary hover:text-text-primary"
                       >
                         <Filter className="h-3.5 w-3.5" strokeWidth={1.75} />
-                        Source Controls
+                        {labels.sourceControls}
                       </button>
                     </div>
                     {message.agentMeta?.contextDraft && (
@@ -1197,7 +1039,7 @@ export function ExploreTab({
                         className="mt-2 inline-flex items-center gap-1.5 text-xs font-sans text-accent-primary hover:text-accent-primary/80"
                       >
                         <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />
-                        Open Context Draft
+                        {labels.openContextDraft}
                       </button>
                     )}
                   </div>
@@ -1206,7 +1048,7 @@ export function ExploreTab({
                 {!isUser && (
                   <div className="mt-4 border-t border-border-subtle pt-4">
                     <p className="mb-2 text-[11px] font-sans uppercase tracking-wider text-text-tertiary">
-                      Sources
+                      {labels.sources}
                     </p>
                     {hasSources ? (
                       <div className="flex flex-wrap gap-2">
@@ -1218,14 +1060,14 @@ export function ExploreTab({
                           >
                             <span className="max-w-[120px] truncate">{source.title}</span>
                             <span className="text-accent-primary">
-                              {getSourceBadgeLabel(source, plan)}
+                              {getSourceBadgeLabel(source, plan, labels)}
                             </span>
                           </button>
                         ))}
                       </div>
                     ) : (
                       <p className="text-xs font-sans italic text-text-tertiary">
-                        No relevant conversations found
+                        {labels.noRelevantConversations}
                       </p>
                     )}
                   </div>
@@ -1236,7 +1078,7 @@ export function ExploreTab({
         </div>
       );
     },
-    [onOpenConversation]
+    [onOpenConversation, labels]
   );
 
   const renderEmptyState = () => {
@@ -1253,13 +1095,13 @@ export function ExploreTab({
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                 <div className="min-w-0 lg:pr-10">
                   <p className="text-[10px] font-sans uppercase tracking-[0.4em] text-text-tertiary">
-                    {labels[`starterDeck${(starterDeckRevision % 3) + 1}Eyebrow`] ?? starterDeck.eyebrow}
+                    {starterDeck.eyebrow}
                   </p>
                   <h1 className="mt-3 text-3xl font-[family-name:var(--font-lora)] font-normal leading-tight text-text-primary md:text-[40px]">
-                    {labels[`starterDeck${(starterDeckRevision % 3) + 1}Title`] ?? starterDeck.title}
+                    {starterDeck.title}
                   </h1>
                   <p className="mt-3 max-w-[920px] text-sm leading-6 text-text-secondary md:text-[15px]">
-                    {labels[`starterDeck${(starterDeckRevision % 3) + 1}Description`] ?? starterDeck.description}
+                    {starterDeck.description}
                   </p>
                 </div>
 
@@ -1289,7 +1131,7 @@ export function ExploreTab({
                       <button
                         onClick={handleSubmit}
                         disabled={!inputValue.trim() || isSubmitting}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-accent-primary px-4 py-2 text-xs font-sans font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-accent-primary px-4 py-2 text-xs font-sans font-medium text-text-inverse transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isSubmitting ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1353,7 +1195,7 @@ export function ExploreTab({
                         <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                       </div>
                       <span className="text-[11px] font-sans uppercase tracking-wider text-text-tertiary">
-                        Fill composer
+                        {labels.fillComposer}
                       </span>
                     </div>
                     <p className="mt-5 text-[15px] font-sans font-medium text-text-primary">{card.title}</p>
@@ -1384,7 +1226,7 @@ export function ExploreTab({
                   className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
                     themeMode === "dark"
                       ? "bg-bg-secondary text-text-primary hover:bg-bg-surface-card-hover"
-                      : "bg-accent-primary text-white hover:bg-accent-primary/90"
+                      : "bg-accent-primary text-text-inverse hover:bg-accent-primary/90"
                   }`}
                 >
                   <MessageSquarePlus className="h-4 w-4" strokeWidth={1.5} />
@@ -1436,7 +1278,7 @@ export function ExploreTab({
           </div>
 
           <ResizablePanelDivider
-            ariaLabel="Resize Explore sidebar"
+            ariaLabel={labels.resizeSidebarAria}
             onPointerDown={sidebarPane.handlePointerDown}
             onNudge={sidebarPane.nudgeWidth}
             isDragging={sidebarPane.isDragging}
@@ -1450,7 +1292,7 @@ export function ExploreTab({
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="rounded-lg p-2 text-text-tertiary transition-colors hover:bg-bg-surface-card hover:text-text-primary"
-              title={sidebarOpen ? (labels.closeSidebar ?? "Close sidebar") : (labels.openSidebar ?? "Open sidebar")}
+              title={sidebarOpen ? labels.closeSidebar : labels.openSidebar}
             >
               {sidebarOpen ? (
                 <PanelLeftClose className="h-4 w-4" strokeWidth={1.5} />
@@ -1471,21 +1313,21 @@ export function ExploreTab({
                 onClick={() => setMode("agent")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   mode === "agent"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Agent
+                {labels.agent}
               </button>
               <button
                 onClick={() => setMode("classic")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   mode === "classic"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Classic
+                {labels.classic}
               </button>
             </div>
             <div className="inline-flex rounded-md border border-border-subtle bg-bg-surface-card p-0.5">
@@ -1493,11 +1335,11 @@ export function ExploreTab({
                 onClick={() => setSearchScopeMode("all")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   activeSearchScope.mode === "all"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                All
+                {labels.all}
               </button>
               <button
                 onClick={() => {
@@ -1509,11 +1351,11 @@ export function ExploreTab({
                 }}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   activeSearchScope.mode === "selected"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Selected
+                {labels.selected}
               </button>
             </div>
             <button
@@ -1528,7 +1370,7 @@ export function ExploreTab({
                 onClick={handleNewChat}
                 className="rounded-lg bg-bg-surface-card px-3 py-1.5 text-sm font-sans text-text-primary transition-colors hover:bg-bg-surface-card-hover"
               >
-                New Chat
+                {labels.newChat}
               </button>
             )}
           </div>
@@ -1553,11 +1395,11 @@ export function ExploreTab({
                         <span className="text-sm">V</span>
                       </div>
                       <div className="flex-1">
-                        <p className="mb-1 text-xs font-sans text-text-tertiary">Vesti</p>
+                        <p className="mb-1 text-xs font-sans text-text-tertiary">{labels.assistantName}</p>
                         <div className="flex items-center gap-2 text-text-primary">
                           <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
                           <span className="text-sm font-sans">
-                            {MODE_STAGES[submitMode][searchStageIndex]}
+                            {modeStages[submitMode][searchStageIndex]}
                           </span>
                         </div>
                       </div>
@@ -1575,7 +1417,7 @@ export function ExploreTab({
                         onClick={() => setError(null)}
                         className="mt-2 text-xs font-sans text-red-600 hover:text-red-800"
                       >
-                        Dismiss
+                        {labels.dismiss}
                       </button>
                     </div>
                   </div>
@@ -1608,7 +1450,7 @@ export function ExploreTab({
                   <button
                     onClick={handleSubmit}
                     disabled={!inputValue.trim() || isSubmitting}
-                    className="rounded-md bg-accent-primary p-2 text-white transition-all hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="rounded-md bg-accent-primary p-2 text-text-inverse transition-all hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1625,7 +1467,7 @@ export function ExploreTab({
                     : (labels.classicModeDesc ?? "Classic mode searches your history and returns concise source-grounded answers.")}
                 </p>
                 <p className="mt-1">
-                  Current scope: {getSearchScopeSummary(activeSearchScope, labels)}
+                  {labels.currentScopePrefix} {getSearchScopeSummary(activeSearchScope, labels)}
                 </p>
               </div>
             </div>
@@ -1636,7 +1478,7 @@ export function ExploreTab({
       {drawerMessage ? (
         <>
           <ResizablePanelDivider
-            ariaLabel="Resize Explore details drawer"
+            ariaLabel={labels.resizeDrawerAria}
             onPointerDown={drawerPane.handlePointerDown}
             onNudge={(delta) => drawerPane.nudgeWidth(-delta)}
             isDragging={drawerPane.isDragging}
@@ -1648,7 +1490,7 @@ export function ExploreTab({
           <div className="flex h-12 items-center justify-between border-b border-border-subtle px-3">
             <div className="flex min-w-0 items-center gap-2">
               <Wrench className="h-4 w-4 text-text-secondary" strokeWidth={1.7} />
-              <p className="truncate text-sm font-sans text-text-primary">Execution Details</p>
+              <p className="truncate text-sm font-sans text-text-primary">{labels.executionDetails}</p>
             </div>
             <button
               onClick={() => setDrawerMessageId(null)}
@@ -1664,41 +1506,41 @@ export function ExploreTab({
                 onClick={() => setDrawerTab("plan")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   drawerTab === "plan"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Plan
+                {labels.plan}
               </button>
               <button
                 onClick={() => setDrawerTab("tool_calls")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   drawerTab === "tool_calls"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Tool Calls
+                {labels.toolCalls}
               </button>
               <button
                 onClick={() => setDrawerTab("sources")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   drawerTab === "sources"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Sources
+                {labels.sources}
               </button>
               <button
                 onClick={() => setDrawerTab("context_draft")}
                 className={`rounded px-2.5 py-1 text-xs font-sans transition-colors ${
                   drawerTab === "context_draft"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-text-inverse"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Context Draft
+                {labels.contextDraft}
               </button>
             </div>
           </div>
@@ -1710,50 +1552,50 @@ export function ExploreTab({
                   <>
                     <div className="rounded-lg border border-border-subtle bg-bg-surface-card p-3">
                       <p className="mb-1 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                        Planner Decision
+                        {labels.plannerDecision}
                       </p>
                       <div className="space-y-1.5 text-sm font-sans text-text-primary">
-                        <p>Intent: {getIntentLabel(drawerPlan)}</p>
-                        <p>Route: {getPathLabel(drawerPlan)}</p>
-                        <p>Source limit: {drawerPlan.sourceLimit}</p>
-                        <p>Summary target: {drawerPlan.summaryTargetCount}</p>
+                        <p>{labels.intentPrefix} {getIntentLabel(drawerPlan, labels)}</p>
+                        <p>{labels.routePrefix} {getPathLabel(drawerPlan, labels)}</p>
+                        <p>{labels.sourceLimitPrefix} {drawerPlan.sourceLimit}</p>
+                        <p>{labels.summaryTargetPrefix} {drawerPlan.summaryTargetCount}</p>
                         {getResolvedTimeScopeLabel(drawerPlan) && (
-                          <p>Time scope: {getResolvedTimeScopeLabel(drawerPlan)}</p>
+                          <p>{labels.timeScopePrefix} {getResolvedTimeScopeLabel(drawerPlan)}</p>
                         )}
                       </div>
                     </div>
 
                     <div className="rounded-lg border border-border-subtle bg-bg-surface-card p-3">
                       <p className="mb-1 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                        Why This Route
+                        {labels.whyThisRoute}
                       </p>
                       <p className="text-sm font-sans text-text-primary">
                         {drawerPlan.reason}
                       </p>
                       {drawerPlan.answerGoal && (
                         <p className="mt-2 text-xs font-sans text-text-secondary">
-                          Goal: {drawerPlan.answerGoal}
+                          {labels.goalPrefix} {drawerPlan.answerGoal}
                         </p>
                       )}
                       {drawerPlan.clarifyingQuestion && (
                         <p className="mt-2 text-xs font-sans text-text-secondary">
-                          Clarification: {drawerPlan.clarifyingQuestion}
+                          {labels.clarificationPrefix} {drawerPlan.clarifyingQuestion}
                         </p>
                       )}
                     </div>
 
                     <div className="rounded-lg border border-border-subtle bg-bg-surface-card p-3">
                       <p className="mb-2 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                        Planned Tools
+                        {labels.plannedTools}
                       </p>
                       <div className="space-y-2">
                         {(drawerPlan.toolPlan ?? []).map((toolName, index) => (
                           <div key={`${toolName}-${index}`} className="rounded-md bg-bg-primary p-2">
                             <p className="text-sm font-sans text-text-primary">
-                              {index + 1}. {TOOL_LABELS[toolName]}
+                              {index + 1}. {labels.toolLabels[toolName]}
                             </p>
                             <p className="mt-1 text-xs font-sans text-text-secondary">
-                              {TOOL_EXPLANATIONS[toolName]}
+                              {labels.toolExplanations[toolName]}
                             </p>
                           </div>
                         ))}
@@ -1761,13 +1603,12 @@ export function ExploreTab({
                     </div>
 
                     <p className="text-[11px] font-sans text-text-tertiary">
-                      The planner chooses the high-level route with the model. Tool execution stays
-                      bounded and inspectable in the app.
+                      {labels.plannerFootnote}
                     </p>
                   </>
                 ) : (
                   <p className="text-sm font-sans text-text-tertiary">
-                    No planner metadata was recorded for this answer.
+                    {labels.noPlannerMetadata}
                   </p>
                 )}
               </div>
@@ -1777,7 +1618,7 @@ export function ExploreTab({
                   drawerToolCalls.map(renderToolCallItem)
                 ) : (
                   <p className="text-sm font-sans text-text-tertiary">
-                    No tool calls were recorded for this answer.
+                    {labels.noToolCallsRecorded}
                   </p>
                 )}
               </div>
@@ -1785,27 +1626,27 @@ export function ExploreTab({
               <div className="space-y-4">
                 <div className="rounded-lg border border-border-subtle bg-bg-surface-card p-3">
                   <p className="mb-1 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                    Active Query
+                    {labels.activeQuery}
                   </p>
                   <p className="text-sm font-sans text-text-primary">
-                    {getAssistantQuery(drawerMessage) || "Unavailable"}
+                    {getAssistantQuery(drawerMessage) || labels.unavailable}
                   </p>
                   <p className="mt-2 text-xs font-sans text-text-tertiary">
-                    Scope: {getSearchScopeSummary(drawerMessage.agentMeta?.searchScope, labels)}
+                    {labels.scopePrefix} {getSearchScopeSummary(drawerMessage.agentMeta?.searchScope, labels)}
                   </p>
                   {getResolvedTimeScopeLabel(drawerPlan) && (
                     <p className="mt-1 text-xs font-sans text-text-tertiary">
-                      Time scope: {getResolvedTimeScopeLabel(drawerPlan)}
+                      {labels.timeScopePrefix} {getResolvedTimeScopeLabel(drawerPlan)}
                     </p>
                   )}
                   <p className="mt-1 text-xs font-sans text-text-tertiary">
-                    Selected sources: {selectedContextConversationIds.length} / {drawerCandidates.length}
+                    {labels.selectedSourcesPrefix} {selectedContextConversationIds.length} / {drawerCandidates.length}
                   </p>
                 </div>
 
                 <div>
                   <p className="mb-2 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                    Candidate Sources
+                    {labels.candidateSources}
                   </p>
                   {drawerCandidates.length > 0 ? (
                     <div className="space-y-2">
@@ -1832,13 +1673,13 @@ export function ExploreTab({
                               </button>
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] font-sans text-accent-primary">
-                                  {getSourceBadgeLabel(candidate, drawerPlan)}
+                                  {getSourceBadgeLabel(candidate, drawerPlan, labels)}
                                 </span>
                                 <button
                                   onClick={() => onOpenConversation?.(candidate.conversationId)}
                                   className="text-[11px] font-sans text-text-secondary hover:text-text-primary"
                                 >
-                                  Open
+                                  {labels.open}
                                 </button>
                               </div>
                             </div>
@@ -1863,7 +1704,7 @@ export function ExploreTab({
                     </div>
                   ) : (
                     <p className="text-sm font-sans text-text-tertiary">
-                      No context candidates for this answer.
+                      {labels.noContextCandidates}
                     </p>
                   )}
                 </div>
@@ -1882,9 +1723,9 @@ export function ExploreTab({
                   <button
                     onClick={handleSaveContextDraft}
                     disabled={contextSaveStatus === "saving"}
-                    className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
+                    className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-text-inverse transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
                   >
-                    {contextSaveStatus === "saving" ? "Saving..." : "Save Selection"}
+                    {contextSaveStatus === "saving" ? labels.saving : labels.saveSelection}
                   </button>
                   <button
                     onClick={handleRegenerateWithSelectedSources}
@@ -1896,26 +1737,26 @@ export function ExploreTab({
                     ) : (
                       <RotateCcw className="h-3.5 w-3.5" />
                     )}
-                    Regenerate Answer
+                    {labels.regenerateAnswer}
                   </button>
                   <button
                     onClick={() => setDrawerTab("context_draft")}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-xs font-sans text-text-secondary hover:bg-bg-surface-card"
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    Open Draft
+                    {labels.openDraft}
                   </button>
                 </div>
 
                 <p className="text-[11px] font-sans text-text-tertiary">
-                  Regeneration appends a new turn using only the selected conversations.
+                  {labels.regenerationFootnote}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
                   <p className="mb-2 text-xs font-sans uppercase tracking-wider text-text-tertiary">
-                    Draft (Editable)
+                    {labels.draftEditable}
                   </p>
                   <textarea
                     value={contextDraft}
@@ -1942,30 +1783,30 @@ export function ExploreTab({
                   <button
                     onClick={handleSaveContextDraft}
                     disabled={contextSaveStatus === "saving"}
-                    className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
+                    className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-text-inverse transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
                   >
-                    {contextSaveStatus === "saving" ? "Saving..." : "Save"}
+                    {contextSaveStatus === "saving" ? labels.saving : labels.save}
                   </button>
                   <button
                     onClick={handleCopyContextDraft}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-xs font-sans text-text-secondary hover:bg-bg-surface-card"
                   >
                     <Clipboard className="h-3.5 w-3.5" />
-                    Copy
+                    {labels.copy}
                   </button>
                   <button
                     onClick={handleDownloadContextDraft}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-xs font-sans text-text-secondary hover:bg-bg-surface-card"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Download TXT
+                    {labels.downloadTxt}
                   </button>
                   <button
                     onClick={handleStartChatWithContext}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-xs font-sans text-text-secondary hover:bg-bg-surface-card"
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    {labels.newChatPrefill ?? "New Chat (Prefill)"}
+                    {labels.newChatPrefill}
                   </button>
                 </div>
               </div>
@@ -2011,7 +1852,7 @@ export function ExploreTab({
                     setSearchScopeMode("selected");
                     applySelectedScope();
                   }}
-                  className="rounded-md bg-accent-primary px-3 py-2 text-xs font-sans text-white transition-colors hover:bg-accent-primary/90"
+                  className="rounded-md bg-accent-primary px-3 py-2 text-xs font-sans text-text-inverse transition-colors hover:bg-accent-primary/90"
                 >
                   {labels.applySelected ?? "Apply Selected"}
                 </button>

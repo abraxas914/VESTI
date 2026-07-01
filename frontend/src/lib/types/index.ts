@@ -558,7 +558,9 @@ export interface UiSettings {
   themeMode: UiThemeMode
 }
 
-export type SupportedLocale = "en" | "zh"
+// Single source of truth lives in the locale registry; re-exported here so
+// existing `~lib/types` importers stay in sync automatically when a language is added.
+export type { SupportedLocale } from "../i18n/locales"
 
 export type NotionAuthMode = "disconnected" | "oauth_public" | "legacy_manual"
 
@@ -709,15 +711,31 @@ export interface SummaryRecord {
   sourceUpdatedAt: number
 }
 
+export interface WeeklyRecapV1 {
+  schema?: "weekly_recap.v1"
+  greeting: string
+  persona_tag: string
+  mood_emoji: string
+  narrative: string[]
+  highlight: { title: string; detail: string } | null
+  stats: {
+    conversation_count: number
+    active_days: number
+    streak_weeks: number
+    top_platform: string
+    week_over_week_delta: number | null
+  }
+}
+
 export interface WeeklyReportRecord {
   id: number
   rangeStart: number
   rangeEnd: number
   content: string
-  structured?: WeeklyReportV1 | WeeklyLiteReportV1 | null
+  structured?: WeeklyReportV1 | WeeklyLiteReportV1 | WeeklyRecapV1 | null
   format?: InsightFormat
   status?: InsightStatus
-  schemaVersion?: "weekly_report.v1" | "weekly_lite.v1"
+  schemaVersion?: "weekly_report.v1" | "weekly_lite.v1" | "weekly_recap.v1"
   modelId: string
   createdAt: number
   sourceHash: string

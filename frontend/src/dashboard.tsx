@@ -64,12 +64,21 @@ void initializeUiTheme().catch(() => {
   // Keep default light theme tokens if initialization fails.
 });
 
-function getThemeErrorMessage(error: unknown): string {
+function getThemeErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Theme update failed.";
+  return fallback;
 }
 
 export default function VestiDashboardPage() {
+  return (
+    <I18nProvider>
+      <VestiDashboardInner />
+    </I18nProvider>
+  );
+}
+
+function VestiDashboardInner() {
+  const { t } = useI18n();
   const [themeMode, setThemeMode] = useState<UiThemeMode>(() => {
     if (typeof document === "undefined") return "light";
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -90,7 +99,9 @@ export default function VestiDashboardPage() {
       .catch((error) => {
         if (cancelled) return;
         setThemeSyncStatus("error");
-        setThemeSyncMessage(getThemeErrorMessage(error));
+        setThemeSyncMessage(
+          getThemeErrorMessage(error, t.dashboard.settings.themeUpdateFailed)
+        );
       });
 
     const unsubscribe = subscribeUiSettings((settings) => {
@@ -105,7 +116,7 @@ export default function VestiDashboardPage() {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [t]);
 
   const handleToggleTheme = useCallback(async () => {
     const previous = themeMode;
@@ -126,34 +137,11 @@ export default function VestiDashboardPage() {
       setThemeMode(previous);
       applyUiTheme(previous);
       setThemeSyncStatus("error");
-      setThemeSyncMessage(getThemeErrorMessage(error));
+      setThemeSyncMessage(
+        getThemeErrorMessage(error, t.dashboard.settings.themeUpdateFailed)
+      );
     }
-  }, [themeMode]);
-
-  return (
-    <I18nProvider>
-      <VestiDashboardInner
-        themeMode={themeMode}
-        onToggleTheme={handleToggleTheme}
-        themeSyncStatus={themeSyncStatus}
-        themeSyncMessage={themeSyncMessage}
-      />
-    </I18nProvider>
-  );
-}
-
-function VestiDashboardInner({
-  themeMode,
-  onToggleTheme,
-  themeSyncStatus,
-  themeSyncMessage,
-}: {
-  themeMode: UiThemeMode;
-  onToggleTheme: () => Promise<void>;
-  themeSyncStatus: ThemeSyncStatus;
-  themeSyncMessage: string | null;
-}) {
-  const { t } = useI18n();
+  }, [themeMode, t]);
 
   return (
     <VestiDashboardShell
@@ -161,7 +149,7 @@ function VestiDashboardInner({
       rootClassName="vesti-options"
       labels={t.dashboard}
       themeMode={themeMode}
-      onToggleTheme={onToggleTheme}
+      onToggleTheme={handleToggleTheme}
       themeSyncStatus={themeSyncStatus}
       themeSyncMessage={themeSyncMessage}
       storage={{

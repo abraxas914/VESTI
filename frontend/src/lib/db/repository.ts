@@ -534,7 +534,7 @@ const IMPORT_SUMMARY_SCHEMA_VERSIONS = new Set<
 >(["conversation_summary.v1", "conversation_summary.v2"])
 const IMPORT_WEEKLY_SCHEMA_VERSIONS = new Set<
   NonNullable<WeeklyReportRecord["schemaVersion"]>
->(["weekly_report.v1", "weekly_lite.v1"])
+>(["weekly_report.v1", "weekly_lite.v1", "weekly_recap.v1"])
 
 function invalidImport(path: string, message: string): never {
   throw new Error(`Invalid Vesti import JSON: ${path} ${message}`)

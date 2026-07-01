@@ -50,6 +50,7 @@ import { getCaptureSettings } from "../lib/services/captureSettingsService"
 import { runGardener } from "../lib/services/gardenerService"
 import {
   generateConversationSummary,
+  generateWeeklyRecap,
   generateWeeklyReport
 } from "../lib/services/insightGenerationService"
 import {
@@ -638,6 +639,15 @@ async function handleOffscreenRequest(
       case "GENERATE_WEEKLY_REPORT": {
         const settings = requireSettings(await getLlmSettings())
         const record = await generateWeeklyReport(
+          settings,
+          message.payload.rangeStart,
+          message.payload.rangeEnd
+        )
+        return { ok: true, type: messageType, data: record }
+      }
+      case "GENERATE_WEEKLY_RECAP": {
+        const settings = requireSettings(await getLlmSettings())
+        const record = await generateWeeklyRecap(
           settings,
           message.payload.rangeStart,
           message.payload.rangeEnd

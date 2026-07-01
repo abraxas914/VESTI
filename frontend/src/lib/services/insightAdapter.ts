@@ -4,11 +4,13 @@
   ConversationSummaryV2Legacy,
   SummaryRecord,
   WeeklyLiteReportV1,
+  WeeklyRecapV1,
   WeeklyReportRecord,
   WeeklyReportV1,
 } from "../types";
 import type {
   ChatSummaryData,
+  WeeklyRecapData,
   WeeklySummaryData,
 } from "../types/insightsPresentation";
 import {
@@ -16,6 +18,7 @@ import {
   normalizeConversationSummaryV2Legacy,
   normalizeWeeklyNarrativeList,
 } from "./insightSchemas";
+import { getLocaleDateTag, type SupportedLocale } from "../i18n/locales";
 
 interface WeeklyCrossDomainEcho {
   domain_a: string;
@@ -34,7 +37,110 @@ const TECH_KEYWORDS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /modelscope|qwen|deepseek/i, label: "Model Inference" },
   { pattern: /prompt|schema/i, label: "Prompt Engineering" },
 ];
-const DEFAULT_WEEKLY_SUGGESTED_FOCUS = "下周优先推进一个高价值问题并记录验证结果。";
+function defaultWeeklySuggestedFocus(locale: SupportedLocale): string {
+  return locale === "ko"
+    ? "다음 주에는 가치가 높은 질문 하나에 집중해 진전을 만들고, 검증 결과를 기록해 보세요."
+    : locale === "ja"
+      ? "来週は価値の高い問いを一つに絞って前に進め、検証結果を記録しましょう。"
+      : locale === "zh"
+        ? "下周优先推进一个高价值问题，并记录验证结果。"
+        : "Next week, prioritize one high-value question and record the validation result.";
+}
+
+function insightTermLabel(locale: SupportedLocale, index: number): string {
+  return locale === "ko"
+    ? `인사이트${index}`
+    : locale === "ja"
+      ? `インサイト${index}`
+      : locale === "zh"
+        ? `洞察${index}`
+        : `Insight ${index}`;
+}
+
+interface AdapterDefaults {
+  generalTag: string;
+  thinkingStyle: string;
+  emotionalTone: string;
+  v1ThinkingStyle: string;
+  v1EmotionalTone: string;
+  v1OpeningAssertion: string;
+  sparseThinkingStyle: string;
+  sparseEmotionalTone: string;
+  conversationSummaryTitle: string;
+  noStableConclusion: string;
+  coreQuestionPrefix: (title: string) => string;
+  weeklyFallbackHighlight: string;
+}
+
+function getAdapterDefaults(locale: SupportedLocale): AdapterDefaults {
+  if (locale === "ko") {
+    return {
+      generalTag: "종합",
+      thinkingStyle: "한 걸음씩 깊이 파고들며, 질문을 거듭할 때마다 범위를 좁혀 나가고 있습니다.",
+      emotionalTone: "신중하면서도 호기심을 잃지 않고, 핵심 가설을 꾸준히 검증하고 있습니다.",
+      v1ThinkingStyle: "문제를 단계적으로 분해하며, 범위를 점점 좁혀 나가고 있습니다.",
+      v1EmotionalTone: "이성적이고 신중한 어조를 유지하며, 가설을 지속적으로 검증하고 있습니다.",
+      v1OpeningAssertion: "방향을 정하기 전에 먼저 정리해 두어야 할 질문을 던지고 있습니다.",
+      sparseThinkingStyle: "표본이 적어 사고 방식을 안정적으로 추정하기 어렵습니다.",
+      sparseEmotionalTone: "표본이 적어 감정의 톤은 중립으로 처리합니다.",
+      conversationSummaryTitle: "대화 요약",
+      noStableConclusion: "아직 안정적인 결론은 없습니다.",
+      coreQuestionPrefix: (title: string) => `이번 대화의 핵심 질문: ${title}`,
+      weeklyFallbackHighlight: "이번 주에는 다시 활용할 수 있는 단계적 결론이 정리되었습니다.",
+    };
+  }
+  if (locale === "ja") {
+    return {
+      generalTag: "総合",
+      thinkingStyle: "一歩ずつ掘り下げ、問いを重ねるたびに範囲を絞り込んでいます。",
+      emotionalTone: "慎重さと好奇心を併せ持ち、重要な仮説を継続的に検証しています。",
+      v1ThinkingStyle: "問題を段階的に分解し、少しずつ範囲を絞り込んでいます。",
+      v1EmotionalTone: "理性的で慎重な口調を保ち、仮説を継続的に検証しています。",
+      v1OpeningAssertion: "まず方向を決める前に整理しておくべき問いを投げかけています。",
+      sparseThinkingStyle: "サンプルが少なく、思考スタイルを安定して推定できません。",
+      sparseEmotionalTone: "サンプルが少ないため、感情のトーンは中立として扱います。",
+      conversationSummaryTitle: "会話の要約",
+      noStableConclusion: "まだ安定した結論はありません。",
+      coreQuestionPrefix: (title: string) => `今回の会話の核心的な問い：${title}`,
+      weeklyFallbackHighlight: "今週は再利用できる段階的な結論がまとまりました。",
+    };
+  }
+  if (locale === "zh") {
+    return {
+      generalTag: "综合",
+      thinkingStyle: "一步步深挖，每问一次都在收紧范围。",
+      emotionalTone: "谨慎又不失好奇，持续验证关键假设。",
+      v1ThinkingStyle: "你把问题逐层拆开，并不断收紧范围。",
+      v1EmotionalTone: "语气理性而审慎，持续在验证假设。",
+      v1OpeningAssertion: "你先抛出一个需要先理清、才能决定方向的问题。",
+      sparseThinkingStyle: "样本偏少，暂时难以稳定判断思考风格。",
+      sparseEmotionalTone: "样本偏少，情绪基调暂按中性处理。",
+      conversationSummaryTitle: "对话摘要",
+      noStableConclusion: "暂时还没有稳定的结论。",
+      coreQuestionPrefix: (title: string) => `本次对话的核心问题：${title}`,
+      weeklyFallbackHighlight: "本周沉淀出了可复用的阶段性结论。",
+    };
+  }
+  return {
+    generalTag: "General",
+    thinkingStyle: "Drills down step by step, tightening scope with each question.",
+    emotionalTone: "Cautious yet curious, continuously validating key assumptions.",
+    v1ThinkingStyle: "You break problems down and tighten scope iteratively.",
+    v1EmotionalTone:
+      "The tone is rational, careful, and continuously validating assumptions.",
+    v1OpeningAssertion:
+      "You open with a problem that needs to be clarified before deciding on direction.",
+    sparseThinkingStyle:
+      "Sample is sparse; stable thinking-style inference is unavailable.",
+    sparseEmotionalTone: "Sample is sparse; tone is treated as neutral.",
+    conversationSummaryTitle: "Conversation Summary",
+    noStableConclusion: "No stable conclusion yet.",
+    coreQuestionPrefix: (title: string) =>
+      `Core question in this conversation: ${title}`,
+    weeklyFallbackHighlight:
+      "This week produced reusable stage-level conclusions.",
+  };
+}
 
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -98,7 +204,11 @@ function dedupeInsights(
   return output;
 }
 
-function inferTags(explicitTags: string[] | undefined, fallbackText: string): string[] {
+function inferTags(
+  explicitTags: string[] | undefined,
+  fallbackText: string,
+  locale: SupportedLocale
+): string[] {
   const fromExplicit = dedupe(explicitTags ?? []).slice(0, 6);
   if (fromExplicit.length > 0) {
     return fromExplicit;
@@ -119,7 +229,7 @@ function inferTags(explicitTags: string[] | undefined, fallbackText: string): st
     return deduped;
   }
 
-  return ["General"];
+  return [getAdapterDefaults(locale).generalTag];
 }
 
 function toLines(text: string): string[] {
@@ -135,12 +245,17 @@ function toIsoTime(timestamp: number): string {
   return new Date(timestamp).toISOString();
 }
 
-function toRangeLabel(rangeStart: number, rangeEnd: number): string {
-  const start = new Date(rangeStart).toLocaleDateString("zh-CN", {
+function toRangeLabel(
+  rangeStart: number,
+  rangeEnd: number,
+  locale: SupportedLocale
+): string {
+  const dateLocale = getLocaleDateTag(locale);
+  const start = new Date(rangeStart).toLocaleDateString(dateLocale, {
     month: "2-digit",
     day: "2-digit",
   });
-  const end = new Date(rangeEnd).toLocaleDateString("zh-CN", {
+  const end = new Date(rangeEnd).toLocaleDateString(dateLocale, {
     month: "2-digit",
     day: "2-digit",
   });
@@ -181,6 +296,20 @@ function isWeeklyLiteReportV1(value: unknown): value is WeeklyLiteReportV1 {
 function isWeeklyReportV1(value: unknown): value is WeeklyReportV1 {
   if (!value || typeof value !== "object") return false;
   return "period_title" in value && "main_themes" in value;
+}
+
+function isWeeklyRecapV1(value: unknown): value is WeeklyRecapV1 {
+  if (!value || typeof value !== "object") return false;
+  return "greeting" in value && "stats" in value && "persona_tag" in value;
+}
+
+/**
+ * Detect whether a stored weekly report is a weekly_recap.v1 (Plan B recap).
+ * Checks the schemaVersion first, then structurally falls back to "greeting".
+ */
+export function isWeeklyRecapReport(report: WeeklyReportRecord): boolean {
+  if (report.schemaVersion === "weekly_recap.v1") return true;
+  return isWeeklyRecapV1(report.structured);
 }
 
 function inferUnresolved(lines: string[]): string[] {
@@ -266,8 +395,10 @@ function toInsightObjects(
 function toChatSummaryDataFromV2(
   summary: SummaryRecord,
   structured: ConversationSummaryV2,
+  locale: SupportedLocale,
   options?: { conversationTitle?: string }
 ): ChatSummaryData {
+  const defaults = getAdapterDefaults(locale);
   const safeJourney = Array.isArray(structured.thinking_journey)
     ? structured.thinking_journey
     : [];
@@ -297,7 +428,7 @@ function toChatSummaryDataFromV2(
     meta: {
       title: options?.conversationTitle ?? structured.core_question,
       generated_at: toIsoTime(summary.createdAt),
-      tags: inferTags([], `${structured.core_question}\n${insightText}`),
+      tags: inferTags([], `${structured.core_question}\n${insightText}`, locale),
       fallback: summary.status === "fallback",
     },
     core_question: normalizeText(structured.core_question),
@@ -307,10 +438,10 @@ function toChatSummaryDataFromV2(
     meta_observations: {
       thinking_style:
         normalizeText(String(safeMeta.thinking_style ?? "")) ||
-        "逐步深挖，每一问都在收紧范围。",
+        defaults.thinkingStyle,
       emotional_tone:
         normalizeText(String(safeMeta.emotional_tone ?? "")) ||
-        "谨慎而带着好奇，持续验证关键假设。",
+        defaults.emotionalTone,
       depth_level: normalizeDepthLevel(safeMeta.depth_level),
     },
     actionable_next_steps: dedupeNarrative(safeNextSteps, 6),
@@ -320,19 +451,22 @@ function toChatSummaryDataFromV2(
 
 export function toChatSummaryData(
   summary: SummaryRecord,
-  options?: { conversationTitle?: string }
+  options?: { conversationTitle?: string; locale?: SupportedLocale }
 ): ChatSummaryData {
+  const locale = options?.locale ?? "en";
+  const defaults = getAdapterDefaults(locale);
   const fallbackLines = toLines(summary.content);
   const structured = summary.structured;
 
   if (isConversationSummaryV2Current(structured)) {
-    return toChatSummaryDataFromV2(summary, structured, options);
+    return toChatSummaryDataFromV2(summary, structured, locale, options);
   }
 
   if (isConversationSummaryV2Legacy(structured)) {
     return toChatSummaryDataFromV2(
       summary,
       normalizeConversationSummaryV2Legacy(structured),
+      locale,
       options
     );
   }
@@ -346,8 +480,7 @@ export function toChatSummaryData(
       {
         step: 1,
         speaker: "User",
-        assertion:
-          "You open with a problem that needs to be clarified before deciding on direction.",
+        assertion: defaults.v1OpeningAssertion,
         real_world_anchor: null,
       },
       ...linesSource.slice(0, 5).map((line, index) => {
@@ -367,20 +500,21 @@ export function toChatSummaryData(
         generated_at: toIsoTime(summary.createdAt),
         tags: inferTags(
           structured.tech_stack_detected,
-          `${structured.topic_title}\n${keyInsights.join("\n")}`
+          `${structured.topic_title}\n${keyInsights.join("\n")}`,
+          locale
         ),
         fallback: summary.status === "fallback",
       },
       core_question: options?.conversationTitle ?? structured.topic_title,
       thinking_journey: thinkingJourney,
       key_insights: keyInsights.map((item, index) => ({
-        term: `洞察${index + 1}`,
+        term: insightTermLabel(locale, index + 1),
         definition: item,
       })),
       unresolved_threads: inferUnresolved(linesSource),
       meta_observations: {
-        thinking_style: "You break problems down and tighten scope iteratively.",
-        emotional_tone: "The tone is rational, careful, and continuously validating assumptions.",
+        thinking_style: defaults.v1ThinkingStyle,
+        emotional_tone: defaults.v1EmotionalTone,
         depth_level: "moderate",
       },
       actionable_next_steps: actionItems,
@@ -388,18 +522,20 @@ export function toChatSummaryData(
     };
   }
 
-  const firstLine = fallbackLines[0] ?? options?.conversationTitle ?? "Conversation Summary";
-  const secondLine = fallbackLines[1] ?? fallbackLines[0] ?? "No stable conclusion yet.";
+  const firstLine =
+    fallbackLines[0] ?? options?.conversationTitle ?? defaults.conversationSummaryTitle;
+  const secondLine =
+    fallbackLines[1] ?? fallbackLines[0] ?? defaults.noStableConclusion;
 
   return {
     meta: {
       title: options?.conversationTitle ?? firstLine,
       generated_at: toIsoTime(summary.createdAt),
-      tags: inferTags([], summary.content),
+      tags: inferTags([], summary.content, locale),
       fallback: true,
     },
     core_question: options?.conversationTitle
-      ? `Core question in this conversation: ${options.conversationTitle}`
+      ? defaults.coreQuestionPrefix(options.conversationTitle)
       : firstLine,
     thinking_journey: [
       {
@@ -416,13 +552,13 @@ export function toChatSummaryData(
       },
     ],
     key_insights: fallbackLines.slice(0, 5).map((line, index) => ({
-      term: `洞察${index + 1}`,
+      term: insightTermLabel(locale, index + 1),
       definition: line,
     })),
     unresolved_threads: inferUnresolved(fallbackLines),
     meta_observations: {
-      thinking_style: "Sample is sparse; stable thinking-style inference is unavailable.",
-      emotional_tone: "Sample is sparse; tone is treated as neutral.",
+      thinking_style: defaults.sparseThinkingStyle,
+      emotional_tone: defaults.sparseEmotionalTone,
       depth_level: "superficial",
     },
     actionable_next_steps: fallbackLines
@@ -432,9 +568,12 @@ export function toChatSummaryData(
   };
 }
 
-export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryData {
+export function toWeeklySummaryData(
+  report: WeeklyReportRecord,
+  locale: SupportedLocale = "en"
+): WeeklySummaryData {
   const fallbackLines = toLines(report.content);
-  const rangeLabel = toRangeLabel(report.rangeStart, report.rangeEnd);
+  const rangeLabel = toRangeLabel(report.rangeStart, report.rangeEnd, locale);
   const structured = report.structured;
 
   if (isWeeklyLiteReportV1(structured)) {
@@ -467,7 +606,7 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
       meta: {
         title: `Weekly Lite ${rangeLabel}`,
         generated_at: toIsoTime(report.createdAt),
-        tags: inferTags([], `${structured.highlights.join("\n")}\n${structured.suggested_focus.join("\n")}`),
+        tags: inferTags([], `${structured.highlights.join("\n")}\n${structured.suggested_focus.join("\n")}`, locale),
         fallback: report.status === "fallback",
         range_label: rangeLabel,
       },
@@ -499,7 +638,9 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
       6
     );
     const suggestedFocus =
-      actionItems.length > 0 ? actionItems : [DEFAULT_WEEKLY_SUGGESTED_FOCUS];
+      actionItems.length > 0
+        ? actionItems
+        : [defaultWeeklySuggestedFocus(locale)];
 
     return {
       meta: {
@@ -507,7 +648,8 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
         generated_at: toIsoTime(report.createdAt),
         tags: inferTags(
           structured.tech_stack_detected,
-          `${structured.period_title}\n${themes.join("\n")}\n${keyInsights.join("\n")}`
+          `${structured.period_title}\n${themes.join("\n")}\n${keyInsights.join("\n")}`,
+          locale
         ),
         fallback: report.status === "fallback",
         range_label: rangeLabel,
@@ -515,7 +657,11 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
       highlights:
         highlights.length > 0
           ? highlights
-          : [keyInsights[0] ?? themes[0] ?? "本周形成了可复用的阶段性结论。"],
+          : [
+              keyInsights[0] ??
+                themes[0] ??
+                getAdapterDefaults(locale).weeklyFallbackHighlight,
+            ],
       recurring_questions: [],
       cross_domain_echoes: [],
       unresolved_threads: unresolved,
@@ -537,7 +683,7 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
     meta: {
       title: `Weekly Lite ${rangeLabel}`,
       generated_at: toIsoTime(report.createdAt),
-      tags: inferTags([], report.content),
+      tags: inferTags([], report.content, locale),
       fallback: true,
       range_label: rangeLabel,
     },
@@ -551,6 +697,67 @@ export function toWeeklySummaryData(report: WeeklyReportRecord): WeeklySummaryDa
     suggested_focus: [],
     evidence: [],
     insufficient_data: true,
+    plain_text: report.content,
+  };
+}
+
+/**
+ * Adapt a stored weekly_recap.v1 report into presentation data. Returns null
+ * when the report is not a recap (caller should fall back to the digest path).
+ */
+export function toWeeklyRecapData(
+  report: WeeklyReportRecord,
+  locale: SupportedLocale = "en"
+): WeeklyRecapData | null {
+  const structured = report.structured;
+  if (!isWeeklyRecapV1(structured)) {
+    return null;
+  }
+
+  const rangeLabel = toRangeLabel(report.rangeStart, report.rangeEnd, locale);
+
+  const greeting = normalizeText(structured.greeting);
+  const personaTag = normalizeText(structured.persona_tag);
+  const moodEmoji = normalizeText(structured.mood_emoji) || "✨";
+  const narrative = Array.isArray(structured.narrative)
+    ? structured.narrative
+        .map((paragraph) => normalizeText(paragraph))
+        .filter((paragraph) => paragraph.length > 0)
+    : [];
+
+  const highlight =
+    structured.highlight &&
+    normalizeText(structured.highlight.title) &&
+    normalizeText(structured.highlight.detail)
+      ? {
+          title: normalizeText(structured.highlight.title),
+          detail: normalizeText(structured.highlight.detail),
+        }
+      : null;
+
+  const delta = structured.stats.week_over_week_delta;
+
+  return {
+    meta: {
+      title: `Weekly Recap ${rangeLabel}`,
+      generated_at: toIsoTime(report.createdAt),
+      tags: inferTags([], `${greeting}\n${narrative.join("\n")}`, locale),
+      fallback: report.status === "fallback",
+      range_label: rangeLabel,
+    },
+    greeting,
+    persona_tag: personaTag,
+    mood_emoji: moodEmoji,
+    stats: {
+      conversation_count: Math.max(0, Math.floor(structured.stats.conversation_count)),
+      active_days: Math.max(0, Math.floor(structured.stats.active_days)),
+      streak_weeks: Math.max(0, Math.floor(structured.stats.streak_weeks)),
+      top_platform: normalizeText(structured.stats.top_platform) || "—",
+      week_over_week_delta:
+        typeof delta === "number" && Number.isFinite(delta) ? Math.trunc(delta) : null,
+    },
+    highlight,
+    narrative,
     plain_text: report.content,
   };
 }

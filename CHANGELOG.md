@@ -11,6 +11,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ## [Unreleased]
 
 ### Added
+- Added multi-language support for the UI and AI-generated content (English / 中文 / 日本語 / 한국어), driven by a central locale registry; thread summaries, the weekly recap, and Explore answers all follow the selected language.
 - Added message-sidecar metadata for structured citations and artifact presence.
 
 ### Changed

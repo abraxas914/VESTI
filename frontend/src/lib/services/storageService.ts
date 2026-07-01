@@ -718,6 +718,20 @@ export async function generateWeeklyReport(
   ) as Promise<WeeklyReportRecord>
 }
 
+export async function generateWeeklyRecap(
+  rangeStart: number,
+  rangeEnd: number
+): Promise<WeeklyReportRecord> {
+  return sendRequest(
+    {
+      type: "GENERATE_WEEKLY_RECAP",
+      target: "offscreen",
+      payload: { rangeStart, rangeEnd }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  ) as Promise<WeeklyReportRecord>
+}
+
 export async function getActiveCaptureStatus(): Promise<ActiveCaptureStatus> {
   return sendRequest({
     type: "GET_ACTIVE_CAPTURE_STATUS",

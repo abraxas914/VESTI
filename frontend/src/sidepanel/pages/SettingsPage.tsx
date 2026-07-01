@@ -78,6 +78,7 @@ import type {
 
 import { useI18n } from "~lib/i18n"
 import type { SupportedLocale } from "~lib/types"
+import { SUPPORTED_LOCALES, getLocaleNativeName } from "~lib/i18n/locales"
 import { DisclosureSection } from "../components/DisclosureSection"
 
 const MIN_TURNS_DEFAULT = DEFAULT_CAPTURE_SETTINGS.smartConfig.minTurns
@@ -185,8 +186,11 @@ function LanguageSelector({
         onChange={(e) => onChange(e.target.value as SupportedLocale)}
         className="rounded-md border border-border-subtle bg-bg-primary px-2 py-1 text-[12px] text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
       >
-        <option value="en">{t.settings.language.en}</option>
-        <option value="zh">{t.settings.language.zh}</option>
+        {SUPPORTED_LOCALES.map((code) => (
+          <option key={code} value={code}>
+            {getLocaleNativeName(code)}
+          </option>
+        ))}
       </select>
     </div>
   )

@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Loader2, Trash2, TriangleAlert } from "lucide-react";
-import type { AsyncStatus, ExportFormat, StorageApi, StorageUsageSnapshot } from "../types";
+import type {
+  AsyncStatus,
+  DataLabels,
+  ExportFormat,
+  StorageApi,
+  StorageUsageSnapshot,
+} from "../types";
 
 const FALLBACK_SOFT_LIMIT = 900 * 1024 * 1024;
 const FALLBACK_HARD_LIMIT = 1024 * 1024 * 1024;
 
 interface DataManagementPanelProps {
   storage: StorageApi;
+  labels: DataLabels;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -27,8 +34,8 @@ function formatBytes(value: number): string {
   return `${size.toFixed(digits)} ${units[unitIndex]}`;
 }
 
-function buildLimitLabel(limit: number): string {
-  if (!Number.isFinite(limit) || limit <= 0) return "Unknown";
+function buildLimitLabel(limit: number, unknownLabel: string): string {
+  if (!Number.isFinite(limit) || limit <= 0) return unknownLabel;
   return formatBytes(limit);
 }
 
@@ -43,7 +50,7 @@ function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function DataManagementPanel({ storage }: DataManagementPanelProps) {
+export function DataManagementPanel({ storage, labels }: DataManagementPanelProps) {
   const [storageUsage, setStorageUsage] = useState<StorageUsageSnapshot | null>(null);
   const [storageLoading, setStorageLoading] = useState(false);
   const [dataAction, setDataAction] = useState<string | null>(null);
@@ -83,7 +90,7 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
       const file = await storage.exportData(format);
       triggerDownload(file.blob, file.filename);
       setDataStatus("ready");
-      setDataMessage(`Exported ${file.filename}`);
+      setDataMessage(labels.exportedFile.replace("{filename}", file.filename));
     } catch (error) {
       setDataStatus("error");
       setDataMessage(getErrorMessage(error));
@@ -95,12 +102,10 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
 
   const handleClearData = async () => {
     if (!storage.clearAllData) return;
-    const input = window.prompt(
-      "This will clear all local conversations and cached insights.\\nType DELETE to continue:"
-    );
+    const input = window.prompt(labels.clearPrompt);
     if (input !== "DELETE") {
       setDataStatus("idle");
-      setDataMessage("Clear cancelled.");
+      setDataMessage(labels.clearCancelled);
       return;
     }
 
@@ -111,7 +116,7 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
     try {
       await storage.clearAllData();
       setDataStatus("ready");
-      setDataMessage("Local data cleared. LLM configuration is kept.");
+      setDataMessage(labels.localDataCleared);
     } catch (error) {
       setDataStatus("error");
       setDataMessage(getErrorMessage(error));
@@ -130,22 +135,22 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
       return {
         bar: "bg-success",
         badge: "bg-success/10 text-success border-success/30",
-        label: "Healthy",
+        label: labels.healthy,
       };
     }
     if (storageUsage.status === "warning") {
       return {
         bar: "bg-warning",
         badge: "bg-warning/10 text-warning border-warning/30",
-        label: "Soft limit warning",
+        label: labels.softLimitWarning,
       };
     }
     return {
       bar: "bg-danger",
       badge: "bg-danger/10 text-danger border-danger/30",
-      label: "Write blocked",
+      label: labels.writeBlocked,
     };
-  }, [storageUsage]);
+  }, [storageUsage, labels]);
 
   const estimatedIndexedDbUsage = storageUsage
     ? Math.max(storageUsage.originUsed - storageUsage.localUsed, 0)
@@ -154,9 +159,9 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
   if (!isAvailable) {
     return (
       <div className="rounded-md border border-border-subtle bg-bg-surface-hover p-3">
-        <p className="text-[13px] font-medium text-text-primary">Data operations unavailable</p>
+        <p className="text-[13px] font-medium text-text-primary">{labels.unavailableTitle}</p>
         <p className="mt-1 text-[12px] text-text-secondary">
-          This environment does not provide export/clear/storage APIs.
+          {labels.unavailableDesc}
         </p>
       </div>
     );
@@ -167,9 +172,9 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
       <div className="grid gap-3">
         <div className="rounded-md border border-border-subtle bg-bg-surface-hover p-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[13px] font-medium text-text-primary">Used / App limit (1GB)</span>
+            <span className="text-[13px] font-medium text-text-primary">{labels.usedAppLimit}</span>
             <span className="text-[12px] text-text-secondary">
-              {formatBytes(usage)} / {buildLimitLabel(hardLimit)}
+              {formatBytes(usage)} / {buildLimitLabel(hardLimit, labels.unknown)}
             </span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-border-subtle/70">
@@ -180,7 +185,7 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             <p className="text-[11px] text-text-tertiary">
-              Browser quota: {storageUsage?.originQuota ? formatBytes(storageUsage.originQuota) : "Unknown"}
+              {labels.browserQuota}: {storageUsage?.originQuota ? formatBytes(storageUsage.originQuota) : labels.unknown}
             </p>
             <span
               className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${statusTone.badge}`}
@@ -190,32 +195,32 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
           </div>
           {storageUsage?.status === "warning" && (
             <p className="mt-1 text-[11px] text-warning">
-              Storage crossed 900MB. Export or clear old data soon.
+              {labels.storageWarning}
             </p>
           )}
           {storageUsage?.status === "blocked" && (
             <p className="mt-1 text-[11px] text-danger">
-              Storage reached 1GB. New writes are blocked until you export or clear data.
+              {labels.storageBlocked}
             </p>
           )}
         </div>
 
         <details className="rounded-md border border-border-subtle bg-bg-surface-hover p-3">
           <summary className="cursor-pointer text-[13px] font-medium text-text-primary">
-            Advanced storage details (Chrome)
+            {labels.advancedStorageDetails}
           </summary>
           <div className="mt-2 grid gap-1 text-[12px] text-text-secondary">
-            <p>chrome.storage.local used: {formatBytes(storageUsage?.localUsed ?? 0)}</p>
-            <p>Estimated IndexedDB + other: {formatBytes(estimatedIndexedDbUsage)}</p>
-            <p>Soft limit: {buildLimitLabel(softLimit)}</p>
+            <p>{labels.chromeStorageUsed}: {formatBytes(storageUsage?.localUsed ?? 0)}</p>
+            <p>{labels.estimatedIndexedDb}: {formatBytes(estimatedIndexedDbUsage)}</p>
+            <p>{labels.softLimit}: {buildLimitLabel(softLimit, labels.unknown)}</p>
             <p>
-              unlimitedStorage: {storageUsage?.unlimitedStorageEnabled ? "enabled" : "disabled"}
+              {labels.unlimitedStorage}: {storageUsage?.unlimitedStorageEnabled ? labels.enabled : labels.disabled}
             </p>
           </div>
         </details>
 
         <div className="rounded-md border border-border-subtle bg-bg-surface-hover p-3">
-          <p className="mb-2 text-[13px] font-medium text-text-primary">Export local data</p>
+          <p className="mb-2 text-[13px] font-medium text-text-primary">{labels.exportLocalData}</p>
           <div className="flex flex-wrap gap-2">
             {(["json", "txt", "md"] as const).map((format) => (
               <button
@@ -226,22 +231,22 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
                 className="inline-flex items-center gap-1 rounded-md border border-border-default bg-transparent px-3 py-1.5 text-[12px] font-medium text-text-primary transition-colors duration-200 hover:bg-bg-surface disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
-                Export {format.toUpperCase()}
+                {labels.exportFormat.replace("{format}", format.toUpperCase())}
               </button>
             ))}
           </div>
           <p className="mt-2 text-[11px] text-text-tertiary">
-            JSON is reversible and includes summaries + weekly caches. TXT/MD are human-readable exports.
+            {labels.exportHint}
           </p>
         </div>
 
         <div className="rounded-md border border-danger/30 bg-danger/5 p-3">
           <div className="mb-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
             <TriangleAlert className="h-4 w-4" strokeWidth={1.75} />
-            Danger zone
+            {labels.dangerZone}
           </div>
           <p className="text-[11px] leading-[1.45] text-text-secondary">
-            Clears all conversations, messages, cached summaries, and weekly reports. LLM configuration remains unchanged.
+            {labels.dangerDesc}
           </p>
           <button
             type="button"
@@ -250,14 +255,14 @@ export function DataManagementPanel({ storage }: DataManagementPanelProps) {
             className="mt-2 inline-flex items-center gap-1 rounded-md border border-danger/40 bg-transparent px-3 py-1.5 text-[12px] font-medium text-danger transition-colors duration-200 hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Clear local data
+            {labels.clearLocalData}
           </button>
         </div>
 
         {(storageLoading || dataAction) && (
           <div className="flex items-center gap-1 text-[12px] text-text-tertiary">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            {dataAction ? "Running data action..." : "Refreshing storage..."}
+            {dataAction ? labels.runningDataAction : labels.refreshingStorage}
           </div>
         )}
 

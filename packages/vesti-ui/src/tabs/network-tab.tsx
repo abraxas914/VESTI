@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
-import type { StorageApi, UiThemeMode } from "../types";
+import type { ChatSummaryData, StorageApi, UiThemeMode } from "../types";
 import type { DashboardLabels } from "../types";
 import { useLibraryData } from "../contexts/library-data";
 import { getPlatformBadgeStyle, getPlatformLabel } from "../constants/platform";
 import { GraphLegend } from "./network/GraphLegend";
 import { TemporalGraph } from "./network/TemporalGraph";
+import { ThinkingMap } from "./network/ThinkingMapView";
 import { TimeBar } from "./network/TimeBar";
+import { buildThinkingMap } from "./network/thinkingMap";
 import {
   GRAPH_HEIGHT,
   buildTemporalNetworkDataset,
@@ -18,6 +20,10 @@ import {
   progressToDay,
   type GraphEdge,
 } from "./network/temporal-graph-utils";
+
+type NetworkView = "conversations" | "thinking";
+
+const SUMMARY_FETCH_BATCH = 8;
 
 interface NetworkTabProps {
   storage: StorageApi;
@@ -71,6 +77,12 @@ export function NetworkTab({
   const [edgeError, setEdgeError] = useState<string | null>(null);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [networkView, setNetworkView] = useState<NetworkView>("conversations");
+  const [summariesById, setSummariesById] = useState<Map<number, ChatSummaryData>>(
+    () => new Map()
+  );
+  const [summariesLoading, setSummariesLoading] = useState(false);
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const playbackOriginRef = useRef<number | null>(null);
   const playbackStartProgressRef = useRef(0);
@@ -104,6 +116,80 @@ export function NetworkTab({
     () => new Map(conversations.map((conversation) => [conversation.id, conversation])),
     [conversations]
   );
+
+  // Load cached summaries (bounded concurrency) only while in thinking-map view.
+  useEffect(() => {
+    if (networkView !== "thinking") return;
+
+    const getSummary = storage.getSummary;
+    if (!getSummary) {
+      setSummariesById(new Map());
+      setSummariesLoading(false);
+      return;
+    }
+
+    const targetIds = conversations
+      .filter((conversation) => !conversation.is_trash)
+      .map((conversation) => conversation.id);
+
+    if (targetIds.length === 0) {
+      setSummariesById(new Map());
+      setSummariesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSummariesLoading(true);
+
+    const run = async () => {
+      const collected = new Map<number, ChatSummaryData>();
+      for (let start = 0; start < targetIds.length; start += SUMMARY_FETCH_BATCH) {
+        if (cancelled) return;
+        const batch = targetIds.slice(start, start + SUMMARY_FETCH_BATCH);
+        const results = await Promise.all(
+          batch.map((id) =>
+            getSummary(id)
+              .then((summary) => ({ id, summary }))
+              .catch(() => ({ id, summary: null as ChatSummaryData | null }))
+          )
+        );
+        for (const { id, summary } of results) {
+          if (summary) collected.set(id, summary);
+        }
+      }
+      if (!cancelled) {
+        setSummariesById(collected);
+        setSummariesLoading(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [networkView, conversations, storage]);
+
+  const thinkingMap = useMemo(
+    () => buildThinkingMap(conversations, summariesById, topicMap),
+    [conversations, summariesById, topicMap]
+  );
+  const selectedConcept = useMemo(
+    () =>
+      selectedConceptId
+        ? thinkingMap.concepts.find((concept) => concept.id === selectedConceptId) ?? null
+        : null,
+    [thinkingMap.concepts, selectedConceptId]
+  );
+
+  const handleSelectConcept = useCallback((conceptId: string | null) => {
+    setSelectedConceptId(conceptId);
+  }, []);
+
+  const handleSwitchView = useCallback((view: NetworkView) => {
+    setNetworkView(view);
+    setSelectedConceptId(null);
+  }, []);
   const conversationIdsKey = useMemo(
     () => baseDataset.data.nodes.map((node) => node.id).join(","),
     [baseDataset.data.nodes]
@@ -454,10 +540,169 @@ export function NetworkTab({
         ? labels.noSemanticLinks ?? "No semantic links yet. Playback still shows how conversations accumulated over time."
         : null;
 
+  const viewToggle = (
+    <div className="inline-flex rounded-full border border-border-subtle bg-bg-primary p-0.5">
+      {(
+        [
+          ["conversations", labels.conversationMapView ?? "Conversations"] as const,
+          ["thinking", labels.thinkingMapView ?? "Thinking map"] as const,
+        ]
+      ).map(([view, label]) => {
+        const isActive = networkView === view;
+        return (
+          <button
+            key={view}
+            type="button"
+            onClick={() => handleSwitchView(view)}
+            className={`rounded-full px-3 py-1.5 text-[12px] font-sans transition-colors ${
+              isActive
+                ? "bg-accent-primary text-text-inverse"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (networkView === "thinking") {
+    return (
+      <div className="h-full overflow-y-auto bg-bg-tertiary">
+        <div className="flex min-h-full w-full flex-col gap-4 px-6 py-8 md:px-8">
+          {viewToggle}
+
+          {summariesLoading ? (
+            <div className="flex min-h-[280px] items-center justify-center">
+              <p className="text-sm font-sans text-text-secondary">
+                {labels.loadingThinkingMap ?? "Building your thinking map..."}
+              </p>
+            </div>
+          ) : thinkingMap.concepts.length === 0 ? (
+            <div className="flex min-h-[280px] items-center justify-center">
+              <p className="max-w-md text-center text-sm font-sans text-text-secondary">
+                {labels.thinkingMapEmpty ??
+                  "Generate conversation summaries in the Library first — the thinking map is built from the key insights inside them."}
+              </p>
+            </div>
+          ) : (
+            <>
+              {thinkingMap.gaps.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-xs font-sans font-medium uppercase tracking-[0.08em] text-text-tertiary">
+                    {labels.gapInsightTitle ?? "Threads you haven't connected"}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {thinkingMap.gaps.slice(0, 3).map((gap) => (
+                      <button
+                        key={`${gap.a.id}|${gap.b.id}`}
+                        type="button"
+                        onClick={() => handleSelectConcept(gap.a.id)}
+                        className="max-w-xs rounded-lg border border-border-subtle bg-bg-surface-card px-3 py-2 text-left text-xs font-sans text-text-secondary transition-colors hover:bg-bg-secondary"
+                      >
+                        {(labels.gapInsightTemplate ?? "You explored {a} and {b} but never linked them")
+                          .replace("{a}", gap.a.term)
+                          .replace("{b}", gap.b.term)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="relative h-[420px] rounded-lg bg-bg-tertiary">
+                <ThinkingMap
+                  map={thinkingMap}
+                  themeMode={themeMode}
+                  selectedConceptId={selectedConceptId}
+                  onSelectConcept={handleSelectConcept}
+                  onSelectConversation={onSelectConversation}
+                  height={GRAPH_HEIGHT}
+                />
+              </div>
+
+              {selectedConcept && (
+                <div className="rounded-lg border border-border-subtle bg-bg-primary p-4">
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <h2 className="text-lg font-serif font-normal text-text-primary">
+                      {selectedConcept.term}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectConcept(null)}
+                      className="shrink-0 text-text-secondary transition-colors hover:text-text-primary"
+                      aria-label={labels.close ?? "Close"}
+                    >
+                      <X strokeWidth={1.5} className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {selectedConcept.definition && (
+                    <p className="mb-3 text-sm font-sans text-text-secondary">
+                      {selectedConcept.definition}
+                    </p>
+                  )}
+
+                  <p className="mb-4 text-[11px] font-sans text-text-tertiary">
+                    {(labels.conceptMentionedIn ?? "Across {count} conversations").replace(
+                      "{count}",
+                      String(selectedConcept.count)
+                    )}
+                  </p>
+
+                  <h3 className="mb-2 text-xs font-sans font-medium uppercase tracking-[0.08em] text-text-tertiary">
+                    {labels.relatedConversations ?? "Related conversations"}
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedConcept.conversationIds.map((conversationId) => {
+                      const conversation = conversationsById.get(conversationId);
+                      const title =
+                        conversation?.title?.trim() ||
+                        (labels.conversationN ?? "Conversation {id}").replace(
+                          "{id}",
+                          String(conversationId)
+                        );
+                      return (
+                        <button
+                          key={conversationId}
+                          type="button"
+                          onClick={() => onSelectConversation?.(conversationId)}
+                          className="flex w-full items-start justify-between gap-3 rounded-lg border border-border-subtle bg-bg-tertiary px-3 py-2 text-left transition-colors hover:bg-bg-secondary"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-sans text-text-primary">
+                              {title}
+                            </div>
+                            {conversation && (
+                              <div className="mt-1 text-[11px] font-sans text-text-tertiary">
+                                {getPlatformLabel(conversation.platform)}
+                              </div>
+                            )}
+                          </div>
+                          <ArrowRight
+                            strokeWidth={1.5}
+                            className="h-4 w-4 shrink-0 text-text-tertiary"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <GraphLegend edgeLabel={labels.edgeSemanticSimilarity} />
+        </div>
+      </div>
+    );
+  }
+
   if (dataset.data.nodes.length === 0) {
     return (
       <div className="h-full overflow-y-auto bg-bg-tertiary">
         <div className="flex min-h-full w-full flex-col justify-center gap-3 px-6 py-8 md:px-8">
+          {viewToggle}
           <div className="max-w-sm">
             <p className="text-sm font-medium text-text-primary">
               {labels.emptyTitle ?? "Your temporal network will appear here."}
@@ -475,6 +720,7 @@ export function NetworkTab({
   return (
     <div className="h-full overflow-y-auto bg-bg-tertiary">
       <div className="flex min-h-full w-full flex-col justify-center gap-4 px-6 py-8 md:px-8">
+        {viewToggle}
         <div className="relative h-[420px] bg-bg-tertiary">
           {edgeStatus === "loading" && (
             <div className="pointer-events-none absolute left-0 top-0 z-10 rounded-full bg-bg-primary/85 px-2.5 py-1 text-[11px] font-sans text-text-tertiary backdrop-blur-sm">
@@ -648,7 +894,7 @@ export function NetworkTab({
                 <button
                   type="button"
                   onClick={handleViewInLibrary}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-primary px-4 py-2.5 text-sm font-sans font-medium text-white transition-all hover:bg-accent-primary/90"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-primary px-4 py-2.5 text-sm font-sans font-medium text-text-inverse transition-all hover:bg-accent-primary/90"
                 >
                   <span>{labels.viewInLibrary ?? "View in Library"}</span>
                   <ArrowRight strokeWidth={1.5} className="h-4 w-4" />

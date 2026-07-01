@@ -257,7 +257,11 @@ function useLibrarySplitContext(): LibrarySplitContextValue {
   return context;
 }
 
-function SplitNavigationToggle() {
+function SplitNavigationToggle({
+  labels,
+}: {
+  labels: Record<string, any>;
+}) {
   const { isSplitActive, toggleSplitNavigation } = useLibrarySplitContext();
 
   if (!isSplitActive) return null;
@@ -321,6 +325,7 @@ type SplitNoteEditorPanelProps = {
   onDeleteCurrentNote: () => void | Promise<void>;
   onOpenConversation: (conversationId: number) => void | Promise<void>;
   formatTimeAgo: (timestamp: number) => string;
+  labels: Record<string, any>;
 };
 
 function SplitNoteEditorPanel({
@@ -337,6 +342,7 @@ function SplitNoteEditorPanel({
   onDeleteCurrentNote,
   onOpenConversation,
   formatTimeAgo,
+  labels,
 }: SplitNoteEditorPanelProps) {
   const {
     pendingExcerpts,
@@ -388,8 +394,8 @@ function SplitNoteEditorPanel({
               <button
                 type="button"
                 onClick={() => void exitSplit()}
-                aria-label="Exit split view"
-                title="Exit split view"
+                aria-label={labels.exitSplitView ?? "Exit split view"}
+                title={labels.exitSplitView ?? "Exit split view"}
                 className="group inline-flex h-9 items-center bg-transparent px-1 text-[12px] font-sans text-text-tertiary transition-colors duration-200 hover:text-text-primary"
               >
                 <Shrink strokeWidth={1.7} className="h-4 w-4 shrink-0" />
@@ -424,8 +430,8 @@ function SplitNoteEditorPanel({
                   <button
                     type="button"
                     onClick={() => void onDeleteCurrentNote()}
-                    aria-label="Delete note"
-                    title="Delete note"
+                    aria-label={labels.deleteNote ?? "Delete note"}
+                    title={labels.deleteNote ?? "Delete note"}
                     className="inline-flex h-8 w-8 items-center justify-center text-[#B42318] transition-colors hover:bg-[#FEF2F2]"
                   >
                     <Trash2 strokeWidth={1.6} className="h-4 w-4" />
@@ -450,7 +456,7 @@ function SplitNoteEditorPanel({
                           {conversation.title}
                         </span>
                         <span className="text-xs font-sans font-medium text-accent-primary">
-                          Open
+                          {labels.open ?? "Open"}
                         </span>
                       </button>
                     ))}
@@ -465,7 +471,7 @@ function SplitNoteEditorPanel({
           ) : (
             <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-border-subtle bg-bg-surface-card px-10 text-center">
               <div className="text-[11px] font-sans uppercase tracking-[0.18em] text-text-tertiary">
-                Focus Note
+                {labels.focusNote ?? "Focus Note"}
               </div>
               <h2 className="mt-3 text-2xl font-serif font-normal text-text-primary">
                 {labels.noNoteLinkedYet ?? "No note linked yet"}
@@ -1708,7 +1714,7 @@ export function LibraryTab({
   async function handleDeleteCurrentSplitNote() {
     if (!selectedNote) return;
     if (!storage.deleteNote) {
-      window.alert("Delete is not available yet.");
+      window.alert(labels.deleteNotAvailable ?? "Delete is not available yet.");
       return;
     }
     const confirmed = window.confirm(`Delete note "${selectedNote.title}"?`);
@@ -1893,7 +1899,7 @@ export function LibraryTab({
         await renameFolderTag(item.name, trimmed);
         await refresh();
       } catch (error) {
-        window.alert((error as Error)?.message ?? "Failed to rename folder.");
+        window.alert((error as Error)?.message ?? (labels.renameFolderFailed ?? "Failed to rename folder."));
         return;
       }
     }
@@ -1915,14 +1921,14 @@ export function LibraryTab({
 
     if (item.isTag) {
       if (!removeFolderTag) {
-        window.alert("Deleting folders is not available yet.");
+        window.alert(labels.deleteFolderNotAvailable ?? "Deleting folders is not available yet.");
         return;
       }
       try {
         await removeFolderTag(item.name);
         await refresh();
       } catch (error) {
-        window.alert((error as Error)?.message ?? "Failed to delete folder.");
+        window.alert((error as Error)?.message ?? (labels.deleteFolderFailed ?? "Failed to delete folder."));
         return;
       }
     }
@@ -1960,16 +1966,16 @@ export function LibraryTab({
       });
       await refresh();
     } catch (error) {
-      window.alert((error as Error)?.message ?? "Failed to update star.");
+      window.alert((error as Error)?.message ?? (labels.updateStarFailed ?? "Failed to update star."));
     }
   };
 
   const handleConversationRename = async (conversation: Conversation) => {
     if (!updateConversationTitle) {
-      window.alert("Renaming is not available yet.");
+      window.alert(labels.renameNotAvailable ?? "Renaming is not available yet.");
       return;
     }
-    const name = window.prompt("Rename conversation", conversation.title);
+    const name = window.prompt(labels.renameConversationPrompt ?? "Rename conversation", conversation.title);
     if (!name) return;
     const trimmed = name.trim();
     if (!trimmed || trimmed === conversation.title) return;
@@ -1978,7 +1984,7 @@ export function LibraryTab({
       await refresh();
     } catch (error) {
       window.alert(
-        (error as Error)?.message ?? "Failed to rename conversation.",
+        (error as Error)?.message ?? (labels.renameConversationFailed ?? "Failed to rename conversation."),
       );
     }
   };
@@ -1988,7 +1994,7 @@ export function LibraryTab({
       window.alert("Changing folders is not available yet.");
       return;
     }
-    const name = window.prompt("Change folder", selectedTag ?? "");
+    const name = window.prompt(labels.changeFolder ?? "Change folder", selectedTag ?? "");
     if (!name) return;
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -2045,10 +2051,10 @@ export function LibraryTab({
 
   const handleConversationDelete = async (conversation: Conversation) => {
     if (!deleteConversation) {
-      window.alert("Delete is not available yet.");
+      window.alert(labels.deleteNotAvailable ?? "Delete is not available yet.");
       return;
     }
-    const confirmed = window.confirm("Delete this conversation?");
+    const confirmed = window.confirm(labels.deleteConversationConfirm ?? "Delete this conversation?");
     if (!confirmed) return;
     try {
       await deleteConversation(conversation.id);
@@ -2062,7 +2068,7 @@ export function LibraryTab({
 
   const handleNoteDelete = async (note: Note) => {
     if (!storage.deleteNote) {
-      window.alert("Delete is not available yet.");
+      window.alert(labels.deleteNotAvailable ?? "Delete is not available yet.");
       return;
     }
     const confirmed = window.confirm(`Delete note "${note.title}"?`);
@@ -2470,9 +2476,15 @@ export function LibraryTab({
     );
   };
 
+  // Derive a BCP-47 date locale from the localized labels already threaded
+  // into this tab (no separate locale prop/global is plumbed through here).
+  const dateLocale = /[一-鿿]/.test(String(labels.justNow ?? ""))
+    ? "zh-CN"
+    : "en-US";
+
   function formatDate(timestamp?: number): string {
-    if (!timestamp) return "Unknown date";
-    return new Intl.DateTimeFormat("en-US", {
+    if (!timestamp) return labels.dateUnknown ?? "Unknown date";
+    return new Intl.DateTimeFormat(dateLocale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -2481,14 +2493,17 @@ export function LibraryTab({
 
   function formatAnnotationTimestamp(annotation: Annotation): string {
     const createdAt = annotation.created_at;
-    if (!createdAt) return "Added at an unknown time";
-    const dateLabel = new Intl.DateTimeFormat("en-US", {
+    if (!createdAt) return labels.unknownTime ?? "Added at an unknown time";
+    const dateLabel = new Intl.DateTimeFormat(dateLocale, {
       year: "numeric",
       month: "short",
       day: "numeric",
     }).format(new Date(createdAt));
-    const dayLabel = annotation.days_after === 1 ? "day" : "days";
-    return `Added on ${dateLabel} · ${annotation.days_after} ${dayLabel} after the conversation`;
+    const dayLabel =
+      annotation.days_after === 1
+        ? (labels.dayAfter ?? "day")
+        : (labels.daysAfter ?? "days");
+    return `${labels.addedOn ?? "Added on"} ${dateLabel} · ${annotation.days_after} ${dayLabel} ${labels.afterTheConversation ?? "after the conversation"}`;
   }
 
   function getAnnotationsForMessage(messageId: number): Annotation[] {
@@ -2856,7 +2871,7 @@ export function LibraryTab({
         <div className="border-b border-border-subtle px-4 py-4">
           <div className="text-[11px] font-sans uppercase tracking-[0.16em] text-text-tertiary">
             {activeAnnotationMessage.role === "user"
-              ? "You"
+              ? (labels.you ?? "You")
               : selectedConversation.platform}
           </div>
           <p className="mt-1 text-[13px] font-sans leading-relaxed text-text-secondary">
@@ -2969,7 +2984,7 @@ export function LibraryTab({
                         className="inline-flex items-center gap-1 text-[#B42318] hover:text-[#922018]"
                       >
                         <Trash2 strokeWidth={1.6} className="h-3.5 w-3.5" />
-                        Delete
+                        {labels.delete ?? "Delete"}
                       </button>
                       {inlineSuccessNotice ? (
                         <span className="text-text-tertiary">
@@ -3061,7 +3076,7 @@ export function LibraryTab({
           ref={libraryWorkspaceRef}
           className="relative flex min-h-0 flex-1 overflow-hidden"
         >
-          <SplitNavigationToggle />
+          <SplitNavigationToggle labels={labels} />
           {isSplitActive && isSplitNavigationOpen ? (
             <button
               type="button"
@@ -3557,10 +3572,10 @@ export function LibraryTab({
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-serif font-normal text-text-primary">
-                          My Notes
+                          {labels.myNotes ?? "My Notes"}
                         </h2>
                         <span className="text-xs font-sans text-text-tertiary">
-                          · {notes.length} notes
+                          · {notes.length} {labels.notesCount ?? "notes"}
                         </span>
                       </div>
                     </div>
@@ -3830,7 +3845,7 @@ export function LibraryTab({
                     <div className="p-4">
                       {summaryLoading ? (
                         <p className="text-[13px] font-sans text-text-tertiary">
-                          {labels.loadingMessages ?? "Loading summary..."}
+                          {labels.loadingSummary ?? "Loading summary..."}
                         </p>
                       ) : summaryData ? (
                         <div>
@@ -4164,7 +4179,7 @@ export function LibraryTab({
                       <div className="space-y-4 p-5">
                         <div className="rounded-[20px] border border-border-subtle bg-bg-secondary/40 px-4 py-4">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-sans uppercase tracking-[0.14em] text-text-tertiary">
-                            <span>Preview</span>
+                            <span>{labels.preview ?? "Preview"}</span>
                             <span
                               className="h-1 w-1 rounded-full bg-border-default/80"
                               aria-hidden="true"
@@ -4240,7 +4255,7 @@ export function LibraryTab({
                           </div>
                         )}
                         <div>
-                          <div className="prose prose-slate max-w-none min-w-0">
+                          <div className="prose prose-slate dark:prose-invert max-w-none min-w-0 prose-headings:text-text-primary prose-p:text-text-primary prose-li:text-text-primary prose-strong:text-text-primary prose-em:text-text-primary prose-code:text-text-primary prose-a:text-accent-primary prose-blockquote:text-text-secondary">
                             {messagesLoading && (
                               <div className="text-[13px] font-sans text-text-tertiary">
                                 {labels.loadingMessages ?? "Loading messages..."}
@@ -4461,11 +4476,11 @@ export function LibraryTab({
                           <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
                             <div>
                               <div className="text-[11px] font-sans uppercase tracking-[0.16em] text-text-tertiary">
-                                Comment
+                                {labels.annotation ?? "Comment"}
                               </div>
                               <div className="mt-1 text-sm font-sans font-medium text-text-primary">
                                 {activeAnnotationMessage.role === "user"
-                                  ? "You"
+                                  ? (labels.you ?? "You")
                                   : selectedConversation.platform}
                               </div>
                             </div>
@@ -4504,7 +4519,7 @@ export function LibraryTab({
                                   {note.title}
                                 </span>
                                 <span className="shrink-0 text-[12px] font-sans font-medium text-accent-primary">
-                                  Open
+                                  {labels.open ?? "Open"}
                                 </span>
                               </button>
                             ))}
@@ -4594,6 +4609,7 @@ export function LibraryTab({
                   onDeleteCurrentNote={handleDeleteCurrentSplitNote}
                   onOpenConversation={switchToConversation}
                   formatTimeAgo={formatTimeAgo}
+                  labels={labels}
                 />
               </div>
             ) : null}
@@ -4767,7 +4783,7 @@ export function LibraryTab({
                                   }
                                   className="rounded-md bg-bg-primary px-3 py-1.5 text-[12px] font-sans text-text-primary transition-colors hover:bg-bg-secondary"
                                 >
-                                  Open
+                                  {labels.open ?? "Open"}
                                 </button>
                               </div>
                             ))}
@@ -4799,7 +4815,7 @@ export function LibraryTab({
                                 />
                               ) : (
                                 <div className="text-[13px] font-sans text-text-secondary">
-                                  {labels.preview ?? "Preview"} is available for imported images.
+                                  {labels.previewAvailableForImages ?? "Preview is available for imported images."}{" "}
                                   {labels.useOpenForOtherAttachments ?? "Use Open for other attachment types."}
                                 </div>
                               )}
@@ -4928,7 +4944,7 @@ export function LibraryTab({
                       setRenameNoteTarget(null);
                     }
                   }}
-                  placeholder="Note title"
+                  placeholder={labels.noteTitlePlaceholder ?? "Note title"}
                   className="mt-3 w-full rounded-md border border-border-subtle bg-bg-surface-card px-3 py-2 text-[13px] font-sans text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent-primary"
                 />
                 <div className="mt-4 flex justify-end gap-2">
@@ -4937,7 +4953,7 @@ export function LibraryTab({
                     onClick={() => setRenameNoteTarget(null)}
                     className="px-3 py-1.5 rounded-md text-[13px] font-sans text-text-secondary hover:text-text-primary hover:bg-bg-surface-card transition-colors"
                   >
-                    Cancel
+                    {labels.cancel ?? "Cancel"}
                   </button>
                   <button
                     type="button"
@@ -4945,7 +4961,7 @@ export function LibraryTab({
                       void submitNoteRename();
                     }}
                     disabled={!canSaveRenamedNote}
-                    className="px-3 py-1.5 rounded-md text-[13px] font-sans bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 rounded-md text-[13px] font-sans bg-accent-primary text-text-inverse hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Save
                   </button>

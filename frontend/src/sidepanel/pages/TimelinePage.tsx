@@ -553,41 +553,37 @@ export function TimelinePage({
         </header>
       )}
 
+      {headerMode !== "search" && (
+        <div className="threads-date-rail flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border-subtle px-4 py-2">
+          {datePresetOptions.map((preset) => {
+            const isActive = datePreset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() =>
+                  dispatch({
+                    type: "FILTER_CHANGED",
+                    datePreset: preset.id,
+                    selectedPlatforms,
+                  })
+                }
+                className={`shrink-0 rounded-full border px-3 py-[4px] text-[12px] font-medium leading-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus ${
+                  isActive
+                    ? "border-accent-primary bg-accent-primary text-text-inverse"
+                    : "border-border-subtle text-text-tertiary hover:bg-bg-primary hover:text-text-secondary"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {headerMode === "filter" && (
         <div className="shrink-0 border-b border-border-subtle bg-bg-secondary/30 px-4 py-2.5">
           <div className="grid gap-2">
-            <ThreadsFilterDisclosure
-              title={t.timeline.filters.started}
-              summary={dateSummary}
-              isActive={datePreset !== "all_time"}
-            >
-              <div className="flex flex-wrap gap-1">
-                {datePresetOptions.map((preset) => {
-                  const isActive = datePreset === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() =>
-                        dispatch({
-                          type: "FILTER_CHANGED",
-                          datePreset: preset.id,
-                          selectedPlatforms,
-                        })
-                      }
-                      className={`rounded-full border px-2.5 py-[3px] text-[11px] font-medium leading-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus ${
-                        isActive
-                          ? "border-border-default bg-bg-primary text-text-primary"
-                          : "border-border-subtle text-text-tertiary hover:text-text-secondary"
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </ThreadsFilterDisclosure>
-
             <ThreadsFilterDisclosure
               title={t.timeline.filters.source}
               summary={sourceSummary}

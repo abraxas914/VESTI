@@ -3,11 +3,18 @@ import type { ReactNode } from "react";
 import type { SupportedLocale } from "./locales";
 import { enTranslations } from "./translations/en";
 import { zhTranslations } from "./translations/zh";
+import { jaTranslations } from "./translations/ja";
+import { koTranslations } from "./translations/ko";
 import { detectAndSetLanguage, setLanguage, subscribeLanguageSettings } from "../services/languageSettingsService";
 
-const translationsMap = {
+// Translation registration point. To add a language: create translations/<code>.ts
+// (mirroring en.ts) and add one line here. The Record<SupportedLocale, …> type forces
+// this map to stay complete, and the rest of the locale wiring lives in ./locales.
+const translationsByLocale: Record<SupportedLocale, Translations> = {
   en: enTranslations,
-  zh: zhTranslations,
+  zh: zhTranslations as unknown as Translations,
+  ja: jaTranslations as unknown as Translations,
+  ko: koTranslations as unknown as Translations,
 };
 
 export type Translations = typeof enTranslations;
@@ -33,14 +40,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then((resolvedLocale) => {
         if (cancelled) return;
         setLocaleState(resolvedLocale);
-        setT(translationsMap[resolvedLocale]);
+        setT(translationsByLocale[resolvedLocale]);
       })
       .catch(() => {});
 
     const unsubscribe = subscribeLanguageSettings((settings) => {
       if (cancelled) return;
       setLocaleState(settings.locale);
-      setT(translationsMap[settings.locale]);
+      setT(translationsByLocale[settings.locale]);
     });
 
     return () => {
@@ -52,7 +59,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const changeLocale = useCallback(async (newLocale: SupportedLocale) => {
     await setLanguage(newLocale);
     setLocaleState(newLocale);
-    setT(translationsMap[newLocale]);
+    setT(translationsByLocale[newLocale]);
   }, []);
 
   return (

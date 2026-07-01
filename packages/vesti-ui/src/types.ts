@@ -657,6 +657,210 @@ export interface ObsidianNoteExportResult {
   exported_at: number;
 }
 
+export interface ExploreStarterPromptLabel {
+  title: string;
+  prompt: string;
+  detail: string;
+}
+
+export interface ExploreStarterDeckLabel {
+  eyebrow: string;
+  title: string;
+  description: string;
+  privacyTip: string;
+  capabilityHint: string;
+  prompts: readonly ExploreStarterPromptLabel[];
+}
+
+export interface ExploreLabels {
+  // Choose Conversations dialog
+  chooseConversationsTitle: string;
+  chooseConversationsDesc: string;
+  applySelected: string;
+  useAll: string;
+  noSearchResults: string;
+  noPreviewAvailable: string;
+  closeSidebar: string;
+  openSidebar: string;
+  noConversationsSelected: string;
+  oneConversationSelected: string;
+  multipleConversationsSelected: string;
+  // Sessions / scope / mode toggles
+  newChat: string;
+  noConversationsYet: string;
+  today: string;
+  yesterday: string;
+  earlier: string;
+  agent: string;
+  classic: string;
+  all: string;
+  selected: string;
+  allConversations: string;
+  send: string;
+  starterPrompts: string;
+  choosePromptHint: string;
+  loadingStarterIdeas: string;
+  starterDeckReady: string;
+  cardsUpdateHint: string;
+  askPlaceholder: string;
+  askAgentPlaceholder: string;
+  askClassicPlaceholder: string;
+  agentModeDesc: string;
+  classicModeDesc: string;
+  newChatPrefill: string;
+  searchByTitlePlaceholder: string;
+  fillComposer: string;
+  // Existing flat starter-deck header keys (kept for backward compatibility)
+  starterDeck1Eyebrow: string;
+  starterDeck1Title: string;
+  starterDeck1Description: string;
+  starterDeck2Eyebrow: string;
+  starterDeck2Title: string;
+  starterDeck2Description: string;
+  starterDeck3Eyebrow: string;
+  starterDeck3Title: string;
+  starterDeck3Description: string;
+  // Structured starter content (drives STARTER_DECKS)
+  modeStages: {
+    agent: readonly string[];
+    classic: readonly string[];
+  };
+  starterDecks: readonly ExploreStarterDeckLabel[];
+  libraryStarter: {
+    titleTemplate: string;
+    promptTemplate: string;
+    detail: string;
+  };
+  // Enum/key maps
+  toolLabels: Record<ExploreToolName, string>;
+  toolExplanations: Record<ExploreToolName, string>;
+  intentLabels: Record<ExploreIntentType, string>;
+  pathLabels: Record<ExplorePlannerPath, string>;
+  toolStatus: {
+    running: string;
+    completed: string;
+    failed: string;
+  };
+  // Helper returns / summaries
+  inRange: string;
+  unknown: string;
+  unavailable: string;
+  noToolCalls: string;
+  toolCallsSummary: string;
+  toolCallsSummaryFailed: string;
+  stepsLabel: string;
+  failedLabel: string;
+  untitled: string;
+  // Message authorship / meta bar
+  you: string;
+  assistantName: string;
+  plan: string;
+  toolCalls: string;
+  intentPrefix: string;
+  routePrefix: string;
+  scopePrefix: string;
+  timePrefix: string;
+  currentScopePrefix: string;
+  sourceControls: string;
+  openContextDraft: string;
+  sources: string;
+  noRelevantConversations: string;
+  // Refresh / starter
+  refreshingSuggestions: string;
+  open: string;
+  // Error / notice strings
+  failedToLoadConversations: string;
+  exploreUnavailable: string;
+  chooseAtLeastOne: string;
+  failedToRetrieveAnswer: string;
+  deleteConversationConfirm: string;
+  contextDraftSaved: string;
+  savedLocally: string;
+  failedToSaveContext: string;
+  copiedToClipboard: string;
+  clipboardUnavailable: string;
+  downloaded: string;
+  selectAtLeastOneSource: string;
+  couldNotDetermineQuery: string;
+  regeneratedNotice: string;
+  failedToRegenerate: string;
+  dismiss: string;
+  // Session list fallbacks / row actions
+  untitledSession: string;
+  noMessages: string;
+  rename: string;
+  delete: string;
+  // Tool-call rows
+  inputLabel: string;
+  outputLabel: string;
+  errorLabel: string;
+  // aria labels
+  resizeSidebarAria: string;
+  resizeDrawerAria: string;
+  // Drawer headings / plan fields
+  executionDetails: string;
+  contextDraft: string;
+  plannerDecision: string;
+  sourceLimitPrefix: string;
+  summaryTargetPrefix: string;
+  timeScopePrefix: string;
+  whyThisRoute: string;
+  goalPrefix: string;
+  clarificationPrefix: string;
+  plannedTools: string;
+  plannerFootnote: string;
+  noPlannerMetadata: string;
+  noToolCallsRecorded: string;
+  // Sources drawer
+  activeQuery: string;
+  selectedSourcesPrefix: string;
+  candidateSources: string;
+  noContextCandidates: string;
+  saving: string;
+  saveSelection: string;
+  regenerateAnswer: string;
+  openDraft: string;
+  regenerationFootnote: string;
+  // Context-draft drawer
+  draftEditable: string;
+  save: string;
+  copy: string;
+  downloadTxt: string;
+}
+
+export interface DataLabels {
+  title: string;
+  unavailableTitle: string;
+  unavailableDesc: string;
+  usedAppLimit: string;
+  unknown: string;
+  browserQuota: string;
+  healthy: string;
+  softLimitWarning: string;
+  writeBlocked: string;
+  storageWarning: string;
+  storageBlocked: string;
+  advancedStorageDetails: string;
+  chromeStorageUsed: string;
+  estimatedIndexedDb: string;
+  softLimit: string;
+  unlimitedStorage: string;
+  enabled: string;
+  disabled: string;
+  exportLocalData: string;
+  exportFormat: string;
+  exportHint: string;
+  dangerZone: string;
+  dangerDesc: string;
+  clearLocalData: string;
+  clearPrompt: string;
+  clearCancelled: string;
+  localDataCleared: string;
+  exportedFile: string;
+  runningDataAction: string;
+  refreshingStorage: string;
+}
+
 export interface DashboardLabels {
   tabs: {
     library: string;
@@ -713,6 +917,9 @@ export interface DashboardLabels {
     shareDatabaseHint: string;
     selectedColon: string;
     readyForOneShotExport: string;
+    noSharedDatabasesFound: string;
+    selectedDatabaseMessage: string;
+    themeUpdateFailed: string;
   };
   library: {
     allConversations: string;
@@ -786,6 +993,7 @@ export interface DashboardLabels {
     focusNote: string;
     noNoteLinkedYet: string;
     startExtractingHint: string;
+    startWritingPlaceholder: string;
     createConversationNote: string;
     extractedExcerptsPlaceholder: string;
     // Related
@@ -876,6 +1084,7 @@ export interface DashboardLabels {
     sourceFileChangedAfterEdits: string;
     // Formatting
     dateUnknown: string;
+    frontmatter: string;
     // Choose Conversations dialog
     chooseConversationsTitle: string;
     chooseConversationsDesc: string;
@@ -886,7 +1095,8 @@ export interface DashboardLabels {
     closeSidebar: string;
     openSidebar: string;
   };
-  explore: Record<string, string>;
+  explore: ExploreLabels;
+  data: DataLabels;
   network: {
     emptyTitle: string;
     emptyDesc: string;
@@ -917,5 +1127,13 @@ export interface DashboardLabels {
     starred: string;
     unknownPlatform: string;
     conversationN: string;
+    thinkingMapView: string;
+    conversationMapView: string;
+    thinkingMapEmpty: string;
+    loadingThinkingMap: string;
+    gapInsightTitle: string;
+    gapInsightTemplate: string;
+    conceptMentionedIn: string;
+    relatedConversations: string;
   };
 }

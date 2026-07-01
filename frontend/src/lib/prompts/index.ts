@@ -18,6 +18,7 @@ import {
   CURRENT_WEEKLY_DIGEST_PROMPT,
   EXPERIMENTAL_WEEKLY_DIGEST_PROMPT,
 } from "./weeklyDigest";
+import { CURRENT_WEEKLY_RECAP_PROMPT } from "./weeklyRecap";
 import type {
   PromptConfig,
   PromptType,
@@ -53,6 +54,7 @@ export type {
   PromptVersion,
   RepairInput,
   WeeklyDigestPromptPayload,
+  WeeklyRecapPromptPayload,
 } from "./types";
 
 export const CURRENT_PROMPTS: PromptConfig = {
@@ -61,6 +63,7 @@ export const CURRENT_PROMPTS: PromptConfig = {
   exportCompact: CURRENT_EXPORT_COMPACT_PROMPT,
   exportSummary: CURRENT_EXPORT_SUMMARY_PROMPT,
   weeklyDigest: CURRENT_WEEKLY_DIGEST_PROMPT,
+  weeklyRecap: CURRENT_WEEKLY_RECAP_PROMPT,
 };
 
 export const EXPERIMENTAL_PROMPTS: Partial<PromptConfig> = {

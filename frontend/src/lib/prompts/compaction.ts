@@ -1,4 +1,5 @@
 import type { Message } from "../types";
+import { getLocaleDateTag, getLlmLanguageName, type SupportedLocale } from "../i18n/locales";
 import { buildMessageFallbackDisplayText } from "../utils/messageContentPackage";
 import type { CompactionPromptPayload, PromptVersion } from "./types";
 
@@ -24,8 +25,8 @@ Hard rules:
 7) If input is sparse, still return a minimal valid skeleton with available evidence.
 8) Output markdown only. No JSON. No code fences.`;
 
-function formatTime(value: number): string {
-  return new Date(value).toLocaleTimeString("en-US", {
+function formatTime(value: number, locale: SupportedLocale): string {
+  return new Date(value).toLocaleTimeString(getLocaleDateTag(locale), {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -33,6 +34,7 @@ function formatTime(value: number): string {
 
 function toCompactTranscript(
   messages: Message[],
+  locale: SupportedLocale,
   transcriptOverride?: string
 ): string {
   if (transcriptOverride?.trim()) {
@@ -46,16 +48,17 @@ function toCompactTranscript(
   return messages
     .map((message, index) => {
       const role = message.role === "user" ? "User" : "AI";
-      return `${index + 1}. [${formatTime(message.created_at)}] [${role}] ${buildMessageFallbackDisplayText(message)}`;
+      return `${index + 1}. [${formatTime(message.created_at, locale)}] [${role}] ${buildMessageFallbackDisplayText(message)}`;
     })
     .join("\n");
 }
 
 function buildCompactionPrompt(payload: CompactionPromptPayload): string {
+  const locale = payload.locale || "en";
   const conversationTitle = payload.conversationTitle || "(untitled)";
   const conversationPlatform = payload.conversationPlatform || "unknown";
   const conversationOriginAt = payload.conversationOriginAt
-    ? new Date(payload.conversationOriginAt).toLocaleString("en-US")
+    ? new Date(payload.conversationOriginAt).toLocaleString(getLocaleDateTag(locale))
     : "unknown";
 
   return `Build an Agent-A compaction markdown skeleton from this conversation slice.
@@ -64,11 +67,11 @@ Metadata:
 - Title: ${conversationTitle}
 - Platform: ${conversationPlatform}
 - StartedAt: ${conversationOriginAt}
-- Locale: ${payload.locale || "zh"}
+- Locale: ${locale}
 - MessageCount: ${payload.messages.length}
 
 Conversation:
-${toCompactTranscript(payload.messages, payload.transcriptOverride)}
+${toCompactTranscript(payload.messages, locale, payload.transcriptOverride)}
 
 Execution constraints:
 1) Input boundary is strict: use this slice only.
@@ -80,15 +83,18 @@ Execution constraints:
    - ## Concept Matrix
    - ## Unresolved Tensions
 6) If evidence is sparse, keep sections but use minimal conservative bullets.
-7) Output markdown only (no JSON, no code fences).`;
+7) Write all user-facing skeleton text in ${getLlmLanguageName(locale)} (keep the section headings exactly as listed above in English).
+8) Output markdown only (no JSON, no code fences).`;
 }
 
 function buildCompactionFallbackPrompt(payload: CompactionPromptPayload): string {
+  const locale = payload.locale || "en";
   return `Write a concise plain-text compaction for this conversation in 5-8 lines.
 Focus on: core tension, key reasoning transitions, concrete anchor, and unresolved points.
+Write the output in ${getLlmLanguageName(locale)}.
 
 Conversation:
-${toCompactTranscript(payload.messages, payload.transcriptOverride)}`;
+${toCompactTranscript(payload.messages, locale, payload.transcriptOverride)}`;
 }
 
 export const CURRENT_COMPACTION_PROMPT: PromptVersion<CompactionPromptPayload> = {
