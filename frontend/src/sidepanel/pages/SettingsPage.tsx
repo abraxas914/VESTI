@@ -698,9 +698,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
         setNotionDatabases(results)
         setNotionDatabasesStatus("ready")
         setNotionDatabasesMessage(
-          results.length === 0
-            ? "No shared databases found yet. Share the database with the integration, then refresh."
-            : null
+          results.length === 0 ? t.settings.notionExport.noDatabases : null
         )
       } catch (error) {
         setNotionDatabasesStatus("error")
@@ -915,7 +913,10 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
           time: Date.now()
         })
         setArchiveMessage(
-          `Saved (${result.decision.reason}) \u00b7 ${result.decision.messageCount} messages`
+          t.settings.captureEngine.archivedSummary.replace(
+            "{count}",
+            String(result.decision.messageCount)
+          )
         )
       } else {
         setArchiveStatus("error")
@@ -1123,6 +1124,14 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
 
           {modelAccessOpen ? (
             <div id="settings-model-access-panel" className="model-access-body">
+              <div className="mb-3 rounded-lg border border-border-subtle bg-bg-secondary/40 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-text-secondary">
+                  {t.settings.modelAccess.privacyTitle}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-text-tertiary">
+                  {t.settings.modelAccess.privacyDisclosure}
+                </p>
+              </div>
               <div className="model-access-mode-row">
                 <div>
                   <p className="model-access-mode-label">{t.settings.modelAccess.useCustomApiKey}</p>

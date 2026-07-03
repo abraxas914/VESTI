@@ -11,6 +11,7 @@ import {
 import {
   getAdoptedPlazaIds,
   setPlazaAdopted,
+  setPlazaAdoptedMany,
   subscribeAdoptedPlazaIds,
 } from "~lib/promptPlaza/plazaCollectionService";
 import { computeAiti } from "~lib/aiti/computeAiti";
@@ -205,6 +206,10 @@ function VestiDashboardInner({
     void setPlazaAdopted(id, adopt).then(setAdoptedIds);
   }, []);
 
+  const handlePlazaAdoptToggleMany = useCallback((ids: string[], adopt: boolean) => {
+    void setPlazaAdoptedMany(ids, adopt).then(setAdoptedIds);
+  }, []);
+
   // AITI (个人内向探索): computed 100% locally from stored summaries. Recomputed
   // when the dataset signals a change (VESTI_DATA_UPDATED).
   const [aiti, setAiti] = useState<AitiProfile | undefined>(undefined);
@@ -275,6 +280,7 @@ function VestiDashboardInner({
       labels={t.dashboard}
       plaza={plaza}
       onPlazaAdoptToggle={handlePlazaAdoptToggle}
+      onPlazaAdoptToggleMany={handlePlazaAdoptToggleMany}
       aiti={aiti}
       learn={learn}
       themeMode={themeMode}

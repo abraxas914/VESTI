@@ -87,6 +87,8 @@ export interface ConversationMatchSummary {
   bestExcerpt: string
   firstMatchedSurface: SearchMatchSurface
   matchedSurfaces: SearchMatchSurface[]
+  /** relevance score (higher = better); used to rank search results */
+  score: number
 }
 
 export interface VectorRecord {

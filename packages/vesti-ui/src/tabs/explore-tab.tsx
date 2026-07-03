@@ -597,7 +597,9 @@ export function ExploreTab({
     }
     const stages = MODE_STAGES[submitMode];
     const timer = setInterval(() => {
-      setSearchStageIndex((prev) => (prev + 1) % stages.length);
+      // Advance and HOLD at the final stage; wrapping with % made the progress
+      // ticker loop back to "Planning..." which read as a confusing restart.
+      setSearchStageIndex((prev) => Math.min(prev + 1, stages.length - 1));
     }, 900);
     return () => clearInterval(timer);
   }, [isSubmitting, submitMode]);
@@ -649,6 +651,9 @@ export function ExploreTab({
 
   const loadMessages = async (sessionId: string) => {
     if (!storage.getExploreMessages) return;
+    // Clear first so the loading spinner (gated on messages.length === 0) shows
+    // instead of the previous session's transcript while the fetch is in flight.
+    setMessages([]);
     setMessagesLoading(true);
     try {
       const data = await storage.getExploreMessages(sessionId);
@@ -799,6 +804,9 @@ export function ExploreTab({
       console.error("[Explore] Submit error:", err);
       setError((err as Error)?.message ?? "Failed to retrieve answer.");
       setMessages((prev) => prev.filter((message) => message.id !== optimisticUserMessage.id));
+      // Restore the question so a transient failure doesn't lose the user's typing.
+      setInputValue(trimmed);
+      textareaRef.current?.focus();
     } finally {
       setIsSubmitting(false);
     }
@@ -973,7 +981,9 @@ export function ExploreTab({
         }
       );
 
-      setDrawerMessageId(null);
+      // Keep the drawer open so the success notice below actually renders (it
+      // lives inside the drawer); the regenerated answer is added as a new turn
+      // while this message's execution details stay available.
       await loadMessages(currentSessionId);
       await loadSessions();
       setDrawerNotice(
@@ -1168,10 +1178,10 @@ export function ExploreTab({
                       {plan && (
                         <>
                           <p className="text-[11px] font-sans text-text-tertiary">
-                            Intent: {getIntentLabel(plan)}
+                            {labels.plannerIntent ?? "Intent"}: {getIntentLabel(plan)}
                           </p>
                           <p className="text-[11px] font-sans text-text-tertiary">
-                            Route: {getPathLabel(plan)}
+                            {labels.plannerRoute ?? "Route"}: {getPathLabel(plan)}
                           </p>
                         </>
                       )}
@@ -1188,7 +1198,7 @@ export function ExploreTab({
                         className="inline-flex items-center gap-1.5 text-xs font-sans text-text-secondary hover:text-text-primary"
                       >
                         <Filter className="h-3.5 w-3.5" strokeWidth={1.75} />
-                        Source Controls
+                        {labels.sourceControls ?? "Source Controls"}
                       </button>
                     </div>
                     {message.agentMeta?.contextDraft && (
@@ -1475,7 +1485,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Agent
+                {labels.modeAgent ?? "Agent"}
               </button>
               <button
                 onClick={() => setMode("classic")}
@@ -1485,7 +1495,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Classic
+                {labels.modeClassic ?? "Classic"}
               </button>
             </div>
             <div className="inline-flex rounded-md border border-border-subtle bg-bg-surface-card p-0.5">
@@ -1497,7 +1507,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                All
+                {labels.scopeAll ?? "All"}
               </button>
               <button
                 onClick={() => {
@@ -1513,7 +1523,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Selected
+                {labels.scopeSelected ?? "Selected"}
               </button>
             </div>
             <button
@@ -1528,7 +1538,7 @@ export function ExploreTab({
                 onClick={handleNewChat}
                 className="rounded-lg bg-bg-surface-card px-3 py-1.5 text-sm font-sans text-text-primary transition-colors hover:bg-bg-surface-card-hover"
               >
-                New Chat
+                {labels.newChat ?? "New Chat"}
               </button>
             )}
           </div>
@@ -1545,7 +1555,7 @@ export function ExploreTab({
             <>
               {messages.map(renderMessage)}
 
-              {isSubmitting && (
+              {(isSubmitting || isRegeneratingSources) && (
                 <div className="py-4">
                   <div className="mx-auto max-w-3xl px-4">
                     <div className="flex gap-4">
@@ -1557,7 +1567,9 @@ export function ExploreTab({
                         <div className="flex items-center gap-2 text-text-primary">
                           <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
                           <span className="text-sm font-sans">
-                            {MODE_STAGES[submitMode][searchStageIndex]}
+                            {isRegeneratingSources
+                              ? MODE_STAGES.agent[0]
+                              : MODE_STAGES[submitMode][searchStageIndex]}
                           </span>
                         </div>
                       </div>
@@ -1648,7 +1660,7 @@ export function ExploreTab({
           <div className="flex h-12 items-center justify-between border-b border-border-subtle px-3">
             <div className="flex min-w-0 items-center gap-2">
               <Wrench className="h-4 w-4 text-text-secondary" strokeWidth={1.7} />
-              <p className="truncate text-sm font-sans text-text-primary">Execution Details</p>
+              <p className="truncate text-sm font-sans text-text-primary">{labels.executionDetails ?? "Execution Details"}</p>
             </div>
             <button
               onClick={() => setDrawerMessageId(null)}
@@ -1668,7 +1680,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Plan
+                {labels.drawerPlan ?? "Plan"}
               </button>
               <button
                 onClick={() => setDrawerTab("tool_calls")}
@@ -1678,7 +1690,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Tool Calls
+                {labels.drawerToolCalls ?? "Tool Calls"}
               </button>
               <button
                 onClick={() => setDrawerTab("sources")}
@@ -1688,7 +1700,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Sources
+                {labels.drawerSources ?? "Sources"}
               </button>
               <button
                 onClick={() => setDrawerTab("context_draft")}
@@ -1698,7 +1710,7 @@ export function ExploreTab({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Context Draft
+                {labels.drawerContextDraft ?? "Context Draft"}
               </button>
             </div>
           </div>
@@ -1713,10 +1725,10 @@ export function ExploreTab({
                         Planner Decision
                       </p>
                       <div className="space-y-1.5 text-sm font-sans text-text-primary">
-                        <p>Intent: {getIntentLabel(drawerPlan)}</p>
-                        <p>Route: {getPathLabel(drawerPlan)}</p>
-                        <p>Source limit: {drawerPlan.sourceLimit}</p>
-                        <p>Summary target: {drawerPlan.summaryTargetCount}</p>
+                        <p>{labels.plannerIntent ?? "Intent"}: {getIntentLabel(drawerPlan)}</p>
+                        <p>{labels.plannerRoute ?? "Route"}: {getPathLabel(drawerPlan)}</p>
+                        <p>{labels.plannerSourceLimit ?? "Source limit"}: {drawerPlan.sourceLimit}</p>
+                        <p>{labels.plannerSummaryTarget ?? "Summary target"}: {drawerPlan.summaryTargetCount}</p>
                         {getResolvedTimeScopeLabel(drawerPlan) && (
                           <p>Time scope: {getResolvedTimeScopeLabel(drawerPlan)}</p>
                         )}
@@ -1884,7 +1896,9 @@ export function ExploreTab({
                     disabled={contextSaveStatus === "saving"}
                     className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
                   >
-                    {contextSaveStatus === "saving" ? "Saving..." : "Save Selection"}
+                    {contextSaveStatus === "saving"
+                      ? (labels.savingSelection ?? "Saving...")
+                      : (labels.saveSelection ?? "Save Selection")}
                   </button>
                   <button
                     onClick={handleRegenerateWithSelectedSources}
@@ -1896,7 +1910,7 @@ export function ExploreTab({
                     ) : (
                       <RotateCcw className="h-3.5 w-3.5" />
                     )}
-                    Regenerate Answer
+                    {labels.regenerateAnswer ?? "Regenerate Answer"}
                   </button>
                   <button
                     onClick={() => setDrawerTab("context_draft")}
@@ -1944,7 +1958,9 @@ export function ExploreTab({
                     disabled={contextSaveStatus === "saving"}
                     className="rounded-md bg-accent-primary px-3 py-1.5 text-xs font-sans text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
                   >
-                    {contextSaveStatus === "saving" ? "Saving..." : "Save"}
+                    {contextSaveStatus === "saving"
+                      ? (labels.savingSelection ?? "Saving...")
+                      : (labels.saveDraft ?? "Save")}
                   </button>
                   <button
                     onClick={handleCopyContextDraft}

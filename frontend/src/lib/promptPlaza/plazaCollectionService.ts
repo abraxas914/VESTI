@@ -47,6 +47,31 @@ export async function setPlazaAdopted(id: string, adopt: boolean): Promise<strin
   return next;
 }
 
+/**
+ * Add or remove MANY catalog ids in a single read-modify-write; returns the
+ * updated set. Bulk operations must not call setPlazaAdopted in a loop — each
+ * call reads the same starting set and the writes clobber each other, so only
+ * one change would survive.
+ */
+export async function setPlazaAdoptedMany(ids: string[], adopt: boolean): Promise<string[]> {
+  const storage = area();
+  if (!storage) return [];
+  const current = await getAdoptedPlazaIds();
+  const set = new Set(current);
+  for (const id of ids) {
+    if (adopt) set.add(id);
+    else set.delete(id);
+  }
+  const next = Array.from(set);
+  await new Promise<void>((resolve) => {
+    storage.set({ [STORAGE_KEY]: next }, () => {
+      void chrome.runtime?.lastError;
+      resolve();
+    });
+  });
+  return next;
+}
+
 /** Subscribe to changes (e.g. adoption from another view). Returns unsubscribe. */
 export function subscribeAdoptedPlazaIds(listener: (ids: string[]) => void): () => void {
   if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return () => {};

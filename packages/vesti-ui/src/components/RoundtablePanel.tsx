@@ -9,6 +9,8 @@ import type {
   StorageApi,
   UiThemeMode,
 } from "../types";
+import { SendToMenu } from "./SendToMenu";
+import { buildRoundtableMarkdown } from "../lib/exploreMarkdown";
 
 // AI 圆桌 (Roundtable): a self-contained Explore sub-mode. Convene 2-3 persona
 // "seats" on the configured LLM + a Moderator synthesis. The host wires
@@ -18,6 +20,8 @@ interface RoundtablePanelProps {
   storage: StorageApi;
   themeMode?: UiThemeMode;
   labels: DashboardLabels["roundtable"];
+  /** Localized "Send to…" labels (from the library block) for exporting the synthesis. */
+  sendToLabels?: DashboardLabels["library"];
 }
 
 const SELECTABLE: RoundtablePersonaId[] = [
@@ -37,7 +41,7 @@ function renderMarkdown(text: string): { __html: string } {
   }
 }
 
-export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
+export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePanelProps) {
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<RoundtablePersonaId[]>([
     "skeptic",
@@ -110,15 +114,21 @@ export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
           <div className="flex flex-wrap gap-2">
             {SELECTABLE.map((id) => {
               const active = selected.includes(id);
+              // At the seat cap, dim + disable the unselected personas so the
+              // 4th click isn't silently ignored.
+              const atCap = !active && selected.length >= MAX_SEATS;
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => togglePersona(id)}
+                  disabled={atCap}
                   className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
                     active
                       ? "border-accent-primary bg-accent-primary-light text-accent-primary"
-                      : "border-border-subtle text-text-secondary hover:bg-bg-tertiary"
+                      : atCap
+                        ? "cursor-not-allowed border-border-subtle text-text-tertiary opacity-40"
+                        : "border-border-subtle text-text-secondary hover:bg-bg-tertiary"
                   }`}
                 >
                   {nameOf(id)}
@@ -138,7 +148,8 @@ export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {loading ? labels.running : labels.run}
           </button>
-          {!loading && <span className="text-[11px] text-text-tertiary">{labels.latencyHint}</span>}
+          {/* Keep the latency reassurance visible during the wait, not only before it. */}
+          <span className="text-[11px] text-text-tertiary">{labels.latencyHint}</span>
         </div>
 
         {error ? <p className="mt-3 text-[12px] text-red-600">{error}</p> : null}
@@ -149,6 +160,19 @@ export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
 
         {result ? (
           <div className="mt-6">
+            {/* Promote the synthesis into the user's workflow */}
+            {sendToLabels ? (
+              <div className="mb-2 flex justify-end">
+                <SendToMenu
+                  storage={storage}
+                  labels={sendToLabels}
+                  payload={{
+                    title: `${labels.title} — ${result.question}`.slice(0, 120),
+                    markdown: buildRoundtableMarkdown(result, labels),
+                  }}
+                />
+              </div>
+            ) : null}
             {/* Seats */}
             <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.seatsTitle}</div>
             <div className="flex flex-col gap-3">
@@ -157,8 +181,16 @@ export function RoundtablePanel({ storage, labels }: RoundtablePanelProps) {
                   key={`${turn.personaId}-${i}`}
                   className="rounded-xl border border-border-subtle bg-bg-surface-card p-3.5"
                 >
-                  <div className="mb-1 text-[12.5px] font-semibold text-accent-primary">
-                    {nameOf(turn.personaId)}
+                  <div className="mb-1 flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-primary-light text-[10px] font-semibold text-accent-primary"
+                    >
+                      {nameOf(turn.personaId).slice(0, 1)}
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-accent-primary">
+                      {nameOf(turn.personaId)}
+                    </span>
                   </div>
                   {turn.ok ? (
                     <div

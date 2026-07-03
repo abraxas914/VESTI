@@ -258,7 +258,7 @@ function useLibrarySplitContext(): LibrarySplitContextValue {
   return context;
 }
 
-function SplitNavigationToggle() {
+function SplitNavigationToggle({ labels }: { labels: Record<string, any> }) {
   const { isSplitActive, toggleSplitNavigation } = useLibrarySplitContext();
 
   if (!isSplitActive) return null;
@@ -309,6 +309,7 @@ function MetaChip({ children }: { children: string }) {
 }
 
 type SplitNoteEditorPanelProps = {
+  labels: Record<string, any>;
   selectedConversation: Conversation;
   selectedNote: Note | null;
   noteTitle: string;
@@ -325,6 +326,7 @@ type SplitNoteEditorPanelProps = {
 };
 
 function SplitNoteEditorPanel({
+  labels,
   selectedConversation,
   selectedNote,
   noteTitle,
@@ -3059,7 +3061,7 @@ export function LibraryTab({
           ref={libraryWorkspaceRef}
           className="relative flex min-h-0 flex-1 overflow-hidden"
         >
-          <SplitNavigationToggle />
+          <SplitNavigationToggle labels={labels} />
           {isSplitActive && isSplitNavigationOpen ? (
             <button
               type="button"
@@ -4602,6 +4604,7 @@ export function LibraryTab({
                 style={{ width: `${splitNotePane.width}px` }}
               >
                 <SplitNoteEditorPanel
+                  labels={labels}
                   selectedConversation={selectedConversation}
                   selectedNote={selectedNote}
                   noteTitle={noteTitle}

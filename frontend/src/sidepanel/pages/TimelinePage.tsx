@@ -2,7 +2,7 @@ import { Clock, History, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "~lib/i18n";
 import {
-  getConversationFirstCapturedAt,
+  getConversationCaptureFreshnessAt,
   getConversationOriginAt,
 } from "~lib/conversations/timestamps";
 import { TimelineScrubber } from "../components/TimelineScrubber";
@@ -13,6 +13,8 @@ import type {
   Platform,
 } from "~lib/types";
 import {
+  bulkAddTagToConversations,
+  bulkSetConversationFlags,
   deleteConversations,
   getDashboardStats,
 } from "~lib/services/storageService";
@@ -126,6 +128,10 @@ export function TimelinePage({
   const [selectedExportFormat, setSelectedExportFormat] =
     useState<ConversationExportFormat>("md");
   const [batchActionKey, setBatchActionKey] = useState<string | null>(null);
+  // Bumped after a batch op so the list reloads even though the self-sent
+  // VESTI_DATA_UPDATED runtime message isn't delivered back to this context;
+  // without it, deleted threads linger as clickable ghost rows.
+  const [listReloadNonce, setListReloadNonce] = useState(0);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
   const [batchFeedback, setBatchFeedback] = useState<{
     message: string;
@@ -148,7 +154,7 @@ export function TimelinePage({
   const timelineDomain = useMemo(() => {
     const timeOf = (c: Conversation) =>
       sortMode === "capture"
-        ? getConversationFirstCapturedAt(c)
+        ? getConversationCaptureFreshnessAt(c)
         : getConversationOriginAt(c);
     const times = allConversations
       .map(timeOf)
@@ -462,6 +468,7 @@ export function TimelinePage({
       await deleteConversations(selectedConversations.map((conversation) => conversation.id));
       setDeleteConfirmValue("");
       handleExitBatchMode();
+      setListReloadNonce((nonce) => nonce + 1);
     } catch (error) {
       setBatchFeedback({
         message: getErrorMessage(error),
@@ -475,6 +482,45 @@ export function TimelinePage({
     handleExitBatchMode,
     selectedConversations,
   ]);
+
+  const handleBulkStar = useCallback(async () => {
+    if (selectedConversations.length === 0) return;
+    setBatchActionKey("star");
+    setBatchFeedback(null);
+    try {
+      await bulkSetConversationFlags(
+        selectedConversations.map((conversation) => conversation.id),
+        { is_starred: true }
+      );
+      handleExitBatchMode();
+      setListReloadNonce((nonce) => nonce + 1);
+    } catch (error) {
+      setBatchFeedback({ message: getErrorMessage(error), tone: "error" });
+    } finally {
+      setBatchActionKey(null);
+    }
+  }, [handleExitBatchMode, selectedConversations]);
+
+  const handleBulkAddTag = useCallback(
+    async (tag: string) => {
+      if (selectedConversations.length === 0) return;
+      setBatchActionKey("folder");
+      setBatchFeedback(null);
+      try {
+        await bulkAddTagToConversations(
+          selectedConversations.map((conversation) => conversation.id),
+          tag
+        );
+        handleExitBatchMode();
+        setListReloadNonce((nonce) => nonce + 1);
+      } catch (error) {
+        setBatchFeedback({ message: getErrorMessage(error), tone: "error" });
+      } finally {
+        setBatchActionKey(null);
+      }
+    },
+    [handleExitBatchMode, selectedConversations]
+  );
 
   const handleOpenSearch = () => {
     dispatch({ type: "HEADER_MODE_CHANGED", headerMode: "search" });
@@ -724,7 +770,7 @@ export function TimelinePage({
           datePreset={datePreset}
           selectedPlatforms={selectedPlatforms}
           onSelect={handleConversationSelect}
-          refreshToken={refreshToken}
+          refreshToken={refreshToken + listReloadNonce}
           resultSummaryMap={resultSummaryMap}
           anchorConversationId={anchorConversationId}
           onAnchorConsumed={handleAnchorConsumed}
@@ -766,6 +812,8 @@ export function TimelinePage({
             onDownload={handleDownload}
             onCopy={handleCopy}
             onConfirmDelete={handleConfirmDelete}
+            onBulkStar={handleBulkStar}
+            onBulkAddTag={handleBulkAddTag}
             onExit={handleExitBatchMode}
           />
         )}

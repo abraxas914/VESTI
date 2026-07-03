@@ -3,8 +3,10 @@ import { Check, Loader2, Share2 } from "lucide-react";
 import type { ChatSummaryData, Conversation, Message, StorageApi } from "../types";
 import { buildConversationMarkdown, buildSummaryMarkdown } from "../lib/conversationMarkdown";
 
-// "Send to…" — exports the open conversation (or its summary) to Notion / Obsidian
-// as ready Markdown. Per-message "Copy as rich text" lives on each message bubble.
+// "Send to…" — promotes a conversation, its summary, OR any derived Explore output
+// (AITI / Learn / Roundtable / answer) to Notion / Obsidian as ready Markdown.
+// Two modes: pass a prebuilt `payload` (derived outputs), or pass a conversation
+// (+messages/summary) for the scope picker. Per-message rich-copy lives on bubbles.
 
 // Only the keys this menu uses (the host's library labels are loosely typed).
 interface SendToLabels {
@@ -13,6 +15,8 @@ interface SendToLabels {
   sendToNotionSummary?: string;
   sendToObsidianConversation?: string;
   sendToObsidianSummary?: string;
+  sendToNotion?: string;
+  sendToObsidian?: string;
   sendToExporting?: string;
   sendToDone?: string;
   sendToFailed?: string;
@@ -20,16 +24,26 @@ interface SendToLabels {
 
 interface SendToMenuProps {
   storage: StorageApi;
-  conversation: Conversation;
-  messages: Message[];
-  summary: ChatSummaryData | null;
   labels: SendToLabels;
+  /** Derived-output mode: a prebuilt payload (skips the conversation scope picker). */
+  payload?: { title: string; markdown: string };
+  /** Conversation mode: build from the open conversation + its summary. */
+  conversation?: Conversation;
+  messages?: Message[];
+  summary?: ChatSummaryData | null;
 }
 
 type Target = "notion" | "obsidian";
 type Scope = "conversation" | "summary";
 
-export function SendToMenu({ storage, conversation, messages, summary, labels }: SendToMenuProps) {
+export function SendToMenu({
+  storage,
+  labels,
+  payload,
+  conversation,
+  messages,
+  summary,
+}: SendToMenuProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -37,23 +51,31 @@ export function SendToMenu({ storage, conversation, messages, summary, labels }:
   const canNotion = !!storage.exportConversationToNotion;
   const canObsidian = !!storage.exportConversationToObsidian;
   if (!canNotion && !canObsidian) return null;
+  if (!payload && !conversation) return null;
 
   const flash = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2600);
   };
 
+  // Resolve the {title, markdown} to send: a prebuilt payload, or built by scope.
+  const resolvePayload = (scope: Scope): { title: string; markdown: string } => {
+    if (payload) return payload;
+    if (!conversation) return { title: "VESTI export", markdown: "" };
+    const markdown =
+      scope === "summary" && summary
+        ? buildSummaryMarkdown(conversation, summary)
+        : buildConversationMarkdown(conversation, messages ?? []);
+    const title =
+      (conversation.title || "VESTI export") + (scope === "summary" ? " — Summary" : "");
+    return { title, markdown };
+  };
+
   const run = async (target: Target, scope: Scope) => {
-    const key = `${target}:${scope}`;
-    setBusy(key);
+    setBusy(`${target}:${scope}`);
     setOpen(false);
     try {
-      const markdown =
-        scope === "summary" && summary
-          ? buildSummaryMarkdown(conversation, summary)
-          : buildConversationMarkdown(conversation, messages);
-      const title =
-        (conversation.title || "VESTI export") + (scope === "summary" ? " — Summary" : "");
+      const { title, markdown } = resolvePayload(scope);
       if (target === "notion" && storage.exportConversationToNotion) {
         await storage.exportConversationToNotion({ title, markdown });
       } else if (target === "obsidian" && storage.exportConversationToObsidian) {
@@ -67,32 +89,37 @@ export function SendToMenu({ storage, conversation, messages, summary, labels }:
     }
   };
 
-  const items: { target: Target; scope: Scope; label: string; show: boolean }[] = [
-    {
-      target: "notion",
-      scope: "conversation",
-      label: labels.sendToNotionConversation ?? "Notion — conversation",
-      show: canNotion,
-    },
-    {
-      target: "notion",
-      scope: "summary",
-      label: labels.sendToNotionSummary ?? "Notion — summary",
-      show: canNotion && !!summary,
-    },
-    {
-      target: "obsidian",
-      scope: "conversation",
-      label: labels.sendToObsidianConversation ?? "Obsidian — conversation",
-      show: canObsidian,
-    },
-    {
-      target: "obsidian",
-      scope: "summary",
-      label: labels.sendToObsidianSummary ?? "Obsidian — summary",
-      show: canObsidian && !!summary,
-    },
-  ];
+  const items: { target: Target; scope: Scope; label: string; show: boolean }[] = payload
+    ? [
+        { target: "notion", scope: "conversation", label: labels.sendToNotion ?? "Notion", show: canNotion },
+        { target: "obsidian", scope: "conversation", label: labels.sendToObsidian ?? "Obsidian", show: canObsidian },
+      ]
+    : [
+        {
+          target: "notion",
+          scope: "conversation",
+          label: labels.sendToNotionConversation ?? "Notion — conversation",
+          show: canNotion,
+        },
+        {
+          target: "notion",
+          scope: "summary",
+          label: labels.sendToNotionSummary ?? "Notion — summary",
+          show: canNotion && !!summary,
+        },
+        {
+          target: "obsidian",
+          scope: "conversation",
+          label: labels.sendToObsidianConversation ?? "Obsidian — conversation",
+          show: canObsidian,
+        },
+        {
+          target: "obsidian",
+          scope: "summary",
+          label: labels.sendToObsidianSummary ?? "Obsidian — summary",
+          show: canObsidian && !!summary,
+        },
+      ];
 
   return (
     <div className="relative">

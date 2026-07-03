@@ -57,6 +57,7 @@ import {
   normalizeSearchQuery,
   shouldRunFullTextSearch
 } from "../utils/searchReadiness"
+import { parseQuery, scoreText } from "../search/textSearch"
 import {
   buildNoteExcerpt,
   computeNoteHash,
@@ -1005,23 +1006,25 @@ export async function listConversations(
     )
   }
 
+  // Convert once: toConversation + getConversationOriginAt were previously
+  // recomputed inside the dateRange filter AND twice per sort comparison
+  // (~2N·logN conversions on large libraries).
+  let decorated = results.map((record) => {
+    const conversation = toConversation(record)
+    return { conversation, originAt: getConversationOriginAt(conversation) }
+  })
+
   if (filters?.dateRange) {
-    results = results.filter((c) => {
-      const originAt = getConversationOriginAt(toConversation(c))
-      return (
-        originAt >= filters.dateRange!.start &&
-        originAt <= filters.dateRange!.end
-      )
-    })
+    decorated = decorated.filter(
+      (item) =>
+        item.originAt >= filters.dateRange!.start &&
+        item.originAt <= filters.dateRange!.end
+    )
   }
 
-  return results
-    .sort(
-      (a, b) =>
-        getConversationOriginAt(toConversation(b)) -
-        getConversationOriginAt(toConversation(a))
-    )
-    .map(toConversation)
+  return decorated
+    .sort((a, b) => b.originAt - a.originAt)
+    .map((item) => item.conversation)
 }
 
 export async function getConversationById(
@@ -1316,6 +1319,70 @@ export async function removeTagFromConversations(tag: string): Promise<number> {
   return replaceTagAcrossConversations(tag, null)
 }
 
+/** Bulk-toggle is_starred / is_archived over the given conversation ids. */
+export async function bulkSetConversationFlags(
+  ids: number[],
+  patch: { is_starred?: boolean; is_archived?: boolean }
+): Promise<number> {
+  const idSet = new Set(ids.filter((value) => Number.isFinite(value)))
+  if (idSet.size === 0) return 0
+  if (patch.is_starred === undefined && patch.is_archived === undefined) return 0
+
+  await enforceStorageWriteGuard()
+  const now = Date.now()
+  let updated = 0
+
+  await db.conversations
+    .where("id")
+    .anyOf(Array.from(idSet))
+    .modify((record: Partial<ConversationRecord>) => {
+      let changed = false
+      if (patch.is_starred !== undefined && record.is_starred !== patch.is_starred) {
+        record.is_starred = patch.is_starred
+        changed = true
+      }
+      if (patch.is_archived !== undefined && record.is_archived !== patch.is_archived) {
+        record.is_archived = patch.is_archived
+        changed = true
+      }
+      if (!changed) return
+      record.updated_at = now
+      updated += 1
+    })
+
+  return updated
+}
+
+/** Bulk-add a tag (folder) to the given conversation ids (respects the 6-tag cap). */
+export async function bulkAddTagToConversations(
+  ids: number[],
+  tag: string
+): Promise<number> {
+  const normalizedTag = tag.trim()
+  if (!normalizedTag) throw new Error("TAG_EMPTY")
+  const idSet = new Set(ids.filter((value) => Number.isFinite(value)))
+  if (idSet.size === 0) return 0
+
+  await enforceStorageWriteGuard()
+  const now = Date.now()
+  let updated = 0
+
+  await db.conversations
+    .where("id")
+    .anyOf(Array.from(idSet))
+    .modify((record: Partial<ConversationRecord>) => {
+      const tags = Array.isArray(record.tags) ? record.tags : []
+      if (tags.includes(normalizedTag)) return
+      const nextTags = dedupeTags([...tags, normalizedTag]).slice(0, 6)
+      if (nextTags.length === tags.length) return // already full / no change
+      record.tags = nextTags
+      record.updated_at = now
+      updated += 1
+    })
+
+  return updated
+}
+
 export async function listConversationsByRange(
   rangeStart: number,
   rangeEnd: number
@@ -1469,6 +1536,8 @@ export async function searchConversationMatchesByText(
     return []
   }
 
+  const parsedQuery = parseQuery(normalizedQuery)
+
   const matchMap = new Map<
     number,
     {
@@ -1477,6 +1546,7 @@ export async function searchConversationMatchesByText(
       excerpt: string
       firstMatchedSurface: SearchMatchSurface
       matchedSurfaces: Set<SearchMatchSurface>
+      score: number
     }
   >()
 
@@ -1495,56 +1565,59 @@ export async function searchConversationMatchesByText(
       return
     }
 
-    const matchedEntries = buildMessageSearchEntries({
+    // Score each surface (text/code/citation/…); a surface matches when its
+    // relevance score is positive (all query terms present, CJK-aware).
+    const scoredEntries = buildMessageSearchEntries({
       id: messageId,
       content_text: record.content_text,
       content_ast: record.content_ast,
       citations: record.citations,
       attachments: record.attachments,
       artifacts: record.artifacts
-    }).filter((entry) => entry.text.toLowerCase().includes(normalizedQuery))
-    if (matchedEntries.length === 0) {
+    })
+      .map((entry) => ({ entry, score: scoreText(entry.text, parsedQuery) }))
+      .filter((scored) => scored.score > 0)
+    if (scoredEntries.length === 0) {
       return
     }
 
     const surfaceSet = new Set<SearchMatchSurface>(
-      matchedEntries.map((entry) => entry.surface)
+      scoredEntries.map((scored) => scored.entry.surface)
     )
-    const bestEntry = [...matchedEntries].sort((left, right) =>
-      compareSearchSurfacePriority(left.surface, right.surface)
+    // Best surface for THIS message = highest score, tie-broken by surface priority.
+    const best = [...scoredEntries].sort(
+      (left, right) =>
+        right.score - left.score ||
+        compareSearchSurfacePriority(left.entry.surface, right.entry.surface)
     )[0]
+    const messageScore = best.score
 
     const createdAt = record.created_at ?? 0
     const existing = matchMap.get(conversationId)
+    // Conversation keeps its single most relevant message (higher score wins;
+    // ties fall back to the earlier message) — that drives the excerpt + ranking.
     const shouldReplace =
       !existing ||
-      createdAt < existing.createdAt ||
-      (createdAt === existing.createdAt && messageId < existing.messageId) ||
-      (createdAt === existing.createdAt &&
-        messageId === existing.messageId &&
-        compareSearchSurfacePriority(
-          bestEntry.surface,
-          existing.firstMatchedSurface
-        ) < 0)
+      messageScore > existing.score ||
+      (messageScore === existing.score && createdAt < existing.createdAt)
 
     if (shouldReplace) {
       const nextSurfaces = existing
-        ? new Set<SearchMatchSurface>([
-            ...existing.matchedSurfaces,
-            ...surfaceSet
-          ])
+        ? new Set<SearchMatchSurface>([...existing.matchedSurfaces, ...surfaceSet])
         : surfaceSet
       matchMap.set(conversationId, {
         messageId,
         createdAt,
-        excerpt: buildSearchExcerpt(bestEntry.text, normalizedQuery),
-        firstMatchedSurface: bestEntry.surface,
-        matchedSurfaces: nextSurfaces
+        excerpt: buildSearchExcerpt(best.entry.text, normalizedQuery),
+        firstMatchedSurface: best.entry.surface,
+        matchedSurfaces: nextSurfaces,
+        score: Math.max(messageScore, existing?.score ?? 0)
       })
       return
     }
 
     surfaceSet.forEach((surface) => existing?.matchedSurfaces.add(surface))
+    if (existing) existing.score = Math.max(existing.score, messageScore)
   })
 
   await db.annotations.toCollection().each((record) => {
@@ -1557,7 +1630,8 @@ export async function searchConversationMatchesByText(
     }
 
     const entry = buildAnnotationSearchEntry(record)
-    if (!entry || !entry.text.toLowerCase().includes(normalizedQuery)) {
+    const annScore = entry ? scoreText(entry.text, parsedQuery) : 0
+    if (!entry || annScore <= 0) {
       return
     }
 
@@ -1569,17 +1643,11 @@ export async function searchConversationMatchesByText(
     const createdAt = record.created_at ?? 0
     const shouldReplace =
       !existing ||
-      createdAt < existing.createdAt ||
-      (createdAt === existing.createdAt &&
-        entry.messageId < existing.messageId) ||
-      (createdAt === existing.createdAt &&
-        entry.messageId === existing.messageId &&
-        compareSearchSurfacePriority(
-          "annotation",
-          existing.firstMatchedSurface
-        ) < 0)
+      annScore > existing.score ||
+      (annScore === existing.score && createdAt < existing.createdAt)
 
     if (!shouldReplace) {
+      if (existing) existing.score = Math.max(existing.score, annScore)
       return
     }
 
@@ -1592,19 +1660,26 @@ export async function searchConversationMatchesByText(
       createdAt,
       excerpt: buildSearchExcerpt(entry.text, normalizedQuery),
       firstMatchedSurface: "annotation",
-      matchedSurfaces: nextSurfaces
+      matchedSurfaces: nextSurfaces,
+      score: Math.max(annScore, existing?.score ?? 0)
     })
   })
 
-  return Array.from(matchMap.entries()).map(([conversationId, match]) => ({
-    conversationId,
-    firstMatchedMessageId: match.messageId,
-    bestExcerpt: match.excerpt,
-    firstMatchedSurface: match.firstMatchedSurface,
-    matchedSurfaces: Array.from(match.matchedSurfaces).sort(
-      compareSearchSurfacePriority
-    )
-  }))
+  return Array.from(matchMap.entries())
+    // Most relevant conversations first (ties: more recent first). Sort on the
+    // entries so the createdAt tie-break the comment promises is actually applied
+    // without leaking createdAt into the returned shape.
+    .sort(([, a], [, b]) => b.score - a.score || b.createdAt - a.createdAt)
+    .map(([conversationId, match]) => ({
+      conversationId,
+      firstMatchedMessageId: match.messageId,
+      bestExcerpt: match.excerpt,
+      firstMatchedSurface: match.firstMatchedSurface,
+      matchedSurfaces: Array.from(match.matchedSurfaces).sort(
+        compareSearchSurfacePriority
+      ),
+      score: match.score
+    }))
 }
 
 export async function deleteConversation(id: number): Promise<boolean> {

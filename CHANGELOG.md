@@ -11,6 +11,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ## [Unreleased]
 
 ### Added
+- **Real local search (CJK-aware, ranked)** — the #1 user need. Replaced the naive
+  substring scan with a dependency-free engine: Lucene-style CJK character
+  unigram+bigram tokenization (Chinese/Japanese queries actually match, incl. the
+  single-character case — something Western tools structurally can't do),
+  multi-term AND ("design database" finds "database … design"), type-ahead prefix,
+  and a relevance score. The sidebar shows a "最相关结果 / Top matches" relevance list
+  while searching. Fully offline; verified by unit tests.
+- **Bulk organize in the sidebar** — the batch bar gains **Star** and **Add to
+  folder** over a whole selection (alongside Export/Delete), backed by idempotent
+  bulk repository ops. (Bulk archive + an Archived view are next; backend ready.)
+- **"What leaves your device" disclosure** in Settings → Model Access: an honest
+  note that capture/storage/keyword-search are 100% local while AI features send
+  conversation text to the configured model (by default via the proxy). en/zh.
 - **探索 hub — four reflective modes** under 探索/Explore (one switcher): 问答
   (ask), **AITI 画像** (a local, empowering strengths portrait from your own
   conversations), **学习 (Learn)** — your KB reframed as a personal curriculum

@@ -199,6 +199,27 @@ export async function deduplicateAndSave(
         return { saved: false, newMessages: 0, conversationId: existing.id };
       }
 
+      // Guard against destructive recaptures: a perf-mode downgrade or a
+      // virtualized (partially-rendered) thread can yield FEWER or more-degraded
+      // messages than we already stored. Overwriting then silently loses data,
+      // so skip the wholesale delete+reinsert when the incoming set is clearly
+      // poorer (fewer messages, or same count but more degraded nodes).
+      const incomingDegraded = cleanMessages.reduce(
+        (sum, message) => sum + normalizeDegradedNodesCount(message.degradedNodesCount),
+        0
+      );
+      const storedDegraded = existingMessages.reduce(
+        (sum, message) => sum + normalizeDegradedNodesCount(message.degraded_nodes_count),
+        0
+      );
+      const incomingIsPoorer =
+        cleanMessages.length < existingMessages.length ||
+        (cleanMessages.length === existingMessages.length &&
+          incomingDegraded > storedDegraded);
+      if (incomingIsPoorer) {
+        return { saved: false, newMessages: 0, conversationId: existing.id };
+      }
+
       await db.messages.where("conversation_id").equals(existing.id).delete();
 
       const baseTimestamp = Date.now();

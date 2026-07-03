@@ -240,6 +240,10 @@ const DEFAULT_LABELS: DashboardLabels = {
     myPlazaEmpty: "Add prompts from the supermarket below to build your plaza.",
     adopt: "Add",
     adopted: "Added",
+    selectAria: "Select prompt",
+    selectedCount: "{n} selected",
+    deleteSelected: "Delete",
+    clearSelection: "Cancel",
   },
   aiti: {
     modeAsk: "Ask",
@@ -254,6 +258,7 @@ const DEFAULT_LABELS: DashboardLabels = {
     empoweringIntro: "Across your AI conversations, these strengths shine through:",
     obsessionsTitle: "What you keep investing in",
     evidence: "seen in {n} conversations",
+    axisNeedsSignal: "Needs more signal",
     axisDepthLabel: "Breadth ↔ Depth",
     axisDepthLeft: "Explorer",
     axisDepthRight: "Excavator",
@@ -273,7 +278,7 @@ const DEFAULT_LABELS: DashboardLabels = {
     axisAffectLeft: "Cool-headed",
     axisAffectRight: "Spirited",
     axisAffectLeftStrength: "You stay calm and keep clear judgment under complexity.",
-    axisAffectRightStrength: "You bring real passion and energy to what you explore.",
+    axisAffectRightStrength: "You bring strong emotional engagement to what you explore.",
   },
   learn: {
     modeLearn: "Learn",
@@ -820,7 +825,12 @@ export function VestiDashboard({
               </div>
               {exploreMode === "aiti" && (
                 <div className="min-h-0 flex-1">
-                  <AitiCard profile={aiti} labels={labels.aiti} />
+                  <AitiCard
+                    profile={aiti}
+                    labels={labels.aiti}
+                    storage={storage}
+                    sendToLabels={labels.library}
+                  />
                 </div>
               )}
               {exploreMode === "learn" && (
@@ -829,12 +839,19 @@ export function VestiDashboard({
                     profile={learn}
                     labels={labels.learn}
                     onOpenConversation={handleOpenConversation}
+                    storage={storage}
+                    sendToLabels={labels.library}
                   />
                 </div>
               )}
               {exploreMode === "roundtable" && (
                 <div className="min-h-0 flex-1">
-                  <RoundtablePanel storage={storage} themeMode={themeMode} labels={labels.roundtable} />
+                  <RoundtablePanel
+                    storage={storage}
+                    themeMode={themeMode}
+                    labels={labels.roundtable}
+                    sendToLabels={labels.library}
+                  />
                 </div>
               )}
             </div>

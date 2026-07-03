@@ -1,10 +1,13 @@
+import { useState } from "react";
 import {
   Check,
   CheckSquare,
   Copy,
   Download,
+  FolderPlus,
   Loader2,
   Square,
+  Star,
   Trash2,
   TriangleAlert,
   X,
@@ -48,6 +51,8 @@ interface BatchActionBarProps {
   onDownload: () => void;
   onCopy: () => void;
   onConfirmDelete: () => void;
+  onBulkStar: () => void;
+  onBulkAddTag: (tag: string) => void;
   onExit: () => void;
 }
 
@@ -121,9 +126,20 @@ export function BatchActionBar({
   onDownload,
   onCopy,
   onConfirmDelete,
+  onBulkStar,
+  onBulkAddTag,
   onExit,
 }: BatchActionBarProps) {
   const { t } = useI18n();
+  const [folderInput, setFolderInput] = useState("");
+  const [showFolder, setShowFolder] = useState(false);
+  const submitFolder = () => {
+    const value = folderInput.trim();
+    if (!value) return;
+    onBulkAddTag(value);
+    setFolderInput("");
+    setShowFolder(false);
+  };
   const exportOptions = getExportOptions(t);
   const exportModeOptions = getExportModeOptions(t);
   const isAllSelected = selectedCount === totalCount && totalCount > 0;
@@ -179,7 +195,45 @@ export function BatchActionBar({
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-3">
-      {showingExportPanel ? (
+      {showFolder ? (
+        <div className="rounded-xl border border-border-subtle bg-bg-primary/95 p-3 shadow-paper backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-[12px] font-semibold text-text-primary">
+              {t.timeline.batch.addToFolder} · {selectedCount}{" "}
+              {selectedCount === 1 ? t.timeline.batch.threadSingular : t.timeline.batch.threadPlural}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFolder(false)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-bg-secondary hover:text-text-primary"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              autoFocus
+              value={folderInput}
+              onChange={(event) => setFolderInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitFolder();
+                if (event.key === "Escape") setShowFolder(false);
+              }}
+              placeholder={t.timeline.batch.folderNamePlaceholder}
+              className="h-9 flex-1 rounded-lg border border-border-subtle bg-bg-primary px-3 text-[13px] text-text-primary outline-none focus:border-accent-primary"
+            />
+            <button
+              type="button"
+              onClick={submitFolder}
+              disabled={!folderInput.trim() || Boolean(actionKey)}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              <FolderPlus className="h-3.5 w-3.5" strokeWidth={1.8} />
+              {t.timeline.batch.add}
+            </button>
+          </div>
+        </div>
+      ) : showingExportPanel ? (
         <div className="rounded-xl border border-border-subtle bg-bg-primary/95 p-3 shadow-paper backdrop-blur-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -405,6 +459,24 @@ export function BatchActionBar({
                   className="h-3.5 w-px rounded-full bg-border-subtle"
                 />
                 <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={onBulkStar}
+                    disabled={!hasSelection || Boolean(actionKey)}
+                    className={toolbarNeutralActionClassName}
+                  >
+                    <Star className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    {t.timeline.batch.star}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFolder(true)}
+                    disabled={!hasSelection || Boolean(actionKey)}
+                    className={toolbarNeutralActionClassName}
+                  >
+                    <FolderPlus className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    {t.timeline.batch.addToFolder}
+                  </button>
                   <button
                     type="button"
                     onClick={onToggleExportPanel}

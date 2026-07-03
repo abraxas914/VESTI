@@ -1131,6 +1131,10 @@ export interface DashboardLabels {
     myPlazaEmpty: string;
     adopt: string;
     adopted: string;
+    selectAria: string;
+    selectedCount: string;
+    deleteSelected: string;
+    clearSelection: string;
   };
   aiti: {
     modeAsk: string;
@@ -1145,6 +1149,7 @@ export interface DashboardLabels {
     empoweringIntro: string;
     obsessionsTitle: string;
     evidence: string;
+    axisNeedsSignal: string;
     axisDepthLabel: string;
     axisDepthLeft: string;
     axisDepthRight: string;
@@ -1228,6 +1233,9 @@ export interface AitiAxisScore {
   score: number;
   /** up to a few source conversations that contributed most (evidence) */
   evidenceConversationIds: number[];
+  /** false when the axis has no supporting evidence (score is a neutral default,
+   * not an observation) — the UI renders it muted instead of confidently labeled */
+  hasSignal?: boolean;
 }
 
 export interface AitiObsession {

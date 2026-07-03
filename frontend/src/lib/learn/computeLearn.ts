@@ -82,11 +82,16 @@ export function computeLearn(
       superficial: e.superficial,
     }));
 
-  // ---- Glossary: key_insights terms across summaries (deduped) ----
-  const glossaryMap = new Map<string, LearnGlossaryEntry>();
+  // ---- Glossary: key_insights terms across summaries (deduped + ranked) ----
+  // Rank by how often a term recurs (then recency) so the most-studied terms
+  // survive the MAX_GLOSSARY cap — taking the arbitrary first-N in storage order
+  // would drop high-value terms.
+  type GlossaryAgg = LearnGlossaryEntry & { count: number; recencyAt: number };
+  const glossaryMap = new Map<string, GlossaryAgg>();
   for (const rec of summaryByConv.values()) {
     const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
     const insights = s && Array.isArray(s.key_insights) ? (s.key_insights as unknown[]) : [];
+    const recencyAt = rec.createdAt ?? 0;
     for (const ki of insights) {
       let term = "";
       let def = "";
@@ -98,12 +103,30 @@ export function computeLearn(
       term = term.trim();
       if (term.length < 2 || term.length > 60) continue;
       const key = term.toLowerCase();
-      if (!glossaryMap.has(key)) {
-        glossaryMap.set(key, { term, definition: def.trim(), conversationId: rec.conversationId });
+      const existing = glossaryMap.get(key);
+      if (existing) {
+        existing.count += 1;
+        if (!existing.definition && def.trim()) existing.definition = def.trim();
+        if (recencyAt > existing.recencyAt) existing.recencyAt = recencyAt;
+      } else {
+        glossaryMap.set(key, {
+          term,
+          definition: def.trim(),
+          conversationId: rec.conversationId,
+          count: 1,
+          recencyAt,
+        });
       }
     }
   }
-  const glossary = Array.from(glossaryMap.values()).slice(0, MAX_GLOSSARY);
+  const glossary: LearnGlossaryEntry[] = Array.from(glossaryMap.values())
+    .sort((a, b) => b.count - a.count || b.recencyAt - a.recencyAt)
+    .slice(0, MAX_GLOSSARY)
+    .map((entry) => ({
+      term: entry.term,
+      definition: entry.definition,
+      conversationId: entry.conversationId,
+    }));
 
   // ---- Open loops: unresolved_threads with their source conversation ----
   const openLoops: LearnOpenLoop[] = [];

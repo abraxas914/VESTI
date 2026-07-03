@@ -128,17 +128,16 @@ function parseCellNode(node: Node, platform: Platform): AstNode[] {
 }
 
 function readRowCellsLegacy(row: Element): string[] {
+  // Preserve empty cells positionally (alignment); callers drop all-empty rows.
   const cells = Array.from(row.querySelectorAll(":scope > th, :scope > td"));
-  return cells
-    .map((cell) => normalizeCellText(cell.textContent ?? ""))
-    .filter((cell) => cell.length > 0);
+  return cells.map((cell) => normalizeCellText(cell.textContent ?? ""));
 }
 
 function readHeaderCellsLegacy(tableEl: Element): string[] {
   const headerRows = Array.from(tableEl.querySelectorAll("thead > tr"));
   if (headerRows.length > 0) {
     const headers = readRowCellsLegacy(headerRows[0]);
-    if (headers.length > 0) return headers;
+    if (headers.some((cell) => cell.length > 0)) return headers;
   }
 
   const firstRow = tableEl.querySelector("tr");
@@ -162,7 +161,7 @@ function readBodyRowsLegacy(tableEl: Element, hasHeaderRow: boolean): string[][]
   return rows
     .filter((row, index) => !(hasHeaderRow && index === 0 && tbodyRows.length === 0))
     .map((row) => readRowCellsLegacy(row))
-    .filter((cells) => cells.length > 0);
+    .filter((cells) => cells.some((cell) => cell.length > 0));
 }
 
 function buildTableNodeV2(
@@ -177,16 +176,17 @@ function buildTableNodeV2(
 
   const rows: AstTableRowV2[] = dataRows
     .map((row) => {
+      // Keep empty cells positionally — dropping them shifts every later cell
+      // under the wrong column header. Only fully-empty rows are discarded below.
       const cells = Array.from(row.querySelectorAll(":scope > th, :scope > td"))
         .map<AstTableCellV2>((cell, index) => ({
           align: readCellAlign(cell) ?? columns[index]?.align ?? null,
           children: parseCellChildren(cell.childNodes, platform),
-        }))
-        .filter((cell) => cell.children.length > 0);
+        }));
 
       return { cells };
     })
-    .filter((row) => row.cells.length > 0);
+    .filter((row) => row.cells.some((cell) => cell.children.length > 0));
 
   if (columns.length === 0 && rows.length === 0) {
     return null;

@@ -1,6 +1,6 @@
 import type { IParser, ParsedMessage } from "../IParser";
 import type { Platform } from "../../../types";
-import { extractEarliestTimeFromSelectors, queryAllUnique, queryFirst, queryFirstWithin, safeTextContent, uniqueNodesInDocumentOrder } from "../shared/selectorUtils";
+import { extractEarliestTimeFromSelectors, queryAllUnique, queryAllWithinUnique, queryFirst, queryFirstWithin, safeTextContent, uniqueNodesInDocumentOrder } from "../shared/selectorUtils";
 import { extractAstFromElement } from "../shared/astExtractor";
 import { resolveCanonicalMessageText } from "../shared/canonicalMessageText";
 import { astPerfModeController, type AstPerfMode } from "../shared/astPerfMode";
@@ -373,7 +373,7 @@ export class YuanbaoParser implements IParser {
     const cotTexts: string[] = [];
     const merged = document.createElement("div");
 
-    const cotNodes = queryAllUnique(SELECTORS.cotParagraphs).filter((node) => root.contains(node));
+    const cotNodes = queryAllWithinUnique(root, SELECTORS.cotParagraphs);
     if (cotNodes.length > 0) {
       const cotSection = document.createElement("section");
       cotSection.setAttribute("data-vesti-yuanbao-cot", "true");
@@ -454,7 +454,7 @@ export class YuanbaoParser implements IParser {
   }
 
   private resolveAiFinalRoot(root: Element): Element | null {
-    const finals = queryAllUnique(SELECTORS.aiFinalNodes).filter((node) => root.contains(node));
+    const finals = queryAllWithinUnique(root, SELECTORS.aiFinalNodes);
     return finals[finals.length - 1] ?? null;
   }
 

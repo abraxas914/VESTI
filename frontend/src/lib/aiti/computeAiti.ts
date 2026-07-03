@@ -145,30 +145,43 @@ export function computeAiti(records: SummaryRecord[]): AitiProfile {
     : 0;
   const affectScore = affectFeats.length ? clamp(50 + 50 * (spiritedFrac - coolFrac)) : 50;
 
+  // Evidence per axis. An empty list means the score is a neutral default with
+  // nothing behind it (e.g. no conversation carried a depth_level / affect cue),
+  // so hasSignal=false and the UI renders that axis muted instead of confidently
+  // assigning a flattering pole.
+  const depthEvidence = evidence(feats, (f) => f.depth ?? 0);
+  const makerEvidence = evidence(feats, (f) =>
+    makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
+  );
+  const focusEvidence = evidence(feats, (f) => f.unresolved);
+  const affectEvidence = evidence(feats, (f) =>
+    affectScore >= 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
+  );
+
   const axes: AitiAxisScore[] = [
     {
       key: "depth",
       score: Math.round(depthScore),
-      evidenceConversationIds: evidence(feats, (f) => f.depth ?? 0),
+      evidenceConversationIds: depthEvidence,
+      hasSignal: depthEvidence.length > 0,
     },
     {
       key: "maker",
       score: Math.round(makerScore),
-      evidenceConversationIds: evidence(feats, (f) =>
-        makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
-      ),
+      evidenceConversationIds: makerEvidence,
+      hasSignal: makerEvidence.length > 0,
     },
     {
       key: "focus",
       score: Math.round(focusScore),
-      evidenceConversationIds: evidence(feats, (f) => f.unresolved),
+      evidenceConversationIds: focusEvidence,
+      hasSignal: focusEvidence.length > 0,
     },
     {
       key: "affect",
       score: Math.round(affectScore),
-      evidenceConversationIds: evidence(feats, (f) =>
-        affectScore >= 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
-      ),
+      evidenceConversationIds: affectEvidence,
+      hasSignal: affectEvidence.length > 0,
     },
   ];
 
