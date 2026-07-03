@@ -100,6 +100,30 @@ export interface NoteAssetRecord {
   updated_at: number;
 }
 
+export type PromptSource = "manual" | "extracted";
+
+export interface PromptRecord {
+  id?: number;
+  title: string;
+  body: string;
+  category: string | null;
+  tags: string[];
+  source: PromptSource;
+  source_platform: ConversationRecord["platform"] | null;
+  source_conversation_id: number | null;
+  source_message_id: number | null;
+  is_favorite: boolean;
+  is_archived: boolean;
+  quality_score: number;
+  summary: string | null;
+  variables: string[];
+  use_count: number;
+  last_used_at: number | null;
+  body_hash: string;
+  created_at: number;
+  updated_at: number;
+}
+
 function normalizePersistedPlatform(value: unknown): ConversationRecord["platform"] | undefined {
   if (value === "Yuanbao" || value === "YUANBAO") {
     return "Yuanbao";
@@ -167,6 +191,7 @@ export class MemoryHubDB extends Dexie {
   annotations!: Table<AnnotationRecord, number>;
   explore_sessions!: Table<ExploreSessionRecord, string>;
   explore_messages!: Table<ExploreMessageRecord, string>;
+  prompts!: Table<PromptRecord, number>;
 
   constructor() {
     super("MemoryHubDB");
@@ -633,6 +658,33 @@ export class MemoryHubDB extends Dexie {
             }
           });
       });
+    // v17 introduces the Prompt Management store. No data migration is needed
+    // (new empty store); all prior stores are re-declared unchanged as Dexie
+    // requires the full schema per version.
+    this.version(17)
+      .stores({
+        conversations:
+          "++id, platform, title, created_at, updated_at, uuid, source_created_at, turn_count, topic_id, is_starred, [platform+created_at], [platform+uuid], [topic_id+updated_at]",
+        messages:
+          "++id, conversation_id, role, created_at, [conversation_id+created_at]",
+        summaries: "++id, conversationId, createdAt",
+        weekly_reports: "++id, rangeStart, rangeEnd, createdAt",
+        topics:
+          "++id, parent_id, name, created_at, updated_at, [parent_id+name]",
+        vectors: "++id, conversation_id, text_hash",
+        notes:
+          "++id, created_at, updated_at, source_type, source_path, [source_type+updated_at], [source_type+source_path]",
+        note_sources: "id, kind, updated_at, created_at",
+        note_assets:
+          "id, vault_id, relative_path, hash, updated_at, [vault_id+relative_path]",
+        annotations:
+          "++id, conversation_id, message_id, created_at, days_after, [conversation_id+message_id], [conversation_id+created_at]",
+        explore_sessions: "id, updatedAt, createdAt",
+        explore_messages: "id, sessionId, timestamp, [sessionId+timestamp]",
+        prompts:
+          "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
+      })
+      .upgrade(() => undefined);
   }
 }
 

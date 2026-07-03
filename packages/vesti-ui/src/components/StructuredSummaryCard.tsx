@@ -1,14 +1,30 @@
 ﻿import type { ChatSummaryData } from "../types";
 
+export interface SummaryCardLabels {
+  coreQuestion?: string;
+  thinkingJourney?: string;
+  step?: string;
+  example?: string;
+  keyInsights?: string;
+  unresolvedThreads?: string;
+  metaObservations?: string;
+  thinkingStyle?: string;
+  emotionalTone?: string;
+  depth?: string;
+  nextSteps?: string;
+  fallback?: string;
+}
+
 interface StructuredSummaryCardProps {
   data: ChatSummaryData;
   compact?: boolean;
+  labels?: SummaryCardLabels;
 }
 
-function FallbackBadge() {
+function FallbackBadge({ label }: { label?: string }) {
   return (
     <span className="tag-paper inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium text-text-tertiary font-sans">
-      Fallback plain text
+      {label ?? "Fallback plain text"}
     </span>
   );
 }
@@ -28,7 +44,7 @@ function SectionEyebrow({ children, compact = false }: {
   );
 }
 
-export function StructuredSummaryCard({ data, compact = false }: StructuredSummaryCardProps) {
+export function StructuredSummaryCard({ data, compact = false, labels }: StructuredSummaryCardProps) {
   const bodyTextClass = compact
     ? "text-[13px] text-text-primary"
     : "text-reading-lg text-text-primary";
@@ -59,27 +75,27 @@ export function StructuredSummaryCard({ data, compact = false }: StructuredSumma
               {tag}
             </span>
           ))}
-          {data.meta.fallback && <FallbackBadge />}
+          {data.meta.fallback && <FallbackBadge label={labels?.fallback} />}
         </div>
       </header>
 
       <section className="mb-6 rounded-r-lg border-l-4 border-border-default bg-bg-secondary px-4 py-3">
-        <SectionEyebrow compact={compact}>Core Question</SectionEyebrow>
+        <SectionEyebrow compact={compact}>{labels?.coreQuestion ?? "Core Question"}</SectionEyebrow>
         <p className={bodyTextClass}>{data.core_question}</p>
       </section>
 
       <section className="mb-6">
-        <SectionEyebrow compact={compact}>Thinking Journey</SectionEyebrow>
+        <SectionEyebrow compact={compact}>{labels?.thinkingJourney ?? "Thinking Journey"}</SectionEyebrow>
         <ol className="space-y-3 text-text-primary">
           {data.thinking_journey.map((item) => (
             <li key={`${item.step}-${item.speaker}-${item.assertion}`} className="rounded-md border border-border-subtle p-3">
               <p className="mb-1 text-[11px] font-medium text-text-secondary font-sans">
-                Step {item.step} · {item.speaker}
+                {labels?.step ?? "Step"} {item.step} · {item.speaker}
               </p>
               <p className={bodyTextClass}>{item.assertion}</p>
               {item.real_world_anchor && (
                 <p className={`mt-1.5 text-text-tertiary ${compact ? "text-[12px]" : "text-[13px]"}`}>
-                  <span className="font-medium text-text-secondary">Example: </span>
+                  <span className="font-medium text-text-secondary">{labels?.example ?? "Example: "}</span>
                   {item.real_world_anchor}
                 </p>
               )}
@@ -89,7 +105,7 @@ export function StructuredSummaryCard({ data, compact = false }: StructuredSumma
       </section>
 
       <section className="mb-6">
-        <SectionEyebrow compact={compact}>Key Insights</SectionEyebrow>
+        <SectionEyebrow compact={compact}>{labels?.keyInsights ?? "Key Insights"}</SectionEyebrow>
         <ul className="space-y-3 text-text-primary">
           {data.key_insights.map((item, index) => (
             <li key={`${item.term}-${index}`} className="rounded-md border border-border-subtle p-3">
@@ -104,7 +120,7 @@ export function StructuredSummaryCard({ data, compact = false }: StructuredSumma
 
       {data.unresolved_threads.length > 0 && (
         <section className="mb-6">
-          <SectionEyebrow compact={compact}>Unresolved Threads</SectionEyebrow>
+          <SectionEyebrow compact={compact}>{labels?.unresolvedThreads ?? "Unresolved Threads"}</SectionEyebrow>
           <ul className={`list-disc space-y-3 pl-6 text-text-primary ${compact ? "text-[13px]" : ""}`}>
             {data.unresolved_threads.map((item, index) => (
               <li key={`${item}-${index}`} className="pl-1">
@@ -116,21 +132,21 @@ export function StructuredSummaryCard({ data, compact = false }: StructuredSumma
       )}
 
       <section className="mb-6 rounded-lg border border-border-subtle bg-bg-secondary/60 px-4 py-3">
-        <SectionEyebrow compact={compact}>Meta Observations</SectionEyebrow>
+        <SectionEyebrow compact={compact}>{labels?.metaObservations ?? "Meta Observations"}</SectionEyebrow>
         <p className={`text-text-primary ${compact ? "text-[13px]" : ""}`}>
-          <span className="font-medium">Thinking style:</span> {data.meta_observations.thinking_style}
+          <span className="font-medium">{labels?.thinkingStyle ?? "Thinking style:"}</span> {data.meta_observations.thinking_style}
         </p>
         <p className={`text-text-primary ${compact ? "text-[13px]" : ""}`}>
-          <span className="font-medium">Emotional tone:</span> {data.meta_observations.emotional_tone}
+          <span className="font-medium">{labels?.emotionalTone ?? "Emotional tone:"}</span> {data.meta_observations.emotional_tone}
         </p>
         <p className={`text-text-primary ${compact ? "text-[13px]" : ""}`}>
-          <span className="font-medium">Depth:</span> {data.meta_observations.depth_level}
+          <span className="font-medium">{labels?.depth ?? "Depth:"}</span> {data.meta_observations.depth_level}
         </p>
       </section>
 
       {data.actionable_next_steps.length > 0 && (
         <section>
-          <SectionEyebrow compact={compact}>Next Steps</SectionEyebrow>
+          <SectionEyebrow compact={compact}>{labels?.nextSteps ?? "Next Steps"}</SectionEyebrow>
           <ul className="space-y-3">
             {data.actionable_next_steps.map((item, index) => (
               <li

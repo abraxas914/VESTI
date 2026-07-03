@@ -222,7 +222,7 @@ export class DeepSeekParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "DeepSeek AST perf mode switched", {
+      logger.debug("parser", "DeepSeek AST perf mode switched", {
         platform: "DeepSeek",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -503,14 +503,18 @@ export class DeepSeekParser implements IParser {
   }
 
   private inferRole(node: Element): MessageRole | null {
-    const deepSeekClassRole = this.roleFromDeepSeekClass(node.className?.toString() ?? "");
-    if (deepSeekClassRole) return deepSeekClassRole;
-
+    // Authoritative role attributes first. DeepSeek class names are content
+    // hashes that rotate across builds; if the brittle class heuristic runs
+    // first it can collapse every bubble to "ai" when the user-hash rotates,
+    // overriding an explicit role attribute sitting right on the node.
     const attrRole =
       this.roleFromAttribute(node.getAttribute("data-message-author-role")) ??
       this.roleFromAttribute(node.getAttribute("data-role")) ??
       this.roleFromAttribute(node.getAttribute("data-author"));
     if (attrRole) return attrRole;
+
+    const deepSeekClassRole = this.roleFromDeepSeekClass(node.className?.toString() ?? "");
+    if (deepSeekClassRole) return deepSeekClassRole;
 
     const testIdRole = this.roleFromHint(node.getAttribute("data-testid"));
     if (testIdRole) return testIdRole;
@@ -520,15 +524,18 @@ export class DeepSeekParser implements IParser {
 
     const ancestor = node.parentElement?.closest("[data-role], [data-author], [data-testid], [class]");
     if (ancestor) {
+      const ancestorAttrRole =
+        this.roleFromAttribute(ancestor.getAttribute("data-message-author-role")) ??
+        this.roleFromAttribute(ancestor.getAttribute("data-role")) ??
+        this.roleFromAttribute(ancestor.getAttribute("data-author"));
+      if (ancestorAttrRole) return ancestorAttrRole;
+
       const deepSeekAncestorRole = this.roleFromDeepSeekClass(
         ancestor.className?.toString() ?? ""
       );
       if (deepSeekAncestorRole) return deepSeekAncestorRole;
 
       const ancestorRole =
-        this.roleFromAttribute(ancestor.getAttribute("data-message-author-role")) ??
-        this.roleFromAttribute(ancestor.getAttribute("data-role")) ??
-        this.roleFromAttribute(ancestor.getAttribute("data-author")) ??
         this.roleFromHint(ancestor.getAttribute("data-testid")) ??
         this.roleFromHint(ancestor.className?.toString() ?? "");
       if (ancestorRole) return ancestorRole;
@@ -665,7 +672,7 @@ export class DeepSeekParser implements IParser {
     logger.info("parser", "DeepSeek parse stats", stats);
 
     if (messages.length === 0) {
-      logger.warn("parser", "DeepSeek parser kept zero messages", {
+      logger.debug("parser", "DeepSeek parser kept zero messages", {
         source: stats.source,
         totalCandidates: stats.totalCandidates,
         droppedNoise: stats.droppedNoise,
@@ -676,7 +683,7 @@ export class DeepSeekParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "DeepSeek parser captured only one role", {
+      logger.debug("parser", "DeepSeek parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

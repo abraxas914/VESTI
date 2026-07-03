@@ -203,7 +203,7 @@ export class GeminiParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Gemini AST perf mode switched", {
+      logger.debug("parser", "Gemini AST perf mode switched", {
         platform: "Gemini",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -1082,7 +1082,7 @@ export class GeminiParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "Gemini parser captured only one role", {
+      logger.debug("parser", "Gemini parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

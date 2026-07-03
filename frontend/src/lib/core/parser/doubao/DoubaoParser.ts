@@ -178,12 +178,16 @@ const SELECTORS = {
     "h1",
     "title",
   ],
+  // Streaming indicators. Class-substring checks are scoped to inside a message
+  // block so they can't match persistent page chrome (which would leave
+  // isGenerating() permanently true and block every capture).
   generating: [
     "[data-is-streaming='true']",
-    "[data-testid*='stream']",
-    "[data-testid*='typing']",
-    "[class*='typing']",
-    "[class*='stream']",
+    "[data-testid*='streaming']",
+    "[data-testid='message-block-container'] [class*='typing']",
+    "[data-testid='message-block-container'] [class*='stream']",
+    "[data-message-id] [class*='typing']",
+    "[data-message-id] [class*='stream']",
   ],
   noiseContainers: DISCARD_CONTAINERS,
   noiseTextPatterns: [
@@ -330,7 +334,7 @@ export class DoubaoParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Doubao AST perf mode switched", {
+      logger.debug("parser", "Doubao AST perf mode switched", {
         platform: "Doubao",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -1032,7 +1036,7 @@ export class DoubaoParser implements IParser {
     logger.info("parser", "Doubao parse stats", stats);
 
     if (messages.length === 0) {
-      logger.warn("parser", "Doubao parser kept zero messages", {
+      logger.debug("parser", "Doubao parser kept zero messages", {
         source: stats.source,
         totalCandidates: stats.totalCandidates,
         droppedNoise: stats.droppedNoise,
@@ -1043,7 +1047,7 @@ export class DoubaoParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "Doubao parser captured only one role", {
+      logger.debug("parser", "Doubao parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

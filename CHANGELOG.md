@@ -12,20 +12,173 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added
 - Added multi-language support for the UI and AI-generated content (English / 中文 / 日本語 / 한국어), driven by a central locale registry; thread summaries, the weekly recap, and Explore answers all follow the selected language.
+- **Real local search (CJK-aware, ranked)** — the #1 user need. Replaced the naive
+  substring scan with a dependency-free engine: Lucene-style CJK character
+  unigram+bigram tokenization (Chinese/Japanese queries actually match, incl. the
+  single-character case — something Western tools structurally can't do),
+  multi-term AND ("design database" finds "database … design"), type-ahead prefix,
+  and a relevance score. The sidebar shows a "最相关结果 / Top matches" relevance list
+  while searching. Fully offline; verified by unit tests.
+- **Bulk organize in the sidebar** — the batch bar gains **Star** and **Add to
+  folder** over a whole selection (alongside Export/Delete), backed by idempotent
+  bulk repository ops. (Bulk archive + an Archived view are next; backend ready.)
+- **"What leaves your device" disclosure** in Settings → Model Access: an honest
+  note that capture/storage/keyword-search are 100% local while AI features send
+  conversation text to the configured model (by default via the proxy). en/zh.
+- **探索 hub — four reflective modes** under 探索/Explore (one switcher): 问答
+  (ask), **AITI 画像** (a local, empowering strengths portrait from your own
+  conversations), **学习 (Learn)** — your KB reframed as a personal curriculum
+  (knowledge domains with a depth mix, a glossary of "things you've learned", and
+  open loops, all computed locally), and **AI 圆桌 (Roundtable)** — a
+  multi-perspective panel (Skeptic/Optimist/Pragmatist/Domain Expert/Devil's
+  Advocate) on your configured model with a moderated, structured synthesis.
+  Bilingual; 圆桌 needs a connected model.
+- **Send to… (whole conversation or its summary)**: from the reader you can now
+  export a conversation — or its AI summary — to **Notion** (a new page under your
+  selected database, via a dependency-free Markdown→Notion-blocks renderer) or
+  **Obsidian** (a `Vesti/<title>.md` file with frontmatter). Plus per-message
+  **Copy as rich text** (faithful AST→HTML) that pastes formatted into
+  Word/WPS/Notion/Obsidian. Bilingual; Notion needs OAuth, Obsidian a connected
+  vault.
+- **提示词超市 (Prompt Supermarket)**: a large bilingual curated catalog (by
+  big-category) on the Prompts page; **加入/已加入** adopts prompts into a personal
+  **我的广场** shelf (kept separate from the auto-extracted 常用提示词).
+- **Toolbar icon opens the dashboard**: clicking the Vesti browser-toolbar icon
+  now opens (or focuses) the full standalone web UI (`options.html`) in its own
+  tab. The in-page owl still opens the sidepanel.
+- **Hover tooltips** on the sidebar dock: each item shows a clear title +
+  description card on hover/focus (reusable, dependency-free component).
+- **提示词广场 (Prompt Plaza)**: the Prompts page now recommends curated,
+  high-quality prompts from trusted public sources (with attribution + links),
+  plus a date-seeded "每日推荐" strip that rotates daily. Bundled and offline;
+  bilingual. Clicking a card prefills the editor.
+- **Timeline range filter + sort mode**: the Threads timeline gains a draggable
+  two-handle scrubber (with histogram) to filter conversations to a time window,
+  and a toggle to order/group by the conversation's own time (按对话时间) vs
+  capture time (按捕获时间).
+- **Bulk-import historical conversations** (ChatGPT, Claude): a new "Import
+  platform history" panel in the Data page reads your existing threads through
+  each platform's own API (using your current login) and saves them locally via
+  the normal capture pipeline (dedup keeps re-runs idempotent). Read-only,
+  throttled, cancellable, with live progress; other platforms slot into a
+  provider registry. Fully localized (en/zh).
+- **One-click prompt backup**: export/import the prompt library as a JSON file
+  from the Prompts tab, so prompts survive reinstalls (IndexedDB already survives
+  version upgrades).
+- **In-dock prompt manager**: the owl/dock now hosts a unified prompt feature —
+  提示词优化 (optimize), 提示词续写 (continue, a new `mode` on `COMPLETE_PROMPT`),
+  and 常用提示词 input (search by 唤醒词, click to fill, or Enter to one-click fill
+  the top match).
+- Auto-built prompt library: the dashboard Prompts tab now extracts reusable
+  prompts from captured conversations automatically when opened (empty or stale),
+  not just via the manual button.
 - Added message-sidecar metadata for structured citations and artifact presence.
+- Added a **Prompt Management** system: a new dashboard **Prompts** tab that
+  intelligently archives high-value prompts extracted from captured
+  conversations (LLM-assisted titling/summary/scoring with heuristic fallback),
+  a personal favorites ("常用") library with full CRUD, and an in-page assist
+  content script offering slash/quick-insert (`/v`) of saved prompts plus
+  LLM-powered draft "补写" (smart completion) across all supported AI platforms.
+- Added a new IndexedDB `prompts` store (schema v17) and offscreen routes for
+  prompt CRUD, library extraction, search, usage tracking, and completion.
+- Added a **real-time in-page prompt assistant**: as you type in any supported
+  platform's composer, it scores the draft (offline heuristics), flags clarity
+  issues, and suggests concrete improvements; a one-click "Optimize with AI"
+  rewrites the draft (preview before insert). IME-safe (no scoring mid Chinese
+  input), never auto-submits, and toggleable globally (Settings) or per-site.
+  Localized in English and Chinese.
 
 ### Changed
+- **常用提示词 curation refreshes instead of accumulating** (fixes "数量太多"):
+  extraction now clears the prior auto-set before installing a new one, and
+  auto-extract runs only on an empty library (re-running is the explicit Extract
+  button). Tighter caps (≤8) + higher quality gates + an LLM consolidation pass
+  that ranks/merges the best fragments across chunks. Editing a prompt promotes
+  it to `manual` so it survives a refresh.
+- **AITI is now an empowering, strengths-based portrait** (给人力量): both poles
+  framed as strengths, a "你的思维优势" section, obsessions reframed as areas
+  you've invested in.
+- 常用提示词 are now LLM-distilled reusable **fragments** (短小、可复用的片段，含
+  {{变量}}) when a model is configured, instead of whole captured turns; falls
+  back to the offline frequency heuristic with no model.
+- The in-dock 提示词助手 search now spans **both** your 常用提示词 and the curated
+  优质提示词 (plaza), with curated results tagged 广场.
+- Prompt curation is now selective: the library auto-collects only frequent +
+  high-quality prompts (capped, with a quality floor) instead of everything; the
+  tab is now labelled **常用提示词**. The dock prompt module is renamed
+  **提示词助手** and its hint now reads "实时监听输入框：输入唤醒词即时匹配，回车
+  一键填入。".
+- Merged the standalone in-page prompt assistant into the owl/dock as one
+  feature with a single open/close toggle; the lower dock holds a clean
+  prompt-manager panel. The existing per-host "real-time assistant" setting now
+  gates the in-dock panel.
+- Prompt library is now lightweight: the editor's "Title" field is relabeled
+  **唤醒词** (Trigger), the favorites control is gone, and extraction surfaces the
+  most frequent reusable prompts.
+- Extended i18n coverage (en/zh) across the sidepanel (data management dialogs,
+  export dialog, reader copy buttons, dock/card aria) and filled missing
+  explore/library tab label keys.
+- Renamed the conversation library to **对话知识库** (zh) and fully internationalized
+  the Prompts tab (~59 strings, en/zh) so it follows the app/browser language.
+- The in-page real-time assistant now follows Vesti's design tokens (monochrome
+  accent, semantic score colors) in both light and dark themes (was hardcoded).
+- Integrated the team's multi-language (en/zh) i18n, network-page content, and
+  Claude/Gemini parser + warm-start capture improvements from `origin/main`.
+- Hardened the i18n type system: locale files now mirror the English key shape
+  while allowing their own strings (`DeepStringify` of `TranslationsType`),
+  fixing a large class of pre-existing translation type errors and completing
+  the missing Chinese dashboard-settings strings.
 - Unified citation stripping with structured source retention across capture, reader, and export.
 - Hardened Qwen and Yuanbao parser alignment against current live DOM structures.
 - Added a reproducible Playwright auth, storage-state, and DOM sampling bootstrap workflow.
+- Reclassified parser observability heuristics (e.g. "captured only one role",
+  "kept zero messages", perf-mode switches) from `console.warn` to a new
+  `logger.debug` level so they no longer surface in the `chrome://extensions`
+  Errors panel as if the extension were failing.
 
 ### Fixed
+- **Retrieval correctness**: Explore RAG, related-conversations, and graph edges
+  now use true cosine similarity (was a raw dot product), so similarity scores and
+  the 0.15/0.4 cutoffs behave as intended across embeddings of differing norms.
+- Fixed Doubao (`www.doubao.com`) "cannot capture": added the staggered initial
+  capture triggers the content script was missing (parity with ChatGPT/Yuanbao)
+  and scoped `DoubaoParser.isGenerating()` to message bubbles so persistent page
+  chrome can't wedge capture. Added a one-time capture-path diagnostic.
+- Fixed prompt-library extraction returning nothing: relaxed the over-aggressive
+  score/length/frequency thresholds that were silently filtering out every
+  candidate, so the library now populates from captured conversations.
+- Fixed "Import to Notes" from a summary card landing on a blank page — it now
+  opens the notes view with the imported note shown and the "New Note" button
+  available.
+- Fixed the real-time in-page assistant not working on Kimi and Claude: input
+  events on nested nodes of rich editors (ProseMirror/Quill) are now resolved up
+  to the contenteditable root, and the Optimize/Save actions use a cached
+  composer reference so a focus shift to the panel no longer yields an empty draft.
 - Fixed ChatGPT thinking UI so it no longer splits a single assistant reply into multiple logical messages.
 - Fixed reader rendering so citation and search noise no longer appears as abrupt tail text after the main reply body.
 - Fixed Qwen and Yuanbao capture drift against current production DOM structures while keeping tables, math, and code paths intact.
+- Fixed Yuanbao "cannot capture": added the initial capture trigger the content
+  script was missing (parity with ChatGPT) so already-rendered conversations
+  are picked up on load, and scoped the `isGenerating()` streaming selectors to
+  AI bubbles so persistent page chrome can no longer wedge capture permanently.
+  Added a one-time capture-path diagnostic and a `no_messages` skip log to make
+  future "cannot capture" reports self-diagnosing.
+
+### Removed
+- Removed the standalone in-page prompt-assist floating window (its capabilities
+  now live in the dock prompt manager) and the dock's 消息/轮次 metric cards.
+- Removed the dead/duplicate `src/offscreen/index.ts` request handler (no
+  offscreen document exists; the live dispatchers are `handleOffscreenRequest` /
+  `handleBackgroundRequest` in `background/index.ts`). It was a known footgun —
+  routes added there silently never ran.
 
 ### Docs
+- Added `documents/DEVELOPMENT_GUIDELINES.md` (architecture map, message-routing
+  rules, the three i18n surfaces, build/verify checklist, known debt).
+- Added the historical-import design under `documents/prompt_management/`.
 - Added DOM sampling bootstrap and platform handoff notes for thinking-boundary repair, citation governance, and five-platform parser sampling.
+- Added the Prompt Management engineering spec, README, and manual acceptance
+  checklist under `documents/prompt_management/`.
 
 ### Chore
 - Added Playwright local auth and DOM sampling tooling for repeatable capture verification.

@@ -51,7 +51,17 @@ export class CapturePipeline {
       }
 
       const messages = this.parser.getMessages();
-      if (messages.length === 0) return;
+      if (messages.length === 0) {
+        // Surfaced at info-level so "cannot capture" reports show a decisive
+        // signal: the page passed detect/session/generating gates but the
+        // parser extracted nothing (typically stale DOM selectors).
+        logger.info("capture", "Capture skipped", {
+          platform,
+          sessionUUID,
+          reason: "no_messages",
+        });
+        return;
+      }
 
       const turnCount = countAiTurns(messages);
       const now = Date.now();

@@ -30,7 +30,10 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { resolveTurnCount } from "~lib/capture/turn-metrics";
-import { getConversationCaptureFreshnessAt } from "~lib/conversations/timestamps";
+import {
+  getConversationCaptureFreshnessAt,
+  getConversationOriginAt,
+} from "~lib/conversations/timestamps";
 import type { Conversation, SearchMatchSurface } from "~lib/types";
 import { updateConversationAndSync } from "~lib/services/syncActions";
 import { PlatformTag } from "./PlatformTag";
@@ -155,6 +158,9 @@ interface ConversationCardProps {
   searchQuery?: string;
   messageExcerpt?: string | null;
   messageMatchSurface?: SearchMatchSurface | null;
+  // Which time to surface on the card: the conversation's own time ("origin")
+  // or when Vesti last captured it ("capture"). Mirrors the list sort mode.
+  sortMode?: "origin" | "capture";
   // Batch selection support
   isBatchMode?: boolean;
   isSelected?: boolean;
@@ -175,6 +181,7 @@ export function ConversationCard({
   searchQuery = "",
   messageExcerpt = null,
   messageMatchSurface = null,
+  sortMode = "origin",
   isBatchMode = false,
   isSelected = false,
   onToggleSelect,
@@ -498,8 +505,17 @@ export function ConversationCard({
               }
             />
           )}
-          <span className="text-vesti-xs text-text-tertiary">
-            {t.timeline.lastCaptured} {formatRelativeTime(getConversationCaptureFreshnessAt(conversation), t.timeline.relativeTime)}
+          <span
+            className="text-vesti-xs text-text-tertiary"
+            title={new Date(
+              sortMode === "capture"
+                ? getConversationCaptureFreshnessAt(conversation)
+                : getConversationOriginAt(conversation),
+            ).toLocaleString()}
+          >
+            {sortMode === "capture"
+              ? `${t.timeline.lastCaptured} ${formatRelativeTime(getConversationCaptureFreshnessAt(conversation), t.timeline.relativeTime)}`
+              : `${t.timeline.conversedAt} ${formatRelativeTime(getConversationOriginAt(conversation), t.timeline.relativeTime)}`}
           </span>
         </div>
       </div>
@@ -510,7 +526,7 @@ export function ConversationCard({
             value={draftTitle}
             maxLength={MAX_TITLE_LENGTH}
             disabled={isSavingTitle}
-            aria-label="Edit conversation title"
+            aria-label={t.timeline.editTitle}
             onChange={(event) => {
               setDraftTitle(event.target.value);
             }}
@@ -550,7 +566,7 @@ export function ConversationCard({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label="More actions"
+                  aria-label={t.timeline.moreActions}
                   onPointerDown={(event) => {
                     armSuppressCardActivation();
                     event.stopPropagation();

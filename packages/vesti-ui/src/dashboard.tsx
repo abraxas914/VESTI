@@ -14,9 +14,13 @@ import {
 import { DataManagementPanel } from "./components/DataManagementPanel";
 import { LibraryDataProvider } from "./contexts/library-data";
 import { ExploreTab } from "./tabs/explore-tab";
+import { AitiCard } from "./components/AitiCard";
+import { LearnCard } from "./components/LearnCard";
+import { RoundtablePanel } from "./components/RoundtablePanel";
 import { LibraryTab } from "./tabs/library-tab";
 import { NetworkTab } from "./tabs/network-tab";
-import type { DashboardLabels, StorageApi, UiThemeMode } from "./types";
+import { PromptsTab } from "./tabs/prompts-tab";
+import type { AitiProfile, DashboardLabels, LearnProfile, PlazaData, StorageApi, UiThemeMode } from "./types";
 import type { NotionDatabaseOption, NotionSettings } from "./notion-integration";
 import {
   connectToNotion,
@@ -29,7 +33,7 @@ import {
   selectNotionDatabase,
 } from "./notion-integration";
 
-type Tab = "library" | "explore" | "network";
+type Tab = "library" | "explore" | "network" | "prompts";
 type DrawerView = "settings" | "data";
 type ReturnTab = Exclude<Tab, "library">;
 type DashboardNavRequest = {
@@ -41,10 +45,10 @@ type ThemeSyncStatus = "idle" | "syncing" | "error";
 const DASHBOARD_NAV_REQUEST_KEY = "vesti_dashboard_open_tab";
 
 const DEFAULT_LABELS: DashboardLabels = {
-  tabs: { library: "LIBRARY", explore: "EXPLORE", network: "NETWORK" },
+  tabs: { library: "LIBRARY", explore: "EXPLORE", network: "KNOWLEDGE GRAPH", prompts: "PROMPTS" },
   nav: {
     backToExplore: "Back to Explore",
-    backToNetwork: "Back to Network",
+    backToNetwork: "Back to Knowledge Graph",
     dashboardSections: "Dashboard sections",
     closeDrawer: "Close drawer backdrop",
   },
@@ -558,8 +562,8 @@ const DEFAULT_LABELS: DashboardLabels = {
     refreshingStorage: "Refreshing storage...",
   },
   network: {
-    emptyTitle: "Your temporal network will appear here.",
-    emptyDesc: "Capture a few conversations first, then reopen Network to watch the graph evolve over time.",
+    emptyTitle: "Your knowledge graph will appear here.",
+    emptyDesc: "Capture a few conversations first, then reopen the Knowledge Graph to watch it evolve over time.",
     noConversationsYet: "No conversations captured yet.",
     replayInfo: "This replay runs the full timeline in 8 seconds, even when everything was captured today.",
     newConversationOn: "+ New conversation on {platform}",
@@ -597,6 +601,163 @@ const DEFAULT_LABELS: DashboardLabels = {
     conceptMentionedIn: "Across {count} conversations",
     relatedConversations: "Related conversations",
   },
+  prompts: {
+    title: "Prompt Library",
+    summary: "{count} prompts",
+    extractFromChats: "Extract from chats",
+    extracting: "Extracting…",
+    extractTooltip: "Scan recent conversations for reusable prompts",
+    newPrompt: "New prompt",
+    searchPlaceholder: "Search prompts…",
+    favorites: "Favorites",
+    allCategories: "All categories",
+    sortRecent: "Recent",
+    sortQuality: "Quality",
+    sortUsage: "Most used",
+    loading: "Loading prompts…",
+    emptyNone: "No prompts yet.",
+    emptyFiltered: "No prompts match the current filters.",
+    emptyHint: "Extract reusable prompts from your captured conversations, or add one manually.",
+    retry: "Retry",
+    favorite: "Favorite",
+    unfavorite: "Unfavorite",
+    copy: "Copy prompt",
+    deleteAria: "Delete prompt",
+    closeEditor: "Close editor",
+    editorNew: "New prompt",
+    editorEdit: "Edit prompt",
+    fieldTitle: "Trigger",
+    titlePlaceholder: "Short trigger to recall this prompt (optional)",
+    fieldBody: "Prompt",
+    bodyPlaceholder: "Write your reusable prompt. Use {{variables}} for placeholders.",
+    improveTooltip: "Rewrite this draft into a stronger prompt (uses your configured LLM)",
+    improving: "Improving…",
+    improveWithAI: "Improve with AI",
+    fieldCategory: "Category",
+    categoryPlaceholder: "e.g. Coding",
+    fieldTags: "Tags (comma-sep)",
+    tagsPlaceholder: "code, review",
+    markFavorite: "Mark as favorite (常用)",
+    openSource: "Open source conversation",
+    save: "Save",
+    cancel: "Cancel",
+    deleteBtn: "Delete",
+    usedTimes: "used {n}×",
+    scorePoor: "Basic",
+    scoreGood: "Good",
+    scoreHigh: "High-value",
+    toastBodyEmpty: "Prompt body cannot be empty.",
+    toastSaved: "Prompt saved.",
+    toastDuplicate: "An identical prompt already exists.",
+    toastUpdated: "Prompt updated.",
+    toastSaveFailed: "Failed to save prompt.",
+    toastDeleted: "Prompt deleted.",
+    toastDeleteFailed: "Failed to delete prompt.",
+    toastFavoriteFailed: "Failed to update favorite.",
+    toastCopied: "Copied to clipboard.",
+    toastClipboard: "Clipboard unavailable.",
+    toastImproved: "Prompt improved with AI.",
+    toastNoLlm: "No LLM configured — configure one in Settings to enable AI rewrite.",
+    toastImproveFailed: "AI completion failed.",
+    toastExtract: "Archived {created} new prompt(s) from {candidates} candidate(s).",
+    unavailable: "Prompt management is not available in this build.",
+    exportLabel: "Export",
+    importLabel: "Import",
+    importBackup: "Import prompts backup",
+    toastExported: "Exported {n} prompts.",
+    toastImported: "Imported {n} prompts ({skipped} skipped).",
+    importFailed: "Import failed — invalid backup file.",
+    loadFailed: "Failed to load prompts.",
+    draftFirst: "Write a draft to improve first.",
+    extractFailed: "Extraction failed.",
+    summaryLabel: "Summary: ",
+    plazaTitle: "Prompt Plaza",
+    plazaSubtitle: "Recommended high-quality prompts from trusted sources.",
+    plazaDaily: "Daily picks",
+    plazaDailyHint: "Refreshes every day.",
+    plazaUse: "Use",
+    plazaSourcePrefix: "Source: ",
+    supermarketTitle: "Prompt Supermarket",
+    supermarketSubtitle: "Browse more quality prompts by category and add them to your plaza.",
+    myPlaza: "My plaza",
+    myPlazaEmpty: "Add prompts from the supermarket below to build your plaza.",
+    adopt: "Add",
+    adopted: "Added",
+    selectAria: "Select prompt",
+    selectedCount: "{n} selected",
+    deleteSelected: "Delete",
+    clearSelection: "Cancel",
+  },
+  aiti: {
+    modeAsk: "Ask",
+    modeAiti: "AITI",
+    modeRoundtable: "Roundtable",
+    title: "Your AITI — your thinking strengths",
+    subtitle: "Computed locally from your own conversations. A reflection of your strengths, not a verdict.",
+    insufficient: "Not enough conversations analyzed yet — keep chatting and your portrait will take shape.",
+    sample: "Drawn from {n} of your conversations",
+    typeSeparator: " · ",
+    strengthsTitle: "Your thinking strengths",
+    empoweringIntro: "Across your AI conversations, these strengths shine through:",
+    obsessionsTitle: "What you keep investing in",
+    evidence: "seen in {n} conversations",
+    axisNeedsSignal: "Needs more signal",
+    axisDepthLabel: "Breadth ↔ Depth",
+    axisDepthLeft: "Explorer",
+    axisDepthRight: "Excavator",
+    axisDepthLeftStrength: "You range widely and connect ideas across many fields.",
+    axisDepthRightStrength: "You dive deep and master complex things thoroughly.",
+    axisMakerLabel: "Theory ↔ Practice",
+    axisMakerLeft: "Theorist",
+    axisMakerRight: "Maker",
+    axisMakerLeftStrength: "You think in principles and models, getting the fundamentals right.",
+    axisMakerRightStrength: "You're action-oriented and turn ideas into real results fast.",
+    axisFocusLabel: "Converge ↔ Wander",
+    axisFocusLeft: "Converger",
+    axisFocusRight: "Wanderer",
+    axisFocusLeftStrength: "You stay focused and converge on the answer that matters.",
+    axisFocusRightStrength: "You roam with curiosity and open up unexpected possibilities.",
+    axisAffectLabel: "Cool ↔ Spirited",
+    axisAffectLeft: "Cool-headed",
+    axisAffectRight: "Spirited",
+    axisAffectLeftStrength: "You stay calm and keep clear judgment under complexity.",
+    axisAffectRightStrength: "You bring strong emotional engagement to what you explore.",
+  },
+  learn: {
+    modeLearn: "Learn",
+    title: "What you've been learning",
+    subtitle: "Your conversations, organized as a personal curriculum. Computed locally.",
+    insufficient: "Not enough conversations yet — keep chatting and your learning map will fill in.",
+    sample: "From {n} analyzed conversations",
+    domainsTitle: "Knowledge domains",
+    uncategorized: "Uncategorized",
+    domainConversations: "{n} conversations",
+    glossaryTitle: "Things you've learned",
+    openLoopsTitle: "Open loops",
+    openLoopsEmpty: "No unresolved threads — nicely closed out.",
+  },
+  roundtable: {
+    title: "AI Roundtable",
+    subtitle: "Convene a panel of perspectives on your question, then a moderated synthesis.",
+    questionPlaceholder: "Ask a judgment-call question to debate…",
+    personasLabel: "Panelists (pick up to 3)",
+    run: "Convene panel",
+    running: "The panel is deliberating…",
+    latencyHint: "Each seat answers in turn, so this takes a little while.",
+    needQuestion: "Type a question first.",
+    seatsTitle: "Panel",
+    synthesisTitle: "Moderator's synthesis",
+    consensus: "Consensus",
+    disagreements: "Key disagreements",
+    recommendation: "Recommendation",
+    openQuestions: "Open questions",
+    empty: "Ask a question and convene the panel to see perspectives + a synthesis.",
+    personaSkeptic: "Skeptic",
+    personaOptimist: "Optimist",
+    personaPragmatist: "Pragmatist",
+    personaDomainExpert: "Domain Expert",
+    personaDevilsAdvocate: "Devil's Advocate",
+  },
 };
 
 type DashboardProps = {
@@ -609,6 +770,10 @@ type DashboardProps = {
   themeSyncStatus?: ThemeSyncStatus;
   themeSyncMessage?: string | null;
   labels?: DashboardLabels;
+  plaza?: PlazaData;
+  onPlazaAdoptToggle?: (id: string, adopt: boolean) => void;
+  aiti?: AitiProfile;
+  learn?: LearnProfile;
 };
 
 export function VestiDashboard({
@@ -621,6 +786,10 @@ export function VestiDashboard({
   themeSyncStatus = "idle",
   themeSyncMessage = null,
   labels: providedLabels,
+  plaza,
+  onPlazaAdoptToggle,
+  aiti,
+  learn,
 }: DashboardProps) {
   const labels = providedLabels ?? DEFAULT_LABELS;
   const SETTINGS_KEY = "vesti_llm_settings";
@@ -628,9 +797,16 @@ export function VestiDashboard({
     if (typeof window === "undefined") return "library";
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab");
-    if (tab === "explore" || tab === "network" || tab === "library") return tab;
+    if (
+      tab === "explore" ||
+      tab === "network" ||
+      tab === "library" ||
+      tab === "prompts"
+    )
+      return tab;
     return "library";
   });
+  const [exploreMode, setExploreMode] = useState<"ask" | "aiti" | "learn" | "roundtable">("ask");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerView, setDrawerView] = useState<DrawerView>("settings");
@@ -664,6 +840,7 @@ export function VestiDashboard({
     library: activeTab === "library",
     explore: activeTab === "explore",
     network: activeTab === "network",
+    prompts: activeTab === "prompts",
   }));
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const notionAvailable =
@@ -689,7 +866,12 @@ export function VestiDashboard({
     const applyNavRequest = (raw: unknown) => {
       if (!raw || typeof raw !== "object") return;
       const tab = (raw as DashboardNavRequest).tab;
-      if (tab === "library" || tab === "explore" || tab === "network") {
+      if (
+        tab === "library" ||
+        tab === "explore" ||
+        tab === "network" ||
+        tab === "prompts"
+      ) {
         setActiveTab(tab);
       }
     };
@@ -970,6 +1152,17 @@ export function VestiDashboard({
       >
         {labels.tabs.network}
       </button>
+      <button
+        type="button"
+        onClick={() => handleSelectTab("prompts")}
+        className={`inline-flex items-center px-3 py-1.5 text-[14px] leading-none font-mono font-medium uppercase tracking-[0.26em] transition-colors ${
+          activeTab === "prompts"
+            ? "text-text-primary"
+            : "text-text-tertiary hover:text-text-secondary"
+        }`}
+      >
+        {labels.tabs.prompts}
+      </button>
     </nav>
   );
 
@@ -1043,13 +1236,69 @@ export function VestiDashboard({
             </div>
           )}
           {mountedTabs.explore && (
-            <div className={`h-full ${activeTab === "explore" ? "block" : "hidden"}`}>
-              <ExploreTab
-                storage={storage}
-                themeMode={themeMode}
-                onOpenConversation={handleOpenConversation}
-                labels={labels.explore}
-              />
+            <div className={`h-full ${activeTab === "explore" ? "flex flex-col" : "hidden"}`}>
+              {/* Explore = the reflective-AI hub: 问答 / AITI 画像 / 学习 / 圆桌 */}
+              <div className="flex items-center gap-1 border-b border-border-subtle px-4 py-2">
+                {(["ask", "aiti", "learn", "roundtable"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setExploreMode(mode)}
+                    className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
+                      exploreMode === mode
+                        ? "bg-accent-primary-light text-accent-primary"
+                        : "text-text-tertiary hover:text-text-secondary"
+                    }`}
+                  >
+                    {mode === "ask"
+                      ? labels.aiti.modeAsk
+                      : mode === "aiti"
+                        ? labels.aiti.modeAiti
+                        : mode === "learn"
+                          ? labels.learn.modeLearn
+                          : labels.aiti.modeRoundtable}
+                  </button>
+                ))}
+              </div>
+              <div className={`min-h-0 flex-1 ${exploreMode === "ask" ? "block" : "hidden"}`}>
+                <ExploreTab
+                  storage={storage}
+                  themeMode={themeMode}
+                  onOpenConversation={handleOpenConversation}
+                  labels={labels.explore}
+                />
+              </div>
+              {exploreMode === "aiti" && (
+                <div className="min-h-0 flex-1">
+                  <AitiCard
+                    profile={aiti}
+                    labels={labels.aiti}
+                    storage={storage}
+                    sendToLabels={labels.library}
+                  />
+                </div>
+              )}
+              {exploreMode === "learn" && (
+                <div className="min-h-0 flex-1">
+                  <LearnCard
+                    profile={learn}
+                    labels={labels.learn}
+                    onOpenConversation={handleOpenConversation}
+                    storage={storage}
+                    sendToLabels={labels.library}
+                  />
+                </div>
+              )}
+              {exploreMode === "roundtable" && (
+                <div className="min-h-0 flex-1">
+                  <RoundtablePanel
+                    storage={storage}
+                    themeMode={themeMode}
+                    labels={labels.roundtable}
+                    sendToLabels={labels.library}
+                  />
+                </div>
+              )}
             </div>
           )}
           {mountedTabs.network && (
@@ -1060,6 +1309,19 @@ export function VestiDashboard({
                 isActive={activeTab === "network"}
                 onSelectConversation={handleOpenConversation}
                 labels={labels.network}
+              />
+            </div>
+          )}
+          {mountedTabs.prompts && (
+            <div className={`h-full ${activeTab === "prompts" ? "block" : "hidden"}`}>
+              <PromptsTab
+                storage={storage}
+                themeMode={themeMode}
+                isActive={activeTab === "prompts"}
+                onOpenConversation={handleOpenConversation}
+                labels={labels.prompts}
+                plaza={plaza}
+                onPlazaAdoptToggle={onPlazaAdoptToggle}
               />
             </div>
           )}

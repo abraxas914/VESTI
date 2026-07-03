@@ -4,7 +4,21 @@ import { logger } from "../utils/logger";
 export const SOFT_LIMIT_BYTES = 900 * 1024 * 1024;
 export const HARD_LIMIT_BYTES = 1024 * 1024 * 1024;
 
-function resolveStatus(bytes: number): StorageUsageStatus {
+function resolveStatus(
+  bytes: number,
+  unlimited: boolean,
+  quota: number | null,
+): StorageUsageStatus {
+  // With the unlimitedStorage permission granted, IndexedDB is bounded by the
+  // browser's per-origin quota, not our static 1 GiB ceiling — gating on
+  // HARD_LIMIT_BYTES would silently stop captures far below the real limit.
+  if (unlimited) {
+    if (quota && quota > 0) {
+      if (bytes >= quota * 0.95) return "blocked";
+      if (bytes >= quota * 0.85) return "warning";
+    }
+    return "ok";
+  }
   if (bytes >= HARD_LIMIT_BYTES) return "blocked";
   if (bytes >= SOFT_LIMIT_BYTES) return "warning";
   return "ok";
@@ -50,14 +64,15 @@ async function getLocalUsage(): Promise<number> {
 
 export async function getStorageUsageSnapshot(): Promise<StorageUsageSnapshot> {
   const [origin, localUsed] = await Promise.all([getOriginEstimate(), getLocalUsage()]);
+  const unlimited = hasUnlimitedStorageEnabled();
   return {
     originUsed: origin.usage,
     originQuota: origin.quota,
     localUsed,
-    unlimitedStorageEnabled: hasUnlimitedStorageEnabled(),
+    unlimitedStorageEnabled: unlimited,
     softLimit: SOFT_LIMIT_BYTES,
     hardLimit: HARD_LIMIT_BYTES,
-    status: resolveStatus(origin.usage),
+    status: resolveStatus(origin.usage, unlimited, origin.quota),
   };
 }
 

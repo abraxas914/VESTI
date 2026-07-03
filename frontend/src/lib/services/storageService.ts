@@ -23,7 +23,15 @@ import type {
   ObsidianImportFileEntry,
   ObsidianImportSummary,
   Platform,
+  Prompt,
+  CreatePromptInput,
+  UpdatePromptChanges,
+  PromptListFilter,
+  PromptExtractionResult,
+  PromptCompletionResult,
   RagResponse,
+  RoundtablePersonaId,
+  RoundtableResult,
   RelatedConversation,
   SearchConversationMatchesQuery,
   StorageUsageSnapshot,
@@ -39,6 +47,9 @@ import type { LlmDiagnostic } from "./llmService"
 const LONG_RUNNING_TIMEOUT_MS = 120000
 const TEST_CONNECTION_TIMEOUT_MS = 45000
 const FULL_TEXT_SEARCH_TIMEOUT_MS = 15000
+// Dashboard reads can run during a cold service-worker spin-up or over a large
+// KB; the 4 s default request timeout then spuriously fails them as "load failed".
+const READ_TIMEOUT_MS = 20000
 
 export async function getConversations(filters?: {
   platform?: Platform
@@ -49,14 +60,14 @@ export async function getConversations(filters?: {
     type: "GET_CONVERSATIONS",
     target: "offscreen",
     payload: filters
-  }) as Promise<Conversation[]>
+  }, READ_TIMEOUT_MS) as Promise<Conversation[]>
 }
 
 export async function getTopics(): Promise<Topic[]> {
   return sendRequest({
     type: "GET_TOPICS",
     target: "offscreen"
-  }) as Promise<Topic[]>
+  }, READ_TIMEOUT_MS) as Promise<Topic[]>
 }
 
 export async function createTopic(
@@ -232,12 +243,56 @@ export async function removeFolderTag(
   return result
 }
 
+export async function bulkSetConversationFlags(
+  ids: number[],
+  patch: { is_starred?: boolean; is_archived?: boolean }
+): Promise<{ updated: number }> {
+  const result = (await sendRequest(
+    {
+      type: "BULK_SET_CONVERSATION_FLAGS",
+      target: "offscreen",
+      payload: { ids, patch }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  )) as { updated: number }
+
+  if (result.updated > 0) {
+    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
+      void chrome.runtime.lastError
+    })
+  }
+
+  return result
+}
+
+export async function bulkAddTagToConversations(
+  ids: number[],
+  tag: string
+): Promise<{ updated: number }> {
+  const result = (await sendRequest(
+    {
+      type: "BULK_ADD_TAG_TO_CONVERSATIONS",
+      target: "offscreen",
+      payload: { ids, tag }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  )) as { updated: number }
+
+  if (result.updated > 0) {
+    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
+      void chrome.runtime.lastError
+    })
+  }
+
+  return result
+}
+
 export async function getMessages(conversationId: number): Promise<Message[]> {
   return sendRequest({
     type: "GET_MESSAGES",
     target: "offscreen",
     payload: { conversationId }
-  }) as Promise<Message[]>
+  }, READ_TIMEOUT_MS) as Promise<Message[]>
 }
 
 export async function getAnnotationsByConversation(
@@ -306,6 +361,19 @@ export async function exportAnnotationToNotion(
   })) as { pageId: string; url?: string }
 
   return result
+}
+
+export async function exportConversationToNotion(
+  input: { title: string; markdown: string }
+): Promise<{ pageId: string; url?: string }> {
+  return (await sendRequest(
+    {
+      type: "EXPORT_CONVERSATION_TO_NOTION",
+      target: "offscreen",
+      payload: input
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  )) as { pageId: string; url?: string }
 }
 
 export async function getNotes(): Promise<Note[]> {
@@ -425,6 +493,21 @@ export async function askKnowledgeBase(
     },
     LONG_RUNNING_TIMEOUT_MS
   ) as Promise<RagResponse & { sessionId: string }>
+}
+
+export async function runRoundtable(
+  question: string,
+  personaIds: RoundtablePersonaId[],
+  opts?: { lang?: "zh" | "en" }
+): Promise<RoundtableResult> {
+  return sendRequest(
+    {
+      type: "RUN_ROUNDTABLE",
+      target: "offscreen",
+      payload: { question, personaIds, lang: opts?.lang }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  ) as Promise<RoundtableResult>
 }
 
 // Explore Session APIs
@@ -550,21 +633,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return sendRequest({
     type: "GET_DASHBOARD_STATS",
     target: "offscreen"
-  }) as Promise<DashboardStats>
+  }, READ_TIMEOUT_MS) as Promise<DashboardStats>
 }
 
 export async function getStorageUsage(): Promise<StorageUsageSnapshot> {
   return sendRequest({
     type: "GET_STORAGE_USAGE",
     target: "offscreen"
-  }) as Promise<StorageUsageSnapshot>
+  }, READ_TIMEOUT_MS) as Promise<StorageUsageSnapshot>
 }
 
 export async function getDataOverview(): Promise<DataOverviewSnapshot> {
   return sendRequest({
     type: "GET_DATA_OVERVIEW",
     target: "offscreen"
-  }) as Promise<DataOverviewSnapshot>
+  }, READ_TIMEOUT_MS) as Promise<DataOverviewSnapshot>
 }
 
 export async function exportData(
@@ -673,6 +756,14 @@ export async function getSummary(
   return record ? toChatSummaryData(record) : null
 }
 
+/** Raw summary records (with `structured` payloads) for local analytics like AITI. */
+export async function getAllSummaries(): Promise<SummaryRecord[]> {
+  return sendRequest({
+    type: "GET_ALL_SUMMARIES",
+    target: "offscreen"
+  }) as Promise<SummaryRecord[]>
+}
+
 export async function generateConversationSummary(
   conversationId: number
 ): Promise<SummaryRecord> {
@@ -744,4 +835,105 @@ export async function forceArchiveTransient(): Promise<ForceArchiveTransientResu
     type: "FORCE_ARCHIVE_TRANSIENT",
     target: "background"
   }) as Promise<ForceArchiveTransientResult>
+}
+
+// ---- Prompt Management -----------------------------------------------------
+
+export async function listPrompts(filter?: PromptListFilter): Promise<Prompt[]> {
+  return sendRequest({
+    type: "LIST_PROMPTS",
+    target: "offscreen",
+    payload: { filter }
+  }, READ_TIMEOUT_MS) as Promise<Prompt[]>
+}
+
+export async function searchPrompts(
+  query: string,
+  limit?: number
+): Promise<Prompt[]> {
+  return sendRequest({
+    type: "SEARCH_PROMPTS",
+    target: "offscreen",
+    payload: { query, limit }
+  }) as Promise<Prompt[]>
+}
+
+export async function createPrompt(
+  input: CreatePromptInput
+): Promise<{ prompt: Prompt; created: boolean }> {
+  return sendRequest({
+    type: "CREATE_PROMPT",
+    target: "offscreen",
+    payload: { input }
+  }) as Promise<{ prompt: Prompt; created: boolean }>
+}
+
+export async function updatePrompt(
+  id: number,
+  changes: UpdatePromptChanges
+): Promise<Prompt> {
+  const result = (await sendRequest({
+    type: "UPDATE_PROMPT",
+    target: "offscreen",
+    payload: { id, changes }
+  })) as { prompt: Prompt }
+  return result.prompt
+}
+
+export async function deletePrompt(id: number): Promise<void> {
+  await sendRequest({
+    type: "DELETE_PROMPT",
+    target: "offscreen",
+    payload: { id }
+  })
+}
+
+export async function togglePromptFavorite(
+  id: number,
+  isFavorite: boolean
+): Promise<Prompt> {
+  const result = (await sendRequest({
+    type: "TOGGLE_PROMPT_FAVORITE",
+    target: "offscreen",
+    payload: { id, isFavorite }
+  })) as { prompt: Prompt }
+  return result.prompt
+}
+
+export async function incrementPromptUsage(id: number): Promise<Prompt> {
+  const result = (await sendRequest({
+    type: "INCREMENT_PROMPT_USAGE",
+    target: "offscreen",
+    payload: { id }
+  })) as { prompt: Prompt }
+  return result.prompt
+}
+
+export async function extractPromptsFromLibrary(options?: {
+  scope?: "all" | "recent"
+  limit?: number
+}): Promise<PromptExtractionResult> {
+  return sendRequest(
+    {
+      type: "EXTRACT_PROMPTS_FROM_LIBRARY",
+      target: "offscreen",
+      payload: options
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  ) as Promise<PromptExtractionResult>
+}
+
+export async function completePrompt(payload: {
+  draft: string
+  platform?: Platform
+  useLibrary?: boolean
+}): Promise<PromptCompletionResult> {
+  return sendRequest(
+    {
+      type: "COMPLETE_PROMPT",
+      target: "offscreen",
+      payload
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  ) as Promise<PromptCompletionResult>
 }

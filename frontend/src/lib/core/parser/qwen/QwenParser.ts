@@ -481,7 +481,7 @@ export class QwenParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Qwen AST perf mode switched", {
+      logger.debug("parser", "Qwen AST perf mode switched", {
         platform: "Qwen",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -1393,7 +1393,7 @@ export class QwenParser implements IParser {
     logger.info("parser", "Qwen parse stats", stats);
 
     if (stats.totalCandidates > 200 || stats.keptMessages > 80) {
-      logger.warn("parser", "Qwen parser candidate scope may be polluted", {
+      logger.debug("parser", "Qwen parser candidate scope may be polluted", {
         rootSelector: stats.rootSelector,
         totalCandidates: stats.totalCandidates,
         keptMessages: stats.keptMessages,
@@ -1402,7 +1402,7 @@ export class QwenParser implements IParser {
     }
 
     if (messages.length === 0) {
-      logger.warn("parser", "Qwen parser kept zero messages", {
+      logger.debug("parser", "Qwen parser kept zero messages", {
         rootSelector: stats.rootSelector,
         source: stats.source,
         totalCandidates: stats.totalCandidates,
@@ -1414,7 +1414,7 @@ export class QwenParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "Qwen parser captured only one role", {
+      logger.debug("parser", "Qwen parser captured only one role", {
         rootSelector: stats.rootSelector,
         source: stats.source,
         roleDistribution: stats.roleDistribution,

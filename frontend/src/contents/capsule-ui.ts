@@ -9,8 +9,29 @@ import {
   type CapsuleSettings,
   type CapsuleViewMode,
 } from "../lib/services/capsuleSettingsService";
-import type { ActiveCaptureStatus, Platform, UiThemeMode } from "../lib/types";
-import { resolveCapsuleLogoSrc } from "../lib/ui/capsuleLogo";
+import {
+  getPromptAssistSettingsForHost,
+  subscribePromptAssistSettings,
+} from "../lib/services/promptAssistSettingsService";
+import {
+  getComposerText,
+  resolveComposer,
+  resolveComposerFromEvent,
+  setComposerText,
+  type ComposerEl,
+} from "../lib/contents/composerIo";
+import { searchCuratedPrompts } from "../lib/promptPlaza/commonPrompts";
+
+// A dock search result: either a saved prompt (has promptId) or a curated plaza
+// prompt (fromPlaza). Both fill the composer; only saved ones track usage.
+type PmResult = {
+  title: string;
+  body: string;
+  promptId?: number;
+  fromPlaza?: boolean;
+};
+import type { ActiveCaptureStatus, Platform, Prompt, UiThemeMode } from "../lib/types";
+import { LOGO_BASE64 } from "../lib/ui/logo";
 import { logger } from "../lib/utils/logger";
 import { detectAndSetLanguage } from "../lib/services/languageSettingsService";
 
@@ -242,8 +263,6 @@ const capsuleEn = {
   archiving: "Archiving...",
   saved: "Saved",
   actionFailed: "Action failed",
-  messages: "Messages",
-  turns: "Turns",
   archiveNow: "Archive now",
   mirrorModeHint: "Mirror mode saves content automatically.",
   archiveCompleted: "Archive completed.",
@@ -251,6 +270,26 @@ const capsuleEn = {
   openVestiCapsule: "Open Vesti capsule",
   openVestiDock: "Open Vesti Dock",
   openDock: "Open Dock",
+  collapseAria: "Collapse capsule",
+  collapseTitle: "Collapse",
+  waitingForStatus: "Waiting for status...",
+  pm: {
+    heading: "Prompt Assistant",
+    optimize: "Optimize",
+    optimizing: "Optimizing...",
+    continue: "Continue",
+    continuing: "Continuing...",
+    searchPlaceholder: "Search your prompts + plaza picks by trigger/keyword...",
+    empty: "No prompts yet.",
+    noResults: "No match.",
+    noDraft: "Type something in the chat box first.",
+    fill: "Fill",
+    cancel: "Cancel",
+    failed: "Could not generate. Try again.",
+    offlineHint: "Connect a model in Settings to optimize prompts.",
+    hint: "Type to match · Enter to fill",
+    plazaBadge: "Plaza",
+  },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "Archive is disabled in mirror mode.",
     ACTIVE_TAB_UNSUPPORTED: "Current tab host is unsupported.",
@@ -273,8 +312,6 @@ const capsuleZh = {
   archiving: "正在归档...",
   saved: "已保存",
   actionFailed: "操作失败",
-  messages: "消息",
-  turns: "轮次",
   archiveNow: "立即归档",
   mirrorModeHint: "镜像模式会自动保存内容。",
   archiveCompleted: "归档完成。",
@@ -282,6 +319,26 @@ const capsuleZh = {
   openVestiCapsule: "打开 Vesti 胶囊",
   openVestiDock: "打开 Vesti 面板",
   openDock: "打开面板",
+  collapseAria: "收起胶囊",
+  collapseTitle: "收起",
+  waitingForStatus: "正在获取状态…",
+  pm: {
+    heading: "提示词助手",
+    optimize: "优化",
+    optimizing: "优化中...",
+    continue: "续写",
+    continuing: "续写中...",
+    searchPlaceholder: "使用唤醒词/关键词 搜索常用提示词/优质提示词（来自提示词广场）",
+    empty: "暂无提示词。",
+    noResults: "无匹配。",
+    noDraft: "请先在对话输入框中输入内容。",
+    fill: "填入",
+    cancel: "取消",
+    failed: "生成失败，请重试。",
+    offlineHint: "在设置中连接模型后即可优化提示词。",
+    hint: "输入即匹配 · 回车填入",
+    plazaBadge: "广场",
+  },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "镜像模式下归档已禁用。",
     ACTIVE_TAB_UNSUPPORTED: "当前标签页不受支持。",
@@ -429,10 +486,6 @@ const SHADOW_STYLE = `
   --capsule-text3: hsl(224 7% 56%);
   --capsule-shadow: 0 8px 22px rgba(28, 20, 15, 0.1), 0 2px 6px rgba(28, 20, 15, 0.08);
   --capsule-shadow-hover: 0 10px 28px rgba(28, 20, 15, 0.12), 0 3px 9px rgba(28, 20, 15, 0.1);
-  --capsule-ball-border: hsl(0 0% 100% / 0.6);
-  --capsule-ball-bg-start: hsl(0 0% 100% / 0.84);
-  --capsule-ball-bg-end: hsl(220 30% 92% / 0.62);
-  --capsule-ball-shadow: 0 16px 28px rgba(28, 20, 15, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.66), inset 0 -10px 18px rgba(182, 190, 207, 0.3);
   --status-held-bg: hsl(36 90% 43% / 0.12);
   --status-held-text: hsl(36 90% 43%);
   --status-held-border: hsl(36 90% 43% / 0.28);
@@ -480,10 +533,6 @@ const SHADOW_STYLE = `
   --capsule-text3: hsl(0 0% 62%);
   --capsule-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
   --capsule-shadow-hover: 0 10px 28px rgba(0, 0, 0, 0.35), 0 3px 9px rgba(0, 0, 0, 0.25);
-  --capsule-ball-border: hsl(0 0% 100% / 0.14);
-  --capsule-ball-bg-start: hsl(0 0% 26% / 0.72);
-  --capsule-ball-bg-end: hsl(0 0% 10% / 0.48);
-  --capsule-ball-shadow: 0 18px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -12px 20px rgba(0, 0, 0, 0.26);
   --status-held-bg: hsl(40 85% 58% / 0.2);
   --status-held-text: hsl(40 85% 58%);
   --status-held-border: hsl(40 85% 58% / 0.34);
@@ -521,16 +570,10 @@ const SHADOW_STYLE = `
 .capsule-collapsed {
   width: ${COLLAPSED_SIZE}px;
   height: ${COLLAPSED_SIZE}px;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  border: 1px solid var(--capsule-ball-border);
+  border: 1px solid hsl(220 17% 84%);
   border-radius: 9999px;
-  background:
-    radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.08) 34%, transparent 58%),
-    linear-gradient(145deg, var(--capsule-ball-bg-start), var(--capsule-ball-bg-end));
-  box-shadow: var(--capsule-ball-shadow);
-  backdrop-filter: blur(18px) saturate(1.22);
+  background: hsl(220 24% 95%);
+  box-shadow: 0 3px 9px rgba(28, 20, 15, 0.16), 0 1px 2px rgba(28, 20, 15, 0.1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -541,37 +584,9 @@ const SHADOW_STYLE = `
   touch-action: none;
 }
 
-.capsule-collapsed::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 31% 21%, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.26) 28%, transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 68%);
-  opacity: 0.9;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.capsule-collapsed::after {
-  content: "";
-  position: absolute;
-  inset: 17% 18% auto 22%;
-  height: 26%;
-  border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0));
-  opacity: 0.72;
-  pointer-events: none;
-  z-index: 0;
-}
-
 .capsule-collapsed:hover {
   transform: translateY(-1px) scale(1.02);
-  box-shadow:
-    0 18px 32px rgba(28, 20, 15, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -12px 22px rgba(182, 190, 207, 0.32);
+  box-shadow: 0 6px 14px rgba(28, 20, 15, 0.2), 0 2px 5px rgba(28, 20, 15, 0.12);
 }
 
 .capsule-collapsed:active {
@@ -584,8 +599,6 @@ const SHADOW_STYLE = `
   object-fit: contain;
   -webkit-user-drag: none;
   user-select: none;
-  position: relative;
-  z-index: 1;
 }
 
 .capsule-panel {
@@ -728,35 +741,6 @@ const SHADOW_STYLE = `
   color: var(--status-error-text);
 }
 
-.capsule-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  padding: 0 11px;
-  margin-top: 8px;
-}
-
-.capsule-metric {
-  min-height: 0;
-  border: 1px solid color-mix(in srgb, var(--capsule-border) 86%, transparent 14%);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--capsule-bg2) 76%, white 24%);
-  padding: 7px 10px 6px;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.capsule-metric-label {
-  font-size: 10.5px;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--capsule-text2);
-  white-space: nowrap;
-}
-
 .capsule-domain-label {
   font-size: 10.5px;
   line-height: 1;
@@ -781,22 +765,6 @@ const SHADOW_STYLE = `
   height: 9px;
   transform: translateY(-50%);
   background: var(--capsule-divider);
-}
-
-.capsule-metric-value {
-  font-family: "Vesti Title Serif", "Tiempos Headline", "Tiempos Text", "Tiempos", ui-serif, "Apple-System-UI-Serif", "BlinkMacSystemFont", serif;
-  font-size: 15px;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--capsule-text1);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-}
-
-.capsule-metric-value.is-empty {
-  font-size: 12.5px;
-  color: var(--capsule-text3);
 }
 
 .capsule-reason {
@@ -865,6 +833,187 @@ const SHADOW_STYLE = `
   border-color: var(--btn-secondary-border);
 }
 
+/* ---- prompt manager (lower dock section) ------------------------------- */
+.capsule-pm {
+  border-top: 1px solid var(--capsule-divider);
+  padding: 9px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.capsule-pm[hidden] {
+  display: none;
+}
+
+.capsule-pm-heading {
+  font-size: 9.5px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--capsule-text3);
+}
+
+.capsule-pm-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.capsule-pm-btn {
+  min-height: 30px;
+  font-family: inherit;
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--capsule-bg2) 86%, white 14%);
+  color: var(--btn-secondary-text);
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.capsule-pm-btn:hover:enabled {
+  opacity: 0.82;
+  background: color-mix(in srgb, var(--capsule-bg3) 90%, white 10%);
+}
+
+.capsule-pm-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.capsule-pm-search {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 30px;
+  font-family: inherit;
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--capsule-text1);
+  background: color-mix(in srgb, var(--capsule-bg2) 80%, white 20%);
+  outline: none;
+}
+
+.capsule-pm-search::placeholder {
+  color: var(--capsule-text3);
+}
+
+.capsule-pm-search:focus {
+  border-color: color-mix(in srgb, var(--capsule-text1) 40%, transparent 60%);
+}
+
+.capsule-pm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 168px;
+  overflow-y: auto;
+  margin: 0 -3px;
+}
+
+.capsule-pm-item {
+  text-align: left;
+  border: none;
+  background: none;
+  border-radius: 9px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.capsule-pm-item:hover {
+  background: color-mix(in srgb, var(--capsule-text1) 7%, transparent 93%);
+}
+
+.capsule-pm-item-title {
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--capsule-text1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capsule-pm-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: middle;
+  color: var(--capsule-text2);
+  background: color-mix(in srgb, var(--capsule-text1) 10%, transparent 90%);
+}
+
+.capsule-pm-item-body {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--capsule-text3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.capsule-pm-empty {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--capsule-text3);
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.capsule-pm-preview {
+  border: 1px solid var(--capsule-divider);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--capsule-bg2) 78%, white 22%);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.capsule-pm-preview[hidden] {
+  display: none;
+}
+
+.capsule-pm-preview-text {
+  white-space: pre-wrap;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--capsule-text2);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.capsule-pm-preview-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.capsule-pm-hint {
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: var(--capsule-text3);
+  text-align: center;
+}
+
 .capsule-status-badge[data-state="mirroring"] .capsule-status-dot,
 .capsule-status-badge[data-state="archiving"] .capsule-status-dot,
 .capsule-status-badge[data-state="saved"] .capsule-status-dot {
@@ -902,13 +1051,8 @@ const SHADOW_STYLE = `
 }
 
 .capsule-shell[data-theme="dark"] .capsule-domain-label,
-.capsule-shell[data-theme="dark"] .capsule-metric-label,
 .capsule-shell[data-theme="dark"] .capsule-reason {
   color: var(--capsule-text2);
-}
-
-.capsule-shell[data-theme="dark"] .capsule-metric-value.is-empty {
-  color: var(--capsule-text3);
 }
 
 .capsule-shell[data-theme="dark"] .capsule-collapse-btn {
@@ -1001,15 +1145,6 @@ const SHADOW_STYLE = `
   word-break: break-word;
 }
 
-.capsule-shell[data-view="expanded"] .capsule-metric-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.capsule-shell[data-view="expanded"] .capsule-metric-label {
-  white-space: nowrap;
-}
-
 .capsule-shell[data-view="expanded"] .capsule-status-badge {
   white-space: nowrap;
 }
@@ -1039,7 +1174,6 @@ const SHADOW_STYLE = `
   min-width: 0;
 }
 
-.capsule-shell[data-view="expanded"] .capsule-metrics,
 .capsule-shell[data-view="expanded"] .capsule-actions {
   min-width: 0;
 }
@@ -1073,7 +1207,6 @@ const SHADOW_STYLE = `
 }
 
 .capsule-shell[data-view="expanded"] .capsule-status-row,
-.capsule-shell[data-view="expanded"] .capsule-metrics,
 .capsule-shell[data-view="expanded"] .capsule-reason,
 .capsule-shell[data-view="expanded"] .capsule-actions {
   box-sizing: border-box;
@@ -1199,9 +1332,14 @@ const openSidepanel = async (): Promise<boolean> => {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
       { type: "OPEN_SIDEPANEL", source: "capsule-ui" },
-      () => {
-        const lastError = chrome.runtime.lastError;
-        resolve(!lastError);
+      (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(false);
+          return;
+        }
+        // Trust the background's honest ok flag — sidePanel.open can fail even
+        // when the message itself round-trips successfully.
+        resolve((response as { ok?: boolean } | undefined)?.ok === true);
       }
     );
   });
@@ -1213,6 +1351,51 @@ const getRetryDelay = (failureCount: number): number => {
     return RETRY_BACKOFF_MS[failureCount - 1];
   }
   return POLL_INTERVAL_MS;
+};
+
+// ---- prompt-manager background RPC helpers --------------------------------
+// All route through the offscreen dispatcher (handleOffscreenRequest in the
+// background). Failures degrade to empty/no-op so the dock stays usable.
+const pmSearchPrompts = async (query: string): Promise<Prompt[]> => {
+  try {
+    return (await sendRequest({
+      type: "SEARCH_PROMPTS",
+      target: "offscreen",
+      payload: { query, limit: 8 },
+    })) as Prompt[];
+  } catch (error) {
+    logger.debug("content", "Capsule prompt search failed", {
+      error: (error as Error)?.message ?? String(error),
+    });
+    return [];
+  }
+};
+
+const pmCompleteDraft = async (
+  draft: string,
+  platform: Platform | undefined,
+  mode: "optimize" | "continue",
+): Promise<{ completion: string; usedLlm: boolean }> => {
+  return (await sendRequest(
+    {
+      type: "COMPLETE_PROMPT",
+      target: "offscreen",
+      payload: { draft, platform, useLibrary: true, mode },
+    },
+    120000,
+  )) as { completion: string; usedLlm: boolean };
+};
+
+const pmIncrementUsage = async (id: number): Promise<void> => {
+  try {
+    await sendRequest({
+      type: "INCREMENT_PROMPT_USAGE",
+      target: "offscreen",
+      payload: { id },
+    });
+  } catch {
+    // best-effort
+  }
 };
 
 const mount = async () => {
@@ -1279,7 +1462,7 @@ const mount = async () => {
     : capsuleT.openVestiDock;
   const logo = document.createElement("img");
   logo.className = "capsule-logo";
-  logo.src = resolveCapsuleLogoSrc(themeMode);
+  logo.src = LOGO_BASE64;
   logo.alt = "Vesti";
   logo.draggable = false;
   collapsedButton.appendChild(logo);
@@ -1316,8 +1499,8 @@ const mount = async () => {
   collapseBtn.type = "button";
   collapseBtn.className = "capsule-collapse-btn";
   collapseBtn.textContent = "⌃";
-  collapseBtn.setAttribute("aria-label", "Collapse capsule");
-  collapseBtn.title = "Collapse";
+  collapseBtn.setAttribute("aria-label", capsuleT.collapseAria);
+  collapseBtn.title = capsuleT.collapseTitle;
 
   header.appendChild(dragHandle);
   header.appendChild(collapseBtn);
@@ -1343,37 +1526,9 @@ const mount = async () => {
   statusRow.appendChild(statusBadge);
   statusRow.appendChild(statusHost);
 
-  const metrics = document.createElement("div");
-  metrics.className = "capsule-metrics";
-
-  const messagesMetric = document.createElement("div");
-  messagesMetric.className = "capsule-metric";
-  const messagesLabel = document.createElement("span");
-  messagesLabel.className = "capsule-metric-label";
-  messagesLabel.textContent = capsuleT.messages;
-  const messagesValue = document.createElement("span");
-  messagesValue.className = "capsule-metric-value is-empty";
-  messagesValue.textContent = "--";
-  messagesMetric.appendChild(messagesLabel);
-  messagesMetric.appendChild(messagesValue);
-
-  const turnsMetric = document.createElement("div");
-  turnsMetric.className = "capsule-metric";
-  const turnsLabel = document.createElement("span");
-  turnsLabel.className = "capsule-metric-label";
-  turnsLabel.textContent = capsuleT.turns;
-  const turnsValue = document.createElement("span");
-  turnsValue.className = "capsule-metric-value is-empty";
-  turnsValue.textContent = "--";
-  turnsMetric.appendChild(turnsLabel);
-  turnsMetric.appendChild(turnsValue);
-
-  metrics.appendChild(messagesMetric);
-  metrics.appendChild(turnsMetric);
-
   const reasonLine = document.createElement("div");
   reasonLine.className = "capsule-reason";
-  reasonLine.textContent = "Waiting for status...";
+  reasonLine.textContent = capsuleT.waitingForStatus;
 
   const actions = document.createElement("div");
   actions.className = "capsule-actions";
@@ -1391,11 +1546,74 @@ const mount = async () => {
   actions.appendChild(archiveBtn);
   actions.appendChild(openDockBtn);
 
+  // ---- prompt manager (lower dock section) --------------------------------
+  // The owl/dock is the single open/close toggle for this unified feature:
+  // optimize / continue work on the page composer, and the search list fills a
+  // saved prompt by trigger (Enter = top match, click = that item).
+  const pm = document.createElement("div");
+  pm.className = "capsule-pm";
+
+  const pmHeading = document.createElement("div");
+  pmHeading.className = "capsule-pm-heading";
+  pmHeading.textContent = capsuleT.pm.heading;
+
+  const pmTools = document.createElement("div");
+  pmTools.className = "capsule-pm-tools";
+  const optimizeBtn = document.createElement("button");
+  optimizeBtn.type = "button";
+  optimizeBtn.className = "capsule-pm-btn";
+  optimizeBtn.textContent = capsuleT.pm.optimize;
+  const continueBtn = document.createElement("button");
+  continueBtn.type = "button";
+  continueBtn.className = "capsule-pm-btn";
+  continueBtn.textContent = capsuleT.pm.continue;
+  pmTools.appendChild(optimizeBtn);
+  pmTools.appendChild(continueBtn);
+
+  const pmSearch = document.createElement("input");
+  pmSearch.type = "text";
+  pmSearch.className = "capsule-pm-search";
+  pmSearch.placeholder = capsuleT.pm.searchPlaceholder;
+
+  const pmList = document.createElement("div");
+  pmList.className = "capsule-pm-list";
+
+  const pmPreview = document.createElement("div");
+  pmPreview.className = "capsule-pm-preview";
+  pmPreview.hidden = true;
+  const pmPreviewText = document.createElement("div");
+  pmPreviewText.className = "capsule-pm-preview-text";
+  const pmPreviewActions = document.createElement("div");
+  pmPreviewActions.className = "capsule-pm-preview-actions";
+  const pmCancelBtn = document.createElement("button");
+  pmCancelBtn.type = "button";
+  pmCancelBtn.className = "capsule-pm-btn";
+  pmCancelBtn.textContent = capsuleT.pm.cancel;
+  const pmFillBtn = document.createElement("button");
+  pmFillBtn.type = "button";
+  pmFillBtn.className = "capsule-action-btn is-primary";
+  pmFillBtn.textContent = capsuleT.pm.fill;
+  pmPreviewActions.appendChild(pmCancelBtn);
+  pmPreviewActions.appendChild(pmFillBtn);
+  pmPreview.appendChild(pmPreviewText);
+  pmPreview.appendChild(pmPreviewActions);
+
+  const pmHint = document.createElement("div");
+  pmHint.className = "capsule-pm-hint";
+  pmHint.textContent = capsuleT.pm.hint;
+
+  pm.appendChild(pmHeading);
+  pm.appendChild(pmTools);
+  pm.appendChild(pmSearch);
+  pm.appendChild(pmList);
+  pm.appendChild(pmPreview);
+  pm.appendChild(pmHint);
+
   panel.appendChild(header);
   panel.appendChild(statusRow);
-  panel.appendChild(metrics);
   panel.appendChild(reasonLine);
   panel.appendChild(actions);
+  panel.appendChild(pm);
 
   if (isPrimaryRolloutHost) {
     shell.appendChild(panel);
@@ -1423,6 +1641,22 @@ const mount = async () => {
   let lastDragAt = 0;
   let persistInFlight = false;
   let pendingSettingsPatch: Partial<CapsuleSettings> | null = null;
+
+  // ---- prompt manager state ----
+  const promptPlatform = resolvePlatform(hostname);
+  let pmEnabled = true;
+  let pmBusy: "optimize" | "continue" | null = null;
+  let pmResults: PmResult[] = [];
+  let pmPreviewBody = "";
+  let pmSearchDebounce: number | null = null;
+  // Monotonic search token: a slower earlier query must not overwrite the
+  // results of a newer one once its awaited lookups resolve.
+  let pmSearchSeq = 0;
+  let unsubscribePromptAssist: (() => void) | null = null;
+  // The composer the user last typed in. Clicking the shadow panel moves
+  // document.activeElement to the shadow host, so resolveComposer() can miss the
+  // real composer on rich editors (Claude/Kimi) — fall back to this.
+  let lastComposer: ComposerEl | null = null;
 
   const dragSession: DragSession = {
     active: false,
@@ -1612,7 +1846,6 @@ const mount = async () => {
     shell.dataset.view = viewMode;
     shell.dataset.state = uiState;
     shell.dataset.theme = themeMode;
-    logo.src = resolveCapsuleLogoSrc(themeMode);
 
     if (!isPrimaryRolloutHost) {
       shell.classList.add("fallback-shell");
@@ -1632,27 +1865,23 @@ const mount = async () => {
     platformBadge.style.color = platformTone.text;
     platformBadge.style.borderColor = platformTone.border;
 
-    const nextMessageCount =
-      typeof runtimeStatus?.messageCount === "number"
-        ? String(runtimeStatus.messageCount)
-        : "--";
-    const nextTurnCount =
-      typeof runtimeStatus?.turnCount === "number"
-        ? String(runtimeStatus.turnCount)
-        : "--";
-    messagesValue.textContent = nextMessageCount;
-    turnsValue.textContent = nextTurnCount;
-    messagesValue.classList.toggle("is-empty", nextMessageCount === "--");
-    turnsValue.classList.toggle("is-empty", nextTurnCount === "--");
-
     archiveBtn.disabled = uiState !== "ready_to_archive";
     archiveBtn.textContent = uiState === "archiving" ? capsuleT.archiving : capsuleT.archiveNow;
     reasonLine.textContent = buildReasonLine() ?? "";
-    messagesLabel.textContent = capsuleT.messages;
-    turnsLabel.textContent = capsuleT.turns;
     openDockBtn.textContent = capsuleT.openDock;
     collapsedButton.setAttribute("aria-label", capsuleT.vestiCapsule);
     collapsedButton.title = isPrimaryRolloutHost ? capsuleT.openVestiCapsule : capsuleT.openVestiDock;
+
+    pm.hidden = !pmEnabled;
+    pmHeading.textContent = capsuleT.pm.heading;
+    optimizeBtn.textContent = pmBusy === "optimize" ? capsuleT.pm.optimizing : capsuleT.pm.optimize;
+    continueBtn.textContent = pmBusy === "continue" ? capsuleT.pm.continuing : capsuleT.pm.continue;
+    optimizeBtn.disabled = pmBusy !== null;
+    continueBtn.disabled = pmBusy !== null;
+    pmSearch.placeholder = capsuleT.pm.searchPlaceholder;
+    pmCancelBtn.textContent = capsuleT.pm.cancel;
+    pmFillBtn.textContent = capsuleT.pm.fill;
+    pmHint.textContent = capsuleT.pm.hint;
   };
 
   const syncPosition = () => {
@@ -1669,8 +1898,138 @@ const mount = async () => {
     viewMode = next;
     renderCapsule();
     syncPosition();
+    if (next === "expanded" && pmEnabled) {
+      void renderPromptResults(pmSearch.value);
+    } else if (next === "collapsed") {
+      hidePmPreview();
+    }
     if (persist) {
       persistSettingsPatch({ defaultView: next });
+    }
+  };
+
+  // ---- prompt manager logic ----
+  const currentComposer = (): ComposerEl | null =>
+    resolveComposer(window.location.hostname) ?? lastComposer;
+
+  const hidePmPreview = () => {
+    pmPreviewBody = "";
+    pmPreview.hidden = true;
+    pmPreviewText.textContent = "";
+  };
+
+  const fillComposer = (text: string, replace: boolean): boolean => {
+    const composer = currentComposer();
+    if (!composer) {
+      logger.info("content", "Capsule prompt fill: composer not found", { host: hostname });
+      return false;
+    }
+    if (replace) {
+      setComposerText(composer, text);
+    } else {
+      const existing = getComposerText(composer).trim();
+      setComposerText(composer, existing ? `${existing}\n${text}` : text);
+    }
+    return true;
+  };
+
+  const insertPrompt = (result: PmResult) => {
+    if (fillComposer(result.body, false)) {
+      if (typeof result.promptId === "number") void pmIncrementUsage(result.promptId);
+      setViewMode("collapsed");
+    }
+  };
+
+  const renderPromptResults = async (query: string) => {
+    if (!pmEnabled) return;
+    const seq = ++pmSearchSeq;
+    const trimmed = query.trim();
+    // Search the user's saved 常用提示词 (DB) AND the curated 优质提示词 (plaza).
+    const [saved, curated] = await Promise.all([
+      pmSearchPrompts(trimmed),
+      Promise.resolve(searchCuratedPrompts(trimmed, capsuleLocale, 6)),
+    ]);
+    // A newer keystroke superseded this search while it was in flight.
+    if (seq !== pmSearchSeq) return;
+    const seen = new Set<string>();
+    const merged: PmResult[] = [];
+    for (const p of saved) {
+      const key = p.body.trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ title: p.title || p.body.slice(0, 32), body: p.body, promptId: p.id });
+    }
+    for (const c of curated) {
+      const key = c.body.trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ title: c.title || c.body.slice(0, 32), body: c.body, fromPlaza: true });
+    }
+    pmResults = merged;
+    pmList.innerHTML = "";
+    if (merged.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "capsule-pm-empty";
+      empty.textContent = trimmed ? capsuleT.pm.noResults : capsuleT.pm.empty;
+      pmList.appendChild(empty);
+      return;
+    }
+    for (const result of merged) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "capsule-pm-item";
+      const title = document.createElement("span");
+      title.className = "capsule-pm-item-title";
+      title.textContent = result.title;
+      if (result.fromPlaza) {
+        const badge = document.createElement("span");
+        badge.className = "capsule-pm-badge";
+        badge.textContent = capsuleT.pm.plazaBadge;
+        title.appendChild(badge);
+      }
+      const body = document.createElement("span");
+      body.className = "capsule-pm-item-body";
+      body.textContent = result.body;
+      item.appendChild(title);
+      item.appendChild(body);
+      item.addEventListener("click", () => insertPrompt(result));
+      pmList.appendChild(item);
+    }
+  };
+
+  const showPmPreview = (completion: string) => {
+    pmPreviewBody = completion;
+    pmPreviewText.textContent = completion;
+    pmPreview.hidden = false;
+  };
+
+  const runCompletion = async (mode: "optimize" | "continue") => {
+    if (pmBusy) return;
+    const composer = currentComposer();
+    const draft = composer ? getComposerText(composer).trim() : "";
+    if (!draft) {
+      showPmPreview(capsuleT.pm.noDraft);
+      return;
+    }
+    pmBusy = mode;
+    renderCapsule();
+    try {
+      const result = await pmCompleteDraft(draft, promptPlatform, mode);
+      if (!result.usedLlm && result.completion.trim() === draft) {
+        showPmPreview(capsuleT.pm.offlineHint);
+      } else {
+        showPmPreview(result.completion);
+      }
+    } catch (error) {
+      logger.debug("content", "Capsule prompt completion failed", {
+        host: hostname,
+        mode,
+        error: (error as Error)?.message ?? String(error),
+      });
+      showPmPreview(capsuleT.pm.failed);
+    } finally {
+      pmBusy = null;
+      renderCapsule();
     }
   };
 
@@ -1968,13 +2327,38 @@ const mount = async () => {
       window.clearTimeout(autoCollapseTimer);
       autoCollapseTimer = null;
     }
+    if (pmSearchDebounce) {
+      window.clearTimeout(pmSearchDebounce);
+      pmSearchDebounce = null;
+    }
+    if (unsubscribePromptAssist) {
+      unsubscribePromptAssist();
+      unsubscribePromptAssist = null;
+    }
     window.removeEventListener("resize", onResize);
-    window.removeEventListener("pagehide", destroy);
+    window.removeEventListener("pagehide", onPageHide);
     window.removeEventListener("beforeunload", destroy);
+    document.removeEventListener("input", onDocInput, true);
     if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
       chrome.storage.onChanged.removeListener(onStorageChanged);
     }
     host.remove();
+  };
+
+  // Track the composer the user last typed in (rich editors lose focus when the
+  // shadow panel is clicked). Hoisted (not anonymous) so destroy() can remove it —
+  // otherwise it leaks and runs composer resolution on every page keystroke.
+  const onDocInput = (event: Event) => {
+    const target = resolveComposerFromEvent(event.target, window.location.hostname);
+    if (target) lastComposer = target;
+  };
+
+  const onPageHide = (event: PageTransitionEvent) => {
+    // Skip teardown for bfcache: the page (and capsule) is frozen, not unloaded,
+    // and resumes intact on pageshow. Destroying here would leave the dock gone
+    // until a full reload after a back/forward navigation.
+    if (event.persisted) return;
+    destroy();
   };
 
   collapsedButton.addEventListener("keydown", (event) => {
@@ -2036,13 +2420,69 @@ const mount = async () => {
     openDockBtn.addEventListener("click", () => {
       void triggerOpenDock();
     });
+
+    // ---- prompt manager listeners ----
+    optimizeBtn.addEventListener("click", () => {
+      void runCompletion("optimize");
+    });
+    continueBtn.addEventListener("click", () => {
+      void runCompletion("continue");
+    });
+    pmSearch.addEventListener("input", () => {
+      if (pmSearchDebounce) window.clearTimeout(pmSearchDebounce);
+      pmSearchDebounce = window.setTimeout(() => {
+        void renderPromptResults(pmSearch.value);
+      }, 180);
+    });
+    pmSearch.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      // Smart 唤醒: Enter fills the top match in one shot.
+      if (pmResults.length > 0) insertPrompt(pmResults[0]);
+    });
+    pmFillBtn.addEventListener("click", () => {
+      if (pmPreviewBody) {
+        if (fillComposer(pmPreviewBody, true)) {
+          hidePmPreview();
+          setViewMode("collapsed");
+        }
+      }
+    });
+    pmCancelBtn.addEventListener("click", () => {
+      hidePmPreview();
+    });
+
+    // Capture phase to see nested editor nodes (handler hoisted as onDocInput so
+    // destroy() can detach it).
+    document.addEventListener("input", onDocInput, true);
   }
 
   window.addEventListener("resize", onResize);
-  window.addEventListener("pagehide", destroy);
+  window.addEventListener("pagehide", onPageHide);
   window.addEventListener("beforeunload", destroy);
   if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener(onStorageChanged);
+  }
+
+  // Load + subscribe the prompt-manager master toggle. It reuses the existing
+  // per-host "real-time prompt assistant" setting so that toggle keeps working
+  // now that the standalone assist UI is merged into this dock.
+  if (isPrimaryRolloutHost) {
+    try {
+      pmEnabled = (await getPromptAssistSettingsForHost(hostname)).realtimeEnabled;
+    } catch {
+      pmEnabled = true;
+    }
+    unsubscribePromptAssist = subscribePromptAssistSettings(hostname, (next) => {
+      if (destroyed) return;
+      pmEnabled = next.realtimeEnabled;
+      if (!pmEnabled) hidePmPreview();
+      renderCapsule();
+      syncPosition();
+      if (pmEnabled && viewMode === "expanded") {
+        void renderPromptResults(pmSearch.value);
+      }
+    });
   }
 
   renderCapsule();

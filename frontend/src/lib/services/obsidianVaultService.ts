@@ -311,6 +311,48 @@ export async function connectObsidianVault(): Promise<ObsidianVaultStatus> {
   }
 }
 
+async function resolveTitleRelativePath(
+  title: string,
+  vault: StoredVaultRecord
+): Promise<string> {
+  const baseName = ensureMarkdownFilename(sanitizeFileSegment(title || "VESTI export"))
+  const preferred = normalizeRelativePath(`Vesti/${baseName}`)
+  if (!(await pathExists(vault.handle, preferred))) return preferred
+
+  const stem = baseName.replace(/\.md$/i, "")
+  let suffix = 2
+  while (suffix < 10_000) {
+    const candidate = normalizeRelativePath(`Vesti/${stem} ${suffix}.md`)
+    if (!(await pathExists(vault.handle, candidate))) return candidate
+    suffix += 1
+  }
+  throw new Error("OBSIDIAN_EXPORT_PATH_RESOLUTION_FAILED")
+}
+
+/**
+ * Write arbitrary Markdown (a conversation or its summary) to the vault under
+ * Vesti/, with optional YAML frontmatter. Runs in-page (File System Access needs
+ * a user gesture + visible document).
+ */
+export async function writeMarkdownToVault(input: {
+  title: string
+  frontmatter?: Record<string, string | number | string[]>
+  body: string
+}): Promise<{ relative_path: string; vault_name: string; exported_at: number }> {
+  const vault = await ensureConnectedVaultRecord()
+  const relativePath = await resolveTitleRelativePath(input.title, vault)
+  const fm =
+    input.frontmatter && Object.keys(input.frontmatter).length > 0
+      ? `---\n${YAML.stringify(input.frontmatter)}---\n\n`
+      : ""
+  await writeRelativeFile(vault.handle, relativePath, fm + input.body)
+  return {
+    relative_path: relativePath,
+    vault_name: vault.vault_name,
+    exported_at: Date.now()
+  }
+}
+
 export async function exportNoteToObsidian(
   note: Note
 ): Promise<ObsidianNoteExportResult> {

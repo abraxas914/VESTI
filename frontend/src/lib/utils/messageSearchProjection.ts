@@ -9,6 +9,7 @@ import type {
   SearchMatchSurface,
 } from "../types";
 import { resolveCanonicalBodyText } from "./messageContentPackage";
+import { tokenize } from "../search/textSearch";
 
 type MessageSearchProjectionLike = Pick<
   Message,
@@ -57,13 +58,27 @@ export function getSearchMatchHintLabel(surface: SearchMatchSurface): string {
 
 export function buildSearchExcerpt(text: string, normalizedQuery: string): string {
   const lower = text.toLowerCase();
-  const idx = lower.indexOf(normalizedQuery);
+  let idx = lower.indexOf(normalizedQuery);
+  let matchLen = normalizedQuery.length;
   if (idx < 0) {
-    return "";
+    // Non-contiguous multi-term match (e.g. "design database" matching a doc that
+    // says "database … design"): anchor the excerpt on the earliest matched token.
+    let best = -1;
+    for (const token of tokenize(normalizedQuery)) {
+      const at = lower.indexOf(token);
+      if (at >= 0 && (best < 0 || at < best)) {
+        best = at;
+        matchLen = token.length;
+      }
+    }
+    if (best < 0) {
+      return "";
+    }
+    idx = best;
   }
 
   const start = Math.max(0, idx - 30);
-  const end = Math.min(text.length, idx + normalizedQuery.length + 60);
+  const end = Math.min(text.length, idx + matchLen + 60);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end)}${suffix}`;

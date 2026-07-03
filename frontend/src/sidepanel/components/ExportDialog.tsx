@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { X, Download, Copy, FileText, FileJson, FileCode, Loader2, Check } from "lucide-react";
+import { useI18n } from "~lib/i18n";
 import type { Conversation } from "~lib/types";
 import type {
   ConversationExportConfig,
@@ -16,6 +17,8 @@ interface ExportDialogProps {
 }
 
 export function ExportDialog({ open, conversations, onClose, onExport }: ExportDialogProps) {
+  const { t } = useI18n();
+  const x = t.exportDialog;
   const [contentMode, setContentMode] = useState<ConversationExportContentMode>("full");
   const [format, setFormat] = useState<ConversationExportFormat>("md");
   const [isExporting, setIsExporting] = useState(false);
@@ -67,14 +70,18 @@ export function ExportDialog({ open, conversations, onClose, onExport }: ExportD
         <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
           <div>
             <h3 className="text-sm font-medium text-text-primary">
-              Export {conversations.length} thread{conversations.length > 1 ? "s" : ""}
+              {(conversations.length > 1 ? x.titlePlural : x.title).replace(
+                "{count}",
+                String(conversations.length)
+              )}
             </h3>
             <p className="text-xs text-text-tertiary">
-              ~{estimatedTokens.toLocaleString()} tokens
+              {x.tokens.replace("{count}", estimatedTokens.toLocaleString())}
             </p>
           </div>
           <button
             onClick={onClose}
+            aria-label={x.close}
             className="rounded-md p-1 text-text-tertiary transition-colors hover:bg-bg-secondary hover:text-text-secondary"
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
@@ -86,13 +93,13 @@ export function ExportDialog({ open, conversations, onClose, onExport }: ExportD
           {/* Content Mode */}
           <div className="space-y-2">
             <label className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-secondary">
-              Content
+              {x.content}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: "full", label: "Full", desc: "Complete history" },
-                { key: "compact", label: "Compact", desc: "AI-compressed" },
-                { key: "summary", label: "Summary", desc: "Key points only" },
+                { key: "full", label: x.modeFull, desc: x.modeFullDesc },
+                { key: "compact", label: x.modeCompact, desc: x.modeCompactDesc },
+                { key: "summary", label: x.modeSummary, desc: x.modeSummaryDesc },
               ].map(({ key, label, desc }) => (
                 <button
                   key={key}
@@ -119,13 +126,13 @@ export function ExportDialog({ open, conversations, onClose, onExport }: ExportD
           {/* Format */}
           <div className="space-y-2">
             <label className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-secondary">
-              Format
+              {x.format}
             </label>
             <div className="flex gap-2">
               {[
-                { key: "md", label: "Markdown", icon: FileCode },
-                { key: "txt", label: "Text", icon: FileText },
-                { key: "json", label: "JSON", icon: FileJson },
+                { key: "md", label: x.formatMd, icon: FileCode },
+                { key: "txt", label: x.formatTxt, icon: FileText },
+                { key: "json", label: x.formatJson, icon: FileJson },
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -157,7 +164,7 @@ export function ExportDialog({ open, conversations, onClose, onExport }: ExportD
               ) : (
                 <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
               )}
-              Download
+              {x.download}
             </button>
             <button
               onClick={() => handleExport("copy")}
@@ -173,7 +180,7 @@ export function ExportDialog({ open, conversations, onClose, onExport }: ExportD
               ) : (
                 <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
               )}
-              {copied ? "Copied!" : "Copy"}
+              {copied ? x.copied : x.copy}
             </button>
           </div>
         </div>

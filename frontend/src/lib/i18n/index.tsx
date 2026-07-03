@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import type { ReactNode } from "react";
 import type { SupportedLocale } from "./locales";
 import { enTranslations } from "./translations/en";
+import type { TranslationsType } from "./translations/en";
 import { zhTranslations } from "./translations/zh";
 import { jaTranslations } from "./translations/ja";
 import { koTranslations } from "./translations/ko";
@@ -10,14 +11,14 @@ import { detectAndSetLanguage, setLanguage, subscribeLanguageSettings } from "..
 // Translation registration point. To add a language: create translations/<code>.ts
 // (mirroring en.ts) and add one line here. The Record<SupportedLocale, …> type forces
 // this map to stay complete, and the rest of the locale wiring lives in ./locales.
+export type Translations = TranslationsType;
+
 const translationsByLocale: Record<SupportedLocale, Translations> = {
   en: enTranslations,
   zh: zhTranslations as unknown as Translations,
   ja: jaTranslations as unknown as Translations,
   ko: koTranslations as unknown as Translations,
 };
-
-export type Translations = typeof enTranslations;
 
 interface I18nContextValue {
   locale: SupportedLocale;

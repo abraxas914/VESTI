@@ -30,6 +30,27 @@ if (!parser.detect()) {
   const observer = new ConversationObserver(parser, pipeline);
   observer.start();
 
+  // Doubao hydrates an already-open conversation lazily after document_idle and
+  // may emit no further mutations for the observer to react to — without an
+  // explicit kick-off (parity with chatgpt.ts/yuanbao.ts) capture can stay idle
+  // forever ("Doubao cannot capture"). Fire staggered initial captures.
+  const INITIAL_CAPTURE_DELAYS_MS = [1500, 4000];
+  for (const delay of INITIAL_CAPTURE_DELAYS_MS) {
+    window.setTimeout(() => {
+      void pipeline.capture();
+    }, delay);
+  }
+
+  // One-time capture-path diagnostic to self-diagnose "cannot capture" reports.
+  window.setTimeout(() => {
+    logger.info("content", "Doubao capture diagnostic", {
+      url: window.location.href,
+      sessionUUID: parser.getSessionUUID(),
+      isGenerating: parser.isGenerating(),
+      messageRoots: document.querySelectorAll("[data-message-id]").length,
+    });
+  }, 1700);
+
   chrome.runtime.onMessage.addListener(
     (
       message: unknown,

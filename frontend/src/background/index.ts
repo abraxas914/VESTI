@@ -15,6 +15,7 @@ import {
   getExploreMessages,
   getExploreSession,
   getStorageUsage,
+  getAllSummaries,
   getSummary,
   getTopics,
   getWeeklyReport,
@@ -25,6 +26,8 @@ import {
   listConversations,
   listExploreSessions,
   listMessages,
+  bulkAddTagToConversations,
+  bulkSetConversationFlags,
   listNotes,
   moveTagAcrossConversations,
   removeTagFromConversations,
@@ -40,12 +43,28 @@ import {
   updateExploreSession,
   updateNote
 } from "../lib/db/repository"
+import {
+  createPrompt,
+  deletePrompt,
+  extractPromptsFromLibrary,
+  incrementPromptUsage,
+  listPrompts,
+  searchPrompts,
+  togglePromptFavorite,
+  updatePrompt
+} from "../lib/db/promptRepository"
+import {
+  completePromptDraft,
+  distillFragments,
+  resolveUsableLlmConfig
+} from "../lib/services/promptLlmService"
 import { isRequestMessage } from "../lib/messaging/protocol"
 import type { RequestMessage, ResponseMessage } from "../lib/messaging/protocol"
 import {
   exportAnnotationToMyNotes,
   exportAnnotationToNotion
 } from "../lib/services/annotationExportService"
+import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import { getCaptureSettings } from "../lib/services/captureSettingsService"
 import { runGardener } from "../lib/services/gardenerService"
 import {
@@ -68,6 +87,7 @@ import {
   findRelatedConversations,
   vectorizeAllConversations
 } from "../lib/services/searchService"
+import { runRoundtablePanel } from "../lib/services/roundtableService"
 import type {
   ActiveCaptureStatus,
   CaptureMode,
@@ -381,6 +401,74 @@ async function handleBackgroundRequest(
         void runVectorizationTask("message")
         return { ok: true, type: messageType, data: { queued: true } }
       }
+      case "IMPORT_HISTORY_PROBE": {
+        // Forward to the active platform tab; the content script knows whether
+        // a history provider exists for its host and whether it's logged in.
+        const tab = await getActiveTab()
+        if (!tab?.id || !isSupportedCaptureTabUrl(tab.url)) {
+          return { ok: true, type: messageType, data: { supported: false } }
+        }
+        try {
+          const resp = await sendMessageToTab<{
+            supported?: boolean
+            platform?: Platform
+            available?: boolean
+          }>(tab.id, { type: "IMPORT_HISTORY_PROBE" })
+          return {
+            ok: true,
+            type: messageType,
+            data: {
+              supported: !!resp?.supported,
+              platform: resp?.platform,
+              available: !!resp?.available
+            }
+          }
+        } catch {
+          return { ok: true, type: messageType, data: { supported: false } }
+        }
+      }
+      case "IMPORT_HISTORY_START": {
+        const tab = await getActiveTab()
+        if (!tab?.id) {
+          return { ok: true, type: messageType, data: { started: false, reason: "no_active_tab" } }
+        }
+        if (!isSupportedCaptureTabUrl(tab.url)) {
+          return { ok: true, type: messageType, data: { started: false, reason: "unsupported_tab" } }
+        }
+        try {
+          const resp = await sendMessageToTab<{
+            started?: boolean
+            platform?: Platform
+            reason?: string
+          }>(tab.id, { type: "IMPORT_HISTORY_RUN" })
+          return {
+            ok: true,
+            type: messageType,
+            data: {
+              started: !!resp?.started,
+              platform: resp?.platform,
+              reason: resp?.reason
+            }
+          }
+        } catch (error) {
+          return {
+            ok: true,
+            type: messageType,
+            data: { started: false, reason: (error as Error).message || "tab_unreachable" }
+          }
+        }
+      }
+      case "IMPORT_HISTORY_CANCEL": {
+        const tab = await getActiveTab()
+        if (tab?.id) {
+          try {
+            await sendMessageToTab(tab.id, { type: "IMPORT_HISTORY_CANCEL" })
+          } catch {
+            // tab may have navigated away; cancel is best-effort
+          }
+        }
+        return { ok: true, type: messageType, data: { ok: true } }
+      }
       default:
         return {
           ok: false,
@@ -471,6 +559,20 @@ async function handleOffscreenRequest(
         const updated = await removeTagFromConversations(message.payload.tag)
         return { ok: true, type: messageType, data: { updated } }
       }
+      case "BULK_SET_CONVERSATION_FLAGS": {
+        const updated = await bulkSetConversationFlags(
+          message.payload.ids,
+          message.payload.patch
+        )
+        return { ok: true, type: messageType, data: { updated } }
+      }
+      case "BULK_ADD_TAG_TO_CONVERSATIONS": {
+        const updated = await bulkAddTagToConversations(
+          message.payload.ids,
+          message.payload.tag
+        )
+        return { ok: true, type: messageType, data: { updated } }
+      }
       case "ASK_KNOWLEDGE_BASE": {
         const data = await askKnowledgeBase(
           message.payload.query,
@@ -478,6 +580,14 @@ async function handleOffscreenRequest(
           message.payload.limit,
           message.payload.mode,
           message.payload.options
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "RUN_ROUNDTABLE": {
+        const data = await runRoundtablePanel(
+          message.payload.question,
+          message.payload.personaIds,
+          { lang: message.payload.lang }
         )
         return { ok: true, type: messageType, data }
       }
@@ -507,6 +617,13 @@ async function handleOffscreenRequest(
         const data = await exportAnnotationToNotion(
           message.payload.annotationId
         )
+        return { ok: true, type: messageType, data }
+      }
+      case "EXPORT_CONVERSATION_TO_NOTION": {
+        const data = await exportConversationToNotion({
+          title: message.payload.title,
+          markdown: message.payload.markdown
+        })
         return { ok: true, type: messageType, data }
       }
       case "GET_NOTES": {
@@ -621,6 +738,10 @@ async function handleOffscreenRequest(
         const data = await getSummary(message.payload.conversationId)
         return { ok: true, type: messageType, data }
       }
+      case "GET_ALL_SUMMARIES": {
+        const data = await getAllSummaries()
+        return { ok: true, type: messageType, data }
+      }
       case "GENERATE_CONVERSATION_SUMMARY": {
         const settings = requireSettings(await getLlmSettings())
         const record = await generateConversationSummary(
@@ -688,6 +809,62 @@ async function handleOffscreenRequest(
         )
         return { ok: true, type: messageType, data: { updated: true } }
       }
+      case "LIST_PROMPTS": {
+        const data = await listPrompts(message.payload?.filter)
+        return { ok: true, type: messageType, data }
+      }
+      case "SEARCH_PROMPTS": {
+        const data = await searchPrompts(message.payload.query, message.payload.limit)
+        return { ok: true, type: messageType, data }
+      }
+      case "CREATE_PROMPT": {
+        const data = await createPrompt(message.payload.input)
+        return { ok: true, type: messageType, data }
+      }
+      case "UPDATE_PROMPT": {
+        const prompt = await updatePrompt(message.payload.id, message.payload.changes)
+        return { ok: true, type: messageType, data: { prompt } }
+      }
+      case "DELETE_PROMPT": {
+        const deleted = await deletePrompt(message.payload.id)
+        return { ok: true, type: messageType, data: { deleted } }
+      }
+      case "TOGGLE_PROMPT_FAVORITE": {
+        const prompt = await togglePromptFavorite(
+          message.payload.id,
+          message.payload.isFavorite
+        )
+        return { ok: true, type: messageType, data: { prompt } }
+      }
+      case "INCREMENT_PROMPT_USAGE": {
+        const prompt = await incrementPromptUsage(message.payload.id)
+        return { ok: true, type: messageType, data: { prompt } }
+      }
+      case "EXTRACT_PROMPTS_FROM_LIBRARY": {
+        // Prefer LLM-distilled reusable FRAGMENTS when a model is configured;
+        // otherwise fall back to offline high-frequency extraction.
+        const config = await resolveUsableLlmConfig()
+        const data = await extractPromptsFromLibrary({
+          scope: message.payload?.scope,
+          limit: message.payload?.limit,
+          distill: config ? (turns) => distillFragments(config, turns) : undefined
+        })
+        return { ok: true, type: messageType, data }
+      }
+      case "COMPLETE_PROMPT": {
+        const config = await resolveUsableLlmConfig()
+        const relatedPrompts =
+          config && message.payload.useLibrary !== false
+            ? await searchPrompts(message.payload.draft, 3)
+            : []
+        const data = await completePromptDraft(config, {
+          draft: message.payload.draft,
+          platform: message.payload.platform,
+          mode: message.payload.mode,
+          relatedPrompts
+        })
+        return { ok: true, type: messageType, data }
+      }
       default:
         return {
           ok: false,
@@ -714,19 +891,72 @@ if (chrome?.alarms?.create) {
   })
 }
 
-function openSidepanelForTab(tabId: number): void {
+function openSidepanelForTab(tabId: number, done?: (ok: boolean) => void): void {
   if (!chrome?.sidePanel?.open) {
     logger.warn("background", "sidePanel API not available")
+    done?.(false)
     return
   }
+  // Configure the panel (async completion is fine), then open it SYNCHRONOUSLY
+  // in the same tick: open() consumes the user gesture, and nesting it inside
+  // setOptions' callback drops the gesture so the panel never appears.
   chrome.sidePanel.setOptions(
     { tabId, path: "sidepanel.html", enabled: true },
     () => {
-      chrome.sidePanel.open({ tabId }, () => {
+      void chrome.runtime.lastError
+    }
+  )
+  chrome.sidePanel.open({ tabId }, () => {
+    const lastError = chrome.runtime.lastError
+    if (lastError) {
+      logger.warn("background", "sidePanel.open failed", { error: lastError.message })
+    }
+    done?.(!lastError)
+  })
+}
+
+// Clicking the toolbar icon opens our standalone web UI (the full Dashboard at
+// options.html) in its own tab; if one is already open we focus it instead of
+// piling up duplicates. Tracked in-memory (no "tabs" permission needed) — after
+// a service-worker restart a stale id just falls back to opening a fresh tab.
+let dashboardTabId: number | null = null
+
+function focusOrOpenDashboard(): void {
+  const url = chrome.runtime.getURL("options.html")
+  const openNew = () => {
+    chrome.tabs.create({ url }, (tab) => {
+      void chrome.runtime.lastError
+      dashboardTabId = tab?.id ?? null
+    })
+  }
+  if (dashboardTabId == null) {
+    openNew()
+    return
+  }
+  chrome.tabs.update(dashboardTabId, { active: true }, (tab) => {
+    if (chrome.runtime.lastError || !tab) {
+      dashboardTabId = null
+      openNew()
+      return
+    }
+    if (typeof tab.windowId === "number") {
+      chrome.windows.update(tab.windowId, { focused: true }, () => {
         void chrome.runtime.lastError
       })
     }
-  )
+  })
+}
+
+if (chrome?.tabs?.onRemoved) {
+  chrome.tabs.onRemoved.addListener((removedTabId) => {
+    if (removedTabId === dashboardTabId) dashboardTabId = null
+  })
+}
+
+if (chrome?.action?.onClicked) {
+  chrome.action.onClicked.addListener(() => {
+    focusOrOpenDashboard()
+  })
 }
 
 chrome.runtime.onMessage.addListener(
@@ -741,17 +971,17 @@ chrome.runtime.onMessage.addListener(
 
     const tabId = sender.tab?.id
     if (typeof tabId === "number") {
-      openSidepanelForTab(tabId)
-      sendResponse?.({ ok: true })
-      return
+      openSidepanelForTab(tabId, (ok) => sendResponse?.({ ok }))
+      return true
     }
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const activeId = tabs[0]?.id
       if (typeof activeId === "number") {
-        openSidepanelForTab(activeId)
+        openSidepanelForTab(activeId, (ok) => sendResponse?.({ ok }))
+      } else {
+        sendResponse?.({ ok: false })
       }
-      sendResponse?.({ ok: true })
     })
 
     return true

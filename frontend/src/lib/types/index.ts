@@ -87,6 +87,8 @@ export interface ConversationMatchSummary {
   bestExcerpt: string
   firstMatchedSurface: SearchMatchSurface
   matchedSurfaces: SearchMatchSurface[]
+  /** relevance score (higher = better); used to rank search results */
+  score: number
 }
 
 export interface VectorRecord {
@@ -235,6 +237,51 @@ export interface ExploreMessage {
   timestamp: number
 }
 
+// ---- AI 圆桌 (Roundtable) ----
+export type RoundtablePersonaId =
+  | "skeptic"
+  | "optimist"
+  | "pragmatist"
+  | "domain_expert"
+  | "devils_advocate"
+  | "moderator"
+
+export interface RoundtablePersona {
+  id: RoundtablePersonaId
+  nameZh: string
+  nameEn: string
+  blurbZh: string
+  blurbEn: string
+  systemPromptZh: string
+  systemPromptEn: string
+}
+
+export interface RoundtableSeatTurn {
+  personaId: RoundtablePersonaId
+  content: string
+  ok: boolean
+  error?: string
+  durationMs: number
+}
+
+export interface RoundtableSynthesis {
+  consensus: string[]
+  disagreements: string[]
+  recommendation: string
+  openQuestions: string[]
+}
+
+export interface RoundtableResult {
+  question: string
+  lang: "zh" | "en"
+  grounded: boolean
+  seatTurns: RoundtableSeatTurn[]
+  synthesis: RoundtableSynthesis | null
+  synthesisRaw: string
+  sources: RelatedConversation[]
+  totalDurationMs: number
+}
+
 export type MessageCitationSourceType =
   | "inline_pill"
   | "search_card"
@@ -293,6 +340,82 @@ export interface Message {
   artifacts?: MessageArtifact[]
   normalized_html_snapshot?: string | null
   created_at: number
+}
+
+// ============================================================
+// --- Prompt Management ---
+// ============================================================
+
+export type PromptSource = "manual" | "extracted"
+
+export interface Prompt {
+  id: number
+  title: string
+  body: string
+  category: string | null
+  tags: string[]
+  source: PromptSource
+  source_platform: Platform | null
+  source_conversation_id: number | null
+  source_message_id: number | null
+  is_favorite: boolean
+  is_archived: boolean
+  quality_score: number
+  summary: string | null
+  variables: string[]
+  use_count: number
+  last_used_at: number | null
+  body_hash: string
+  created_at: number
+  updated_at: number
+}
+
+export interface CreatePromptInput {
+  title?: string
+  body: string
+  category?: string | null
+  tags?: string[]
+  source?: PromptSource
+  source_platform?: Platform | null
+  source_conversation_id?: number | null
+  source_message_id?: number | null
+  is_favorite?: boolean
+  summary?: string | null
+  quality_score?: number
+}
+
+export interface UpdatePromptChanges {
+  title?: string
+  body?: string
+  category?: string | null
+  tags?: string[]
+  is_favorite?: boolean
+  is_archived?: boolean
+  summary?: string | null
+  quality_score?: number
+  /** Editing an auto-extracted prompt promotes it to "manual" so a re-extract keeps it. */
+  source?: PromptSource
+}
+
+export interface PromptListFilter {
+  category?: string | null
+  favoritesOnly?: boolean
+  includeArchived?: boolean
+  source?: PromptSource
+  search?: string
+  sort?: "recent" | "score" | "usage"
+}
+
+export interface PromptExtractionResult {
+  created: number
+  skipped: number
+  candidates: number
+  usedLlm: boolean
+}
+
+export interface PromptCompletionResult {
+  completion: string
+  usedLlm: boolean
 }
 
 export interface Annotation {

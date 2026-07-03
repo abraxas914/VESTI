@@ -30,6 +30,33 @@ if (!parser.detect()) {
   const observer = new ConversationObserver(parser, pipeline);
   observer.start();
 
+  // Yuanbao hydrates its conversation lazily after `document_idle`, and an
+  // already-rendered conversation often emits no further mutations for the
+  // MutationObserver to react to. Without an explicit kick-off (which
+  // chatgpt.ts already has) the pipeline can stay idle forever on load, which
+  // surfaces to users as "Yuanbao cannot capture". Fire staggered initial
+  // captures; `capture()` is safe to call repeatedly (offscreen dedupes).
+  const INITIAL_CAPTURE_DELAYS_MS = [1500, 4000];
+  for (const delay of INITIAL_CAPTURE_DELAYS_MS) {
+    window.setTimeout(() => {
+      void pipeline.capture();
+    }, delay);
+  }
+
+  // One-time capture-path diagnostic. When a user reports "cannot capture",
+  // the [Vesti] console output here pinpoints which precondition failed
+  // (missing session id, stuck `isGenerating`, or stale DOM selectors).
+  window.setTimeout(() => {
+    logger.info("content", "Yuanbao capture diagnostic", {
+      url: window.location.href,
+      sessionUUID: parser.getSessionUUID(),
+      isGenerating: parser.isGenerating(),
+      messageRoots: document.querySelectorAll(".agent-chat__bubble").length,
+      humanRoots: document.querySelectorAll(".agent-chat__bubble--human").length,
+      aiRoots: document.querySelectorAll(".agent-chat__bubble--ai").length,
+    });
+  }, 1700);
+
   chrome.runtime.onMessage.addListener(
     (
       message: unknown,

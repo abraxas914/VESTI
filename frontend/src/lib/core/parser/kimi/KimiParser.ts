@@ -206,7 +206,7 @@ export class KimiParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Kimi AST perf mode switched", {
+      logger.debug("parser", "Kimi AST perf mode switched", {
         platform: "Kimi",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -695,7 +695,7 @@ export class KimiParser implements IParser {
     logger.info("parser", "Kimi parse stats", stats);
 
     if (messages.length === 0) {
-      logger.warn("parser", "Kimi parser kept zero messages", {
+      logger.debug("parser", "Kimi parser kept zero messages", {
         source: stats.source,
         totalCandidates: stats.totalCandidates,
         droppedNoise: stats.droppedNoise,
@@ -706,7 +706,7 @@ export class KimiParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "Kimi parser captured only one role", {
+      logger.debug("parser", "Kimi parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

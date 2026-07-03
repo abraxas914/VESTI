@@ -289,7 +289,7 @@ export class ClaudeParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Claude AST perf mode switched", {
+      logger.debug("parser", "Claude AST perf mode switched", {
         platform: "Claude",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -1292,7 +1292,7 @@ export class ClaudeParser implements IParser {
       stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
 
     if (hasSingleRole) {
-      logger.warn("parser", "Claude parser captured only one role", {
+      logger.debug("parser", "Claude parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

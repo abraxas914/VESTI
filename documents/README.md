@@ -100,6 +100,7 @@ Canonical examples:
 
 当前保留：
 - `README.md`
+- `DEVELOPMENT_GUIDELINES.md` — repo-wide engineering 守则（架构地图、消息路由、i18n、构建校验、已知技术债）
 - `version_control_plan.md`
 - `zip_deploy_guide.md`
 - `engineering_data_management_v1_2.md`

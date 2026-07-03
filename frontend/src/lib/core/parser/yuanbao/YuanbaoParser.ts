@@ -1,6 +1,6 @@
 import type { IParser, ParsedMessage } from "../IParser";
 import type { Platform } from "../../../types";
-import { extractEarliestTimeFromSelectors, queryAllUnique, queryFirst, queryFirstWithin, safeTextContent, uniqueNodesInDocumentOrder } from "../shared/selectorUtils";
+import { extractEarliestTimeFromSelectors, queryAllUnique, queryAllWithinUnique, queryFirst, queryFirstWithin, safeTextContent, uniqueNodesInDocumentOrder } from "../shared/selectorUtils";
 import { extractAstFromElement } from "../shared/astExtractor";
 import { resolveCanonicalMessageText } from "../shared/canonicalMessageText";
 import { astPerfModeController, type AstPerfMode } from "../shared/astPerfMode";
@@ -30,13 +30,17 @@ const SELECTORS = {
     "header h1",
     "title",
   ],
+  // Streaming indicators. The class-substring checks are intentionally scoped
+  // *inside* an AI bubble: unscoped `[class*='stream'|'typing'|'generating']`
+  // selectors can match persistent page chrome (sidebars, banners, analytics
+  // widgets), which would leave `isGenerating()` permanently true and block
+  // every capture — the root-cause pattern behind "Yuanbao cannot capture".
   generating: [
     "[data-is-streaming='true']",
-    "[data-testid*='stream']",
-    "[data-testid*='typing']",
-    "[class*='stream']",
-    "[class*='typing']",
-    "[class*='generating']",
+    "[data-testid*='streaming']",
+    ".agent-chat__bubble--ai [class*='stream']",
+    ".agent-chat__bubble--ai [class*='typing']",
+    ".agent-chat__bubble--ai [class*='generating']",
   ],
   sourceTimes: ["time[datetime]", "article time[datetime]"],
   uiNoiseSelectors: [
@@ -190,7 +194,7 @@ export class YuanbaoParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "Yuanbao AST perf mode switched", {
+      logger.debug("parser", "Yuanbao AST perf mode switched", {
         platform: "Yuanbao",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -208,7 +212,18 @@ export class YuanbaoParser implements IParser {
   }
 
   isGenerating(): boolean {
-    return queryFirst(SELECTORS.generating) !== null;
+    const match = queryFirst(SELECTORS.generating);
+    if (match) {
+      // Debug-level so it never reaches the chrome://extensions Errors panel,
+      // but still lets us confirm whether a stuck streaming flag is blocking
+      // capture from a user-pasted console log.
+      logger.debug("parser", "Yuanbao isGenerating matched", {
+        tag: match.tagName.toLowerCase(),
+        className: (match.className?.toString() ?? "").slice(0, 120),
+      });
+      return true;
+    }
+    return false;
   }
 
   getSessionUUID(): string | null {
@@ -358,7 +373,7 @@ export class YuanbaoParser implements IParser {
     const cotTexts: string[] = [];
     const merged = document.createElement("div");
 
-    const cotNodes = queryAllUnique(SELECTORS.cotParagraphs).filter((node) => root.contains(node));
+    const cotNodes = queryAllWithinUnique(root, SELECTORS.cotParagraphs);
     if (cotNodes.length > 0) {
       const cotSection = document.createElement("section");
       cotSection.setAttribute("data-vesti-yuanbao-cot", "true");
@@ -439,7 +454,7 @@ export class YuanbaoParser implements IParser {
   }
 
   private resolveAiFinalRoot(root: Element): Element | null {
-    const finals = queryAllUnique(SELECTORS.aiFinalNodes).filter((node) => root.contains(node));
+    const finals = queryAllWithinUnique(root, SELECTORS.aiFinalNodes);
     return finals[finals.length - 1] ?? null;
   }
 
@@ -631,7 +646,7 @@ export class YuanbaoParser implements IParser {
     logger.info("parser", "Yuanbao parse stats", stats);
 
     if (messages.length === 0) {
-      logger.warn("parser", "Yuanbao parser kept zero messages", {
+      logger.debug("parser", "Yuanbao parser kept zero messages", {
         source: stats.source,
         totalCandidates: stats.totalCandidates,
         droppedNoise: stats.droppedNoise,
@@ -642,7 +657,7 @@ export class YuanbaoParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "Yuanbao parser captured only one role", {
+      logger.debug("parser", "Yuanbao parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

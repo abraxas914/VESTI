@@ -24,6 +24,25 @@ function format(scope: LogScope, message: string) {
 }
 
 export const logger = {
+  /**
+   * Low-signal observability output (parser heuristics, perf-mode switches, etc.).
+   *
+   * Routed through `console.debug` on purpose: Chrome's `chrome://extensions`
+   * "Errors" panel collects `console.warn`/`console.error` from extension
+   * contexts, but NOT `console.debug`. Diagnostic heuristics such as
+   * "parser captured only one role" are expected during normal use (e.g. a
+   * brand-new chat with only the first user turn) and must never surface there
+   * as if the extension were broken. Use `warn`/`error` only for actionable
+   * failures the user or a maintainer should act on.
+   */
+  debug(scope: LogScope, message: string, data?: unknown) {
+    if (!DEBUG) return;
+    if (data !== undefined) {
+      console.debug(format(scope, message), STYLE_PREFIX, STYLE_SCOPE, STYLE_MSG, data);
+    } else {
+      console.debug(format(scope, message), STYLE_PREFIX, STYLE_SCOPE, STYLE_MSG);
+    }
+  },
   info(scope: LogScope, message: string, data?: unknown) {
     if (!DEBUG) return;
     if (data !== undefined) {

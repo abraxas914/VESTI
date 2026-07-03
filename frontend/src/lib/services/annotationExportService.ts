@@ -123,7 +123,7 @@ function appendAnnotationEntry(existingContent: string, entry: string): string {
   return `${trimmed}\n\n---\n\n${entry}`;
 }
 
-async function notionRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+export async function notionRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${NOTION_API_BASE}${path}`, {
     ...init,
     headers: {
@@ -149,7 +149,7 @@ async function notionRequest<T>(path: string, token: string, init?: RequestInit)
   return payload as T;
 }
 
-async function getDatabaseTitlePropertyName(
+export async function getDatabaseTitlePropertyName(
   databaseId: string,
   token: string
 ): Promise<string> {

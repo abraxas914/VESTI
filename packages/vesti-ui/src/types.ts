@@ -469,6 +469,11 @@ export type StorageApi = {
     contextDraft: string,
     selectedContextConversationIds: number[]
   ) => Promise<void>;
+  runRoundtable?: (
+    question: string,
+    personaIds: RoundtablePersonaId[],
+    opts?: { lang?: "zh" | "en" }
+  ) => Promise<RoundtableResult>;
   getSummary?: (conversationId: number) => Promise<ChatSummaryData | null>;
   generateSummary?: (conversationId: number) => Promise<ChatSummaryData>;
   getNotes?: () => Promise<Note[]>;
@@ -478,6 +483,15 @@ export type StorageApi = {
   getObsidianVaultStatus?: () => Promise<ObsidianVaultStatus>;
   connectObsidianVault?: () => Promise<ObsidianVaultStatus>;
   exportNoteToObsidian?: (note: Note) => Promise<ObsidianNoteExportResult>;
+  // Send a whole conversation / its summary out as ready Markdown.
+  exportConversationToNotion?: (input: {
+    title: string;
+    markdown: string;
+  }) => Promise<{ pageId: string; url?: string }>;
+  exportConversationToObsidian?: (input: {
+    title: string;
+    markdown: string;
+  }) => Promise<{ relative_path: string; vault_name: string; exported_at: number }>;
   importObsidianDirectory?: (
     vaultName: string,
     entries: ObsidianImportFileEntry[]
@@ -492,7 +506,99 @@ export type StorageApi = {
     format: ExportFormat
   ) => Promise<{ blob: Blob; filename: string; mime: string }>;
   clearAllData?: () => Promise<void>;
+  // Prompt Management
+  listPrompts?: (filter?: PromptListFilter) => Promise<Prompt[]>;
+  searchPrompts?: (query: string, limit?: number) => Promise<Prompt[]>;
+  createPrompt?: (
+    input: CreatePromptInput
+  ) => Promise<{ prompt: Prompt; created: boolean }>;
+  updatePrompt?: (id: number, changes: UpdatePromptChanges) => Promise<Prompt>;
+  deletePrompt?: (id: number) => Promise<void>;
+  togglePromptFavorite?: (id: number, isFavorite: boolean) => Promise<Prompt>;
+  incrementPromptUsage?: (id: number) => Promise<Prompt>;
+  extractPromptsFromLibrary?: (options?: {
+    scope?: "all" | "recent";
+    limit?: number;
+  }) => Promise<PromptExtractionResult>;
+  completePrompt?: (payload: {
+    draft: string;
+    platform?: Platform;
+    useLibrary?: boolean;
+  }) => Promise<PromptCompletionResult>;
 };
+
+// ---- Prompt Management types (mirror of frontend/src/lib/types) -------------
+
+export type PromptSource = "manual" | "extracted";
+
+export interface Prompt {
+  id: number;
+  title: string;
+  body: string;
+  category: string | null;
+  tags: string[];
+  source: PromptSource;
+  source_platform: Platform | null;
+  source_conversation_id: number | null;
+  source_message_id: number | null;
+  is_favorite: boolean;
+  is_archived: boolean;
+  quality_score: number;
+  summary: string | null;
+  variables: string[];
+  use_count: number;
+  last_used_at: number | null;
+  body_hash: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreatePromptInput {
+  title?: string;
+  body: string;
+  category?: string | null;
+  tags?: string[];
+  source?: PromptSource;
+  source_platform?: Platform | null;
+  source_conversation_id?: number | null;
+  source_message_id?: number | null;
+  is_favorite?: boolean;
+  summary?: string | null;
+  quality_score?: number;
+}
+
+export interface UpdatePromptChanges {
+  title?: string;
+  body?: string;
+  category?: string | null;
+  tags?: string[];
+  is_favorite?: boolean;
+  is_archived?: boolean;
+  summary?: string | null;
+  quality_score?: number;
+  source?: PromptSource;
+}
+
+export interface PromptListFilter {
+  category?: string | null;
+  favoritesOnly?: boolean;
+  includeArchived?: boolean;
+  source?: PromptSource;
+  search?: string;
+  sort?: "recent" | "score" | "usage";
+}
+
+export interface PromptExtractionResult {
+  created: number;
+  skipped: number;
+  candidates: number;
+  usedLlm: boolean;
+}
+
+export interface PromptCompletionResult {
+  completion: string;
+  usedLlm: boolean;
+}
 
 export interface ArtifactMetaData {
   title: string;
@@ -866,6 +972,7 @@ export interface DashboardLabels {
     library: string;
     explore: string;
     network: string;
+    prompts: string;
   };
   nav: {
     backToExplore: string;
@@ -1094,6 +1201,30 @@ export interface DashboardLabels {
     noPreviewAvailable: string;
     closeSidebar: string;
     openSidebar: string;
+    emptyDetailTitle: string;
+    emptyDetailHint: string;
+    summaryCard: {
+      coreQuestion: string;
+      thinkingJourney: string;
+      step: string;
+      example: string;
+      keyInsights: string;
+      unresolvedThreads: string;
+      metaObservations: string;
+      thinkingStyle: string;
+      emotionalTone: string;
+      depth: string;
+      nextSteps: string;
+      fallback: string;
+    };
+    sendToButton?: string;
+    sendToNotionConversation?: string;
+    sendToNotionSummary?: string;
+    sendToObsidianConversation?: string;
+    sendToObsidianSummary?: string;
+    sendToExporting?: string;
+    sendToDone?: string;
+    sendToFailed?: string;
   };
   explore: ExploreLabels;
   data: DataLabels;
@@ -1136,4 +1267,285 @@ export interface DashboardLabels {
     conceptMentionedIn: string;
     relatedConversations: string;
   };
+  prompts: {
+    title: string;
+    summary: string;
+    extractFromChats: string;
+    extracting: string;
+    extractTooltip: string;
+    newPrompt: string;
+    searchPlaceholder: string;
+    favorites: string;
+    allCategories: string;
+    sortRecent: string;
+    sortQuality: string;
+    sortUsage: string;
+    loading: string;
+    emptyNone: string;
+    emptyFiltered: string;
+    emptyHint: string;
+    retry: string;
+    favorite: string;
+    unfavorite: string;
+    copy: string;
+    deleteAria: string;
+    closeEditor: string;
+    editorNew: string;
+    editorEdit: string;
+    fieldTitle: string;
+    titlePlaceholder: string;
+    fieldBody: string;
+    bodyPlaceholder: string;
+    improveTooltip: string;
+    improving: string;
+    improveWithAI: string;
+    fieldCategory: string;
+    categoryPlaceholder: string;
+    fieldTags: string;
+    tagsPlaceholder: string;
+    markFavorite: string;
+    openSource: string;
+    save: string;
+    cancel: string;
+    deleteBtn: string;
+    usedTimes: string;
+    scorePoor: string;
+    scoreGood: string;
+    scoreHigh: string;
+    toastBodyEmpty: string;
+    toastSaved: string;
+    toastDuplicate: string;
+    toastUpdated: string;
+    toastSaveFailed: string;
+    toastDeleted: string;
+    toastDeleteFailed: string;
+    toastFavoriteFailed: string;
+    toastCopied: string;
+    toastClipboard: string;
+    toastImproved: string;
+    toastNoLlm: string;
+    toastImproveFailed: string;
+    toastExtract: string;
+    unavailable: string;
+    exportLabel: string;
+    importLabel: string;
+    importBackup: string;
+    toastExported: string;
+    toastImported: string;
+    importFailed: string;
+    loadFailed: string;
+    draftFirst: string;
+    extractFailed: string;
+    summaryLabel: string;
+    plazaTitle: string;
+    plazaSubtitle: string;
+    plazaDaily: string;
+    plazaDailyHint: string;
+    plazaUse: string;
+    plazaSourcePrefix: string;
+    supermarketTitle: string;
+    supermarketSubtitle: string;
+    myPlaza: string;
+    myPlazaEmpty: string;
+    adopt: string;
+    adopted: string;
+    selectAria: string;
+    selectedCount: string;
+    deleteSelected: string;
+    clearSelection: string;
+  };
+  aiti: {
+    modeAsk: string;
+    modeAiti: string;
+    modeRoundtable: string;
+    title: string;
+    subtitle: string;
+    insufficient: string;
+    sample: string;
+    typeSeparator: string;
+    strengthsTitle: string;
+    empoweringIntro: string;
+    obsessionsTitle: string;
+    evidence: string;
+    axisNeedsSignal: string;
+    axisDepthLabel: string;
+    axisDepthLeft: string;
+    axisDepthRight: string;
+    axisDepthLeftStrength: string;
+    axisDepthRightStrength: string;
+    axisMakerLabel: string;
+    axisMakerLeft: string;
+    axisMakerRight: string;
+    axisMakerLeftStrength: string;
+    axisMakerRightStrength: string;
+    axisFocusLabel: string;
+    axisFocusLeft: string;
+    axisFocusRight: string;
+    axisFocusLeftStrength: string;
+    axisFocusRightStrength: string;
+    axisAffectLabel: string;
+    axisAffectLeft: string;
+    axisAffectRight: string;
+    axisAffectLeftStrength: string;
+    axisAffectRightStrength: string;
+  };
+  learn: {
+    modeLearn: string;
+    title: string;
+    subtitle: string;
+    insufficient: string;
+    sample: string;
+    domainsTitle: string;
+    uncategorized: string;
+    domainConversations: string;
+    glossaryTitle: string;
+    openLoopsTitle: string;
+    openLoopsEmpty: string;
+  };
+  roundtable: {
+    title: string;
+    subtitle: string;
+    questionPlaceholder: string;
+    personasLabel: string;
+    run: string;
+    running: string;
+    latencyHint: string;
+    needQuestion: string;
+    seatsTitle: string;
+    synthesisTitle: string;
+    consensus: string;
+    disagreements: string;
+    recommendation: string;
+    openQuestions: string;
+    empty: string;
+    personaSkeptic: string;
+    personaOptimist: string;
+    personaPragmatist: string;
+    personaDomainExpert: string;
+    personaDevilsAdvocate: string;
+  };
+}
+
+/** A curated/recommended prompt for the 提示词广场 (Prompt Plaza). */
+export interface PlazaPrompt {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+  source: string;
+  sourceUrl?: string;
+  featured?: boolean;
+}
+
+/** A big-category group of curated prompts for the 提示词超市. */
+export interface PlazaCategory {
+  category: string;
+  prompts: PlazaPrompt[];
+}
+
+/** AITI (个人内向探索) — a locally-computed "thinking fingerprint". */
+export interface AitiAxisScore {
+  /** stable axis key: "depth" | "maker" | "focus" | "affect" */
+  key: string;
+  /** 0..100, toward the axis's RIGHT pole */
+  score: number;
+  /** up to a few source conversations that contributed most (evidence) */
+  evidenceConversationIds: number[];
+  /** false when the axis has no supporting evidence (score is a neutral default,
+   * not an observation) — the UI renders it muted instead of confidently labeled */
+  hasSignal?: boolean;
+}
+
+export interface AitiObsession {
+  term: string;
+  count: number;
+}
+
+export interface AitiProfile {
+  /** false → not enough summaries to be meaningful (show the gated state) */
+  available: boolean;
+  sampleSize: number;
+  axes: AitiAxisScore[];
+  obsessions: AitiObsession[];
+}
+
+/** "学习 Learn" — the captured KB reframed as a personal curriculum. */
+export interface LearnDomain {
+  topicId: number | null;
+  name: string;
+  count: number;
+  deep: number;
+  moderate: number;
+  superficial: number;
+}
+export interface LearnGlossaryEntry {
+  term: string;
+  definition: string;
+  conversationId?: number;
+}
+export interface LearnOpenLoop {
+  text: string;
+  conversationId: number;
+}
+export interface LearnProfile {
+  available: boolean;
+  sampleSize: number;
+  domains: LearnDomain[];
+  glossary: LearnGlossaryEntry[];
+  openLoops: LearnOpenLoop[];
+}
+
+// ---- AI 圆桌 (Roundtable) ----
+export type RoundtablePersonaId =
+  | "skeptic"
+  | "optimist"
+  | "pragmatist"
+  | "domain_expert"
+  | "devils_advocate"
+  | "moderator";
+
+export interface RoundtablePersona {
+  id: RoundtablePersonaId;
+  nameZh: string;
+  nameEn: string;
+  blurbZh: string;
+  blurbEn: string;
+  systemPromptZh: string;
+  systemPromptEn: string;
+}
+
+export interface RoundtableSeatTurn {
+  personaId: RoundtablePersonaId;
+  content: string;
+  ok: boolean;
+  error?: string;
+  durationMs: number;
+}
+
+export interface RoundtableSynthesis {
+  consensus: string[];
+  disagreements: string[];
+  recommendation: string;
+  openQuestions: string[];
+}
+
+export interface RoundtableResult {
+  question: string;
+  lang: "zh" | "en";
+  grounded: boolean;
+  seatTurns: RoundtableSeatTurn[];
+  synthesis: RoundtableSynthesis | null;
+  synthesisRaw: string;
+  sources: RelatedConversation[];
+  totalDurationMs: number;
+}
+
+/** Everything the Prompts tab needs to render the plaza + supermarket. */
+export interface PlazaData {
+  /** Today's date-seeded recommendations. */
+  daily: PlazaPrompt[];
+  /** Full catalog grouped by big-category (the 提示词超市). */
+  supermarket: PlazaCategory[];
+  /** Catalog ids the user has adopted into their personal 提示词广场. */
+  adoptedIds: string[];
 }

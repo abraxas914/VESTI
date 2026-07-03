@@ -350,7 +350,7 @@ export class ChatGPTParser implements IParser {
     };
 
     if (modeUpdate.switched) {
-      logger.warn("parser", "ChatGPT AST perf mode switched", {
+      logger.debug("parser", "ChatGPT AST perf mode switched", {
         platform: "ChatGPT",
         from: modeUpdate.previousMode,
         to: modeUpdate.mode,
@@ -1156,7 +1156,7 @@ export class ChatGPTParser implements IParser {
     }
 
     if (stats.source === "anchor") {
-      logger.warn("parser", "ChatGPT parser used anchor fallback", {
+      logger.debug("parser", "ChatGPT parser used anchor fallback", {
         totalCandidates: stats.totalCandidates,
         keptMessages: stats.keptMessages,
         roleDistribution: stats.roleDistribution,
@@ -1164,7 +1164,7 @@ export class ChatGPTParser implements IParser {
     }
 
     if (stats.hard_boundary_mode_used && stats.keptMessages > stats.hard_boundary_roots) {
-      logger.warn("parser", "ChatGPT hard boundary produced extra logical messages", {
+      logger.debug("parser", "ChatGPT hard boundary produced extra logical messages", {
         source: stats.source,
         hardBoundaryRoots: stats.hard_boundary_roots,
         keptMessages: stats.keptMessages,
@@ -1172,7 +1172,7 @@ export class ChatGPTParser implements IParser {
     }
 
     if (stats.totalCandidates > 0 && stats.keptMessages === 0) {
-      logger.warn("parser", "ChatGPT parser kept zero messages", {
+      logger.debug("parser", "ChatGPT parser kept zero messages", {
         source: stats.source,
         totalCandidates: stats.totalCandidates,
         droppedNoise: stats.droppedNoise,
@@ -1183,7 +1183,7 @@ export class ChatGPTParser implements IParser {
 
     const hasSingleRole = stats.roleDistribution.user === 0 || stats.roleDistribution.ai === 0;
     if (hasSingleRole) {
-      logger.warn("parser", "ChatGPT parser captured only one role", {
+      logger.debug("parser", "ChatGPT parser captured only one role", {
         source: stats.source,
         roleDistribution: stats.roleDistribution,
         samples: messages

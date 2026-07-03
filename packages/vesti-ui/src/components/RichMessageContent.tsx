@@ -1,11 +1,69 @@
-import { Check, ChevronDown, Copy, Link2, Paperclip, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Copy, FileText, Link2, Paperclip, Sparkles } from "lucide-react";
 import katex from "katex";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AstNode, AstRoot, AstTableNode, Message } from "../types";
 import { formatArtifactDescriptor, getArtifactExcerptText } from "../lib/artifactSummary";
 import { buildMessagePreviewText } from "../lib/messagePackage";
+import { astToHtml, plainTextToHtml } from "../lib/astHtml";
 
 const COPY_FEEDBACK_MS = 1400;
+
+// Write rich text (HTML + plain) so a paste keeps formatting in Word/WPS/Notion/
+// Obsidian. Falls back to plain text where ClipboardItem isn't available.
+async function writeRichClipboard(html: string, text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && typeof window !== "undefined" && "ClipboardItem" in window) {
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([item]);
+      return true;
+    }
+  } catch {
+    /* fall through to plain text */
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function RichCopyButton({ message }: { message: Message }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+  }, []);
+
+  const handleCopy = () => {
+    const text = message.content_text || buildMessagePreviewText(message);
+    const html = astToHtml(message.content_ast) || plainTextToHtml(text);
+    void writeRichClipboard(html, text).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        setCopied(false);
+        timerRef.current = null;
+      }, COPY_FEEDBACK_MS);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label="Copy as rich text"
+      title="Copy as rich text"
+      className="inline-flex items-center gap-1 rounded-md border border-border-subtle bg-bg-primary/80 px-1.5 py-1 text-[11px] font-medium text-text-tertiary opacity-0 transition-opacity hover:bg-bg-surface-card hover:text-text-primary group-hover:opacity-100"
+    >
+      {copied ? <Check className="h-3 w-3" strokeWidth={1.8} /> : <FileText className="h-3 w-3" strokeWidth={1.8} />}
+    </button>
+  );
+}
 
 interface RichMessageContentProps {
   message: Message;
@@ -465,7 +523,14 @@ export function RichMessageContent({ message }: RichMessageContentProps) {
 
   return (
     <>
-      <div className="text-[13px] leading-relaxed text-inherit">{body}</div>
+      <div className="group relative text-[13px] leading-relaxed text-inherit">
+        <div className="pointer-events-none absolute -top-1 right-0 z-10">
+          <span className="pointer-events-auto">
+            <RichCopyButton message={message} />
+          </span>
+        </div>
+        {body}
+      </div>
       {renderSourceMeta(message)}
       {renderAttachmentMeta(message)}
       {renderArtifactMeta(message)}

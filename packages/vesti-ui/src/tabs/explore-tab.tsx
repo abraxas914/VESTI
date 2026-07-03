@@ -437,7 +437,9 @@ export function ExploreTab({
     }
     const stages = modeStages[submitMode];
     const timer = setInterval(() => {
-      setSearchStageIndex((prev) => (prev + 1) % stages.length);
+      // Advance and HOLD at the final stage; wrapping with % made the progress
+      // ticker loop back to "Planning..." which read as a confusing restart.
+      setSearchStageIndex((prev) => Math.min(prev + 1, stages.length - 1));
     }, 900);
     return () => clearInterval(timer);
   }, [isSubmitting, submitMode, modeStages]);
@@ -489,6 +491,9 @@ export function ExploreTab({
 
   const loadMessages = async (sessionId: string) => {
     if (!storage.getExploreMessages) return;
+    // Clear first so the loading spinner (gated on messages.length === 0) shows
+    // instead of the previous session's transcript while the fetch is in flight.
+    setMessages([]);
     setMessagesLoading(true);
     try {
       const data = await storage.getExploreMessages(sessionId);
@@ -639,6 +644,9 @@ export function ExploreTab({
       console.error("[Explore] Submit error:", err);
       setError((err as Error)?.message ?? labels.failedToRetrieveAnswer);
       setMessages((prev) => prev.filter((message) => message.id !== optimisticUserMessage.id));
+      // Restore the question so a transient failure doesn't lose the user's typing.
+      setInputValue(trimmed);
+      textareaRef.current?.focus();
     } finally {
       setIsSubmitting(false);
     }
@@ -813,7 +821,9 @@ export function ExploreTab({
         }
       );
 
-      setDrawerMessageId(null);
+      // Keep the drawer open so the success notice below actually renders (it
+      // lives inside the drawer); the regenerated answer is added as a new turn
+      // while this message's execution details stay available.
       await loadMessages(currentSessionId);
       await loadSessions();
       setDrawerNotice(
@@ -1387,7 +1397,7 @@ export function ExploreTab({
             <>
               {messages.map(renderMessage)}
 
-              {isSubmitting && (
+              {(isSubmitting || isRegeneratingSources) && (
                 <div className="py-4">
                   <div className="mx-auto max-w-3xl px-4">
                     <div className="flex gap-4">
@@ -1399,7 +1409,9 @@ export function ExploreTab({
                         <div className="flex items-center gap-2 text-text-primary">
                           <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
                           <span className="text-sm font-sans">
-                            {modeStages[submitMode][searchStageIndex]}
+                            {isRegeneratingSources
+                              ? modeStages.agent[0]
+                              : modeStages[submitMode][searchStageIndex]}
                           </span>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import { Check, Copy } from "lucide-react";
 import katex from "katex";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useI18n } from "~lib/i18n";
 import type { AstNode, AstRoot, AstTableNode } from "~lib/types/ast";
 import { astNodeToPlainText } from "~lib/utils/astText";
 import "katex/dist/katex.min.css";
@@ -52,6 +53,7 @@ interface RenderContext {
 }
 
 function MathNodeView({ tex, display }: MathNodeViewProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
   const html = useMemo(() => {
@@ -90,10 +92,10 @@ function MathNodeView({ tex, display }: MathNodeViewProps) {
       type="button"
       className={`reader-ast-math-copy ${display ? "is-block" : "is-inline"}`}
       onClick={handleCopy}
-      aria-label="Copy TeX"
+      aria-label={t.reader.copyTeX}
     >
       {copied ? <Check className="h-3 w-3" strokeWidth={1.75} /> : <Copy className="h-3 w-3" strokeWidth={1.75} />}
-      {copied ? "Copied" : "Copy TeX"}
+      {copied ? t.reader.copied : t.reader.copyTeX}
     </button>
   );
 
@@ -141,6 +143,7 @@ function MathNodeView({ tex, display }: MathNodeViewProps) {
 }
 
 function CodeBlockView({ code, language }: CodeBlockViewProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -152,15 +155,15 @@ function CodeBlockView({ code, language }: CodeBlockViewProps) {
   return (
     <div className="reader-ast-code-block">
       <div className="reader-ast-code-head">
-        <span className="reader-ast-code-lang">{language || "plain"}</span>
+        <span className="reader-ast-code-lang">{language || t.reader.plain}</span>
         <button
           type="button"
           className="reader-ast-code-copy"
           onClick={handleCopy}
-          aria-label="Copy code"
+          aria-label={t.reader.copyCode}
         >
           {copied ? <Check className="h-3 w-3" strokeWidth={1.75} /> : <Copy className="h-3 w-3" strokeWidth={1.75} />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? t.reader.copied : t.reader.copy}
         </button>
       </div>
       <pre className="reader-ast-code-pre">
