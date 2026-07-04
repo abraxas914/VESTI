@@ -13,6 +13,7 @@ import type { TranslationsType } from "./translations/en";
 import { zhTranslations } from "./translations/zh";
 import { jaTranslations } from "./translations/ja";
 import { koTranslations } from "./translations/ko";
+import { withEnglishFallback } from "./mergeTranslations";
 import type { SupportedLocale } from "./locales";
 import {
   getLanguageSettings,
@@ -22,11 +23,13 @@ import {
 // Same widened, string-leaf shape used by the React i18n provider.
 export type Translations = TranslationsType;
 
+// Layer every locale over English so an incomplete translation file falls back
+// to English strings instead of crashing a content script on a missing key.
 const TRANSLATIONS: Record<SupportedLocale, Translations> = {
   en: enTranslations,
-  zh: zhTranslations as unknown as Translations,
-  ja: jaTranslations as unknown as Translations,
-  ko: koTranslations as unknown as Translations,
+  zh: withEnglishFallback(zhTranslations),
+  ja: withEnglishFallback(jaTranslations),
+  ko: withEnglishFallback(koTranslations),
 };
 
 /** Resolve the current translations once (defaults to English on any failure). */

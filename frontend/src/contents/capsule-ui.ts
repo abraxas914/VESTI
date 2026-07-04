@@ -34,6 +34,7 @@ import type { ActiveCaptureStatus, Platform, Prompt, UiThemeMode } from "../lib/
 import { LOGO_BASE64 } from "../lib/ui/logo";
 import { logger } from "../lib/utils/logger";
 import { detectAndSetLanguage } from "../lib/services/languageSettingsService";
+import { resolveLocale, type SupportedLocale } from "../lib/i18n/locales";
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -253,7 +254,7 @@ const FALLBACK_PLATFORM_TONE: Record<UiThemeMode, PlatformTone> = {
   },
 };
 
-type CapsuleLocale = "en" | "zh";
+type CapsuleLocale = SupportedLocale;
 
 const capsuleEn = {
   unavailable: "Unavailable",
@@ -353,9 +354,109 @@ const capsuleZh = {
   },
 } as const;
 
+const capsuleJa: typeof capsuleEn = {
+  unavailable: "利用不可",
+  mirroring: "ミラーリング中",
+  held: "保留中",
+  ready: "準備完了",
+  archiving: "アーカイブ中...",
+  saved: "保存しました",
+  actionFailed: "操作に失敗しました",
+  archiveNow: "今すぐアーカイブ",
+  mirrorModeHint: "ミラーモードは内容を自動的に保存します。",
+  archiveCompleted: "アーカイブが完了しました。",
+  vestiCapsule: "Vesti カプセル",
+  openVestiCapsule: "Vesti カプセルを開く",
+  openVestiDock: "Vesti ドックを開く",
+  openDock: "ドックを開く",
+  collapseAria: "カプセルを折りたたむ",
+  collapseTitle: "折りたたむ",
+  waitingForStatus: "ステータスを取得中…",
+  pm: {
+    heading: "プロンプトアシスタント",
+    optimize: "最適化",
+    optimizing: "最適化中...",
+    continue: "続きを生成",
+    continuing: "生成中...",
+    searchPlaceholder: "トリガー/キーワードで、あなたのプロンプトと広場のおすすめを検索...",
+    empty: "まだプロンプトがありません。",
+    noResults: "一致なし。",
+    noDraft: "先にチャット入力欄に何か入力してください。",
+    fill: "入力",
+    cancel: "キャンセル",
+    failed: "生成できませんでした。もう一度お試しください。",
+    offlineHint: "設定でモデルを接続するとプロンプトを最適化できます。",
+    hint: "入力すると一致 · Enter で入力",
+    plazaBadge: "広場",
+  },
+  errorMessages: {
+    ARCHIVE_MODE_DISABLED: "ミラーモードではアーカイブは無効です。",
+    ACTIVE_TAB_UNSUPPORTED: "現在のタブのホストはサポートされていません。",
+    ACTIVE_TAB_UNAVAILABLE: "アクティブなタブを利用できません。",
+    TRANSIENT_NOT_FOUND: "利用可能な会話スナップショットがまだありません。",
+    missing_conversation_id: "安定した会話 URL を待っています。",
+    empty_payload: "アーカイブできる解析済みメッセージがありません。",
+    storage_limit_blocked: "ストレージがいっぱいです。まずエクスポートまたは整理してください。",
+    persist_failed: "アーカイブの保存中に失敗しました。",
+    FORCE_ARCHIVE_FAILED: "アーカイブ操作に失敗しました。再試行してください。",
+    content_unreachable: "キャプチャコンテキストに一時的にアクセスできません。",
+  },
+};
+
+const capsuleKo: typeof capsuleEn = {
+  unavailable: "사용 불가",
+  mirroring: "미러링 중",
+  held: "보류됨",
+  ready: "준비됨",
+  archiving: "보관 중...",
+  saved: "저장됨",
+  actionFailed: "작업 실패",
+  archiveNow: "지금 보관",
+  mirrorModeHint: "미러 모드는 콘텐츠를 자동으로 저장합니다.",
+  archiveCompleted: "보관이 완료되었습니다.",
+  vestiCapsule: "Vesti 캡슐",
+  openVestiCapsule: "Vesti 캡슐 열기",
+  openVestiDock: "Vesti 독 열기",
+  openDock: "독 열기",
+  collapseAria: "캡슐 접기",
+  collapseTitle: "접기",
+  waitingForStatus: "상태를 가져오는 중…",
+  pm: {
+    heading: "프롬프트 어시스턴트",
+    optimize: "최적화",
+    optimizing: "최적화 중...",
+    continue: "이어쓰기",
+    continuing: "생성 중...",
+    searchPlaceholder: "트리거/키워드로 내 프롬프트와 광장 추천을 검색...",
+    empty: "아직 프롬프트가 없습니다.",
+    noResults: "일치 항목 없음.",
+    noDraft: "먼저 채팅 입력창에 내용을 입력하세요.",
+    fill: "채우기",
+    cancel: "취소",
+    failed: "생성하지 못했습니다. 다시 시도하세요.",
+    offlineHint: "설정에서 모델을 연결하면 프롬프트를 최적화할 수 있습니다.",
+    hint: "입력하면 일치 · Enter로 채우기",
+    plazaBadge: "광장",
+  },
+  errorMessages: {
+    ARCHIVE_MODE_DISABLED: "미러 모드에서는 보관이 비활성화됩니다.",
+    ACTIVE_TAB_UNSUPPORTED: "현재 탭 호스트는 지원되지 않습니다.",
+    ACTIVE_TAB_UNAVAILABLE: "활성 탭을 사용할 수 없습니다.",
+    TRANSIENT_NOT_FOUND: "아직 사용 가능한 대화 스냅샷이 없습니다.",
+    missing_conversation_id: "안정적인 대화 URL을 기다리는 중입니다.",
+    empty_payload: "보관할 분석된 메시지가 없습니다.",
+    storage_limit_blocked: "저장 공간이 가득 찼습니다. 먼저 내보내거나 정리하세요.",
+    persist_failed: "보관 저장 중 실패했습니다.",
+    FORCE_ARCHIVE_FAILED: "보관 작업에 실패했습니다. 다시 시도하세요.",
+    content_unreachable: "캡처 컨텍스트에 일시적으로 접근할 수 없습니다.",
+  },
+};
+
 const capsuleTranslations: Record<CapsuleLocale, typeof capsuleEn> = {
   en: capsuleEn,
   zh: capsuleZh,
+  ja: capsuleJa,
+  ko: capsuleKo,
 };
 
 let capsuleLocale: CapsuleLocale = "en";
@@ -364,7 +465,7 @@ let capsuleT = capsuleTranslations.en;
 async function initCapsuleLocale(): Promise<void> {
   try {
     const locale = await detectAndSetLanguage();
-    capsuleLocale = locale as CapsuleLocale;
+    capsuleLocale = resolveLocale(locale);
     capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en;
   } catch {
     // Keep default English
@@ -1947,7 +2048,11 @@ const mount = async () => {
     // Search the user's saved 常用提示词 (DB) AND the curated 优质提示词 (plaza).
     const [saved, curated] = await Promise.all([
       pmSearchPrompts(trimmed),
-      Promise.resolve(searchCuratedPrompts(trimmed, capsuleLocale, 6)),
+      // Curated plaza prompts only ship en/zh content; other locales fall back to
+      // English plaza data while the capsule's own UI stays fully localized.
+      Promise.resolve(
+        searchCuratedPrompts(trimmed, capsuleLocale === "zh" ? "zh" : "en", 6)
+      ),
     ]);
     // A newer keystroke superseded this search while it was in flight.
     if (seq !== pmSearchSeq) return;
@@ -2264,7 +2369,7 @@ const mount = async () => {
     if (languageChange && languageChange.newValue) {
       const { locale: nextLocale } = languageChange.newValue as { locale?: string };
       if (nextLocale && nextLocale !== capsuleLocale) {
-        capsuleLocale = (nextLocale === "zh" ? "zh" : "en") as CapsuleLocale;
+        capsuleLocale = resolveLocale(nextLocale);
         capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en;
         renderCapsule();
         syncPosition();

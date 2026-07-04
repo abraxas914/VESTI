@@ -1,5 +1,3 @@
-import type { TranslationsType } from "./en";
-
 export const koTranslations = {
   common: {
     save: "저장",
@@ -35,30 +33,33 @@ export const koTranslations = {
     exporting: "내보내는 중...",
     imported: "가져옴",
     expand: "펼치기",
-    collapse: "접기",
+    collapse: "접기"
   },
-
   pages: {
     threads: "스레드",
     insights: "인사이트",
     data: "데이터",
-    settings: "설정",
+    settings: "설정"
   },
-
   dock: {
     threads: "스레드",
     insights: "인사이트",
     dataManagement: "데이터 관리",
     settings: "설정",
     openLibrary: "라이브러리 대시보드 열기",
+    navigation: "Vesti 내비게이션",
+    threadsDesc: "캡처한 모든 대화 — 검색하고 태그를 달아 이어서 진행하세요.",
+    insightsDesc: "각 대화의 자동 요약과 주간 사고 다이제스트.",
+    dataDesc: "라이브러리 백업 및 복원, 각 플랫폼의 과거 대화 가져오기.",
+    settingsDesc: "모델, 캡처, 언어, 테마.",
+    openLibraryDesc: "전체 웹 앱 열기 — 라이브러리, 탐색, 지식 그래프, 프롬프트."
   },
-
   settings: {
     title: "설정",
     groups: {
       personalisation: "개인화",
       system: "시스템",
-      support: "지원",
+      support: "지원"
     },
     appearance: {
       title: "외관",
@@ -69,7 +70,7 @@ export const koTranslations = {
       compactCardsDesc: "카드 여백을 줄입니다.",
       themeLoading: "테마 적용 중...",
       darkEnabled: "다크 모드를 켰습니다.",
-      lightEnabled: "라이트 모드를 켰습니다.",
+      lightEnabled: "라이트 모드를 켰습니다."
     },
     language: {
       title: "언어",
@@ -78,11 +79,13 @@ export const koTranslations = {
       en: "English",
       zh: "中文",
       ja: "日本語",
-      ko: "한국어",
+      ko: "한국어"
     },
     modelAccess: {
       title: "모델 액세스",
       description: "BYOK 및 프록시 설정",
+      privacyTitle: "기기에서 전송되는 정보",
+      privacyDisclosure: "캡처, 로컬 저장, 키워드 검색은 100% 기기 내에서 이루어집니다. AI 기능(요약, 탐색, 임베딩, 프롬프트 도구, 원탁)은 관련 대화 텍스트를 설정된 모델로 전송합니다 — 기본적으로 Vesti 프록시를 통해 ModelScope로. 직접 라우팅하려면 자신의 API 키를 추가하세요.",
       useCustomApiKey: "사용자 지정 API 키 사용",
       byokDesc: "BYOK - 내 키로 직접 라우팅",
       proxyActive: "프록시 활성화",
@@ -113,7 +116,7 @@ export const koTranslations = {
       saved: "저장되었습니다.",
       connectionVerified: "연결을 확인했습니다.",
       testFailed: "연결 테스트에 실패했습니다.",
-      apiKeyRequired: "사용자 지정 모드에서는 API 키가 필요합니다.",
+      apiKeyRequired: "사용자 지정 모드에서는 API 키가 필요합니다."
     },
     captureEngine: {
       title: "캡처 엔진",
@@ -121,15 +124,15 @@ export const koTranslations = {
       modeLabel: "캡처 모드",
       fullMirror: {
         label: "전체 미러",
-        desc: "파싱된 모든 대화 업데이트를 캡처합니다.",
+        desc: "파싱된 모든 대화 업데이트를 캡처합니다."
       },
       smartDenoising: {
         label: "스마트 노이즈 제거",
-        desc: "최소 턴 수와 키워드 규칙을 통과할 때만 캡처합니다.",
+        desc: "최소 턴 수와 키워드 규칙을 통과할 때만 캡처합니다."
       },
       manualArchive: {
         label: "수동 보관",
-        desc: "활성 스레드를 직접 보관할 때까지 캡처를 보류합니다.",
+        desc: "활성 스레드를 직접 보관할 때까지 캡처를 보류합니다."
       },
       minTurnsLabel: "최소 턴 수 (1-20)",
       blacklistLabel: "차단 키워드 (쉼표로 구분)",
@@ -149,6 +152,7 @@ export const koTranslations = {
       archiveHint: "활성 스냅샷이 있는 스마트/수동 모드에서 사용할 수 있습니다.",
       saveSettings: "캡처 설정 저장",
       settingsSaved: "캡처 설정을 저장했습니다.",
+      archivedSummary: "저장됨 · 메시지 {count}개"
     },
     notionExport: {
       title: "Notion 내보내기",
@@ -172,14 +176,14 @@ export const koTranslations = {
       chooseDatabase: "데이터베이스를 선택하면 주석 내보내기가 활성화됩니다.",
       connecting: "연결 중...",
       connectedMsg: "Notion에 연결되었습니다.",
-      disconnectedMsg: "Notion 연결이 해제되었습니다.",
+      disconnectedMsg: "Notion 연결이 해제되었습니다."
     },
     dataManagement: {
       title: "데이터 관리",
       description: "저장 공간, 내보내기, 정리.",
       dataToolsDesc: "데이터 도구는 데이터 탭에서 사용할 수 있습니다.",
       dataToolsHint: "저장 공간 개요, 내보내기, 정리에 사용하세요.",
-      openDataTab: "데이터 관리 열기",
+      openDataTab: "데이터 관리 열기"
     },
     support: {
       docsHelp: "문서 및 도움말",
@@ -189,10 +193,9 @@ export const koTranslations = {
       copied: "복사됨",
       retry: "다시 시도",
       openIssue: "GitHub 이슈 등록",
-      whatsNew: "새로운 소식",
-    },
+      whatsNew: "새로운 소식"
+    }
   },
-
   timeline: {
     searchPlaceholder: "대화 검색",
     searchAriaLabel: "대화 검색",
@@ -200,9 +203,20 @@ export const koTranslations = {
     cancel: "취소",
     firstCapturedToday: "오늘 처음 캡처됨",
     lastCaptured: "마지막 캡처",
+    conversedAt: "대화",
+    searchResults: "상위 일치",
+    noConversations: "아직 대화가 없습니다",
+    searchingMessages: "메시지 검색 중...",
+    noMatches: "일치 항목 없음",
     startedToday: "오늘 시작",
     startedThisWeek: "이번 주 시작",
     startedEarlier: "그 이전 시작",
+    capturedToday: "오늘 캡처",
+    capturedThisWeek: "이번 주 캡처",
+    capturedEarlier: "이전에 캡처",
+    sortByOrigin: "대화 시간순",
+    sortByCapture: "캡처 시간순",
+    timelineReset: "초기화",
     addToProject: "프로젝트에 추가",
     noGroup: "그룹 없음",
     select: "선택",
@@ -212,13 +226,13 @@ export const koTranslations = {
     sourceUrlUnavailable: "원본 URL을 사용할 수 없음",
     filters: {
       started: "시작",
-      source: "출처",
+      source: "출처"
     },
     datePresets: {
       allTime: "기간 무관",
       today: "오늘 시작",
       thisWeek: "이번 주 시작",
-      thisMonth: "이번 달 시작",
+      thisMonth: "이번 달 시작"
     },
     allSources: "모든 출처",
     messages: "메시지",
@@ -226,6 +240,8 @@ export const koTranslations = {
     star: "별표",
     unstar: "별표 해제",
     rename: "이름 변경",
+    editTitle: "대화 제목 편집",
+    moreActions: "추가 작업",
     copyFullText: "전체 텍스트 복사",
     copied: "복사됨!",
     deleteConversation: "대화 삭제",
@@ -234,12 +250,17 @@ export const koTranslations = {
       minutesAgo: "분 전",
       hoursAgo: "시간 전",
       daysAgo: "일 전",
-      monthsAgo: "개월 전",
+      monthsAgo: "개월 전"
     },
     batch: {
       clearSelection: "선택 해제",
       export: "내보내기",
       delete: "삭제",
+      star: "즐겨찾기",
+      archive: "보관",
+      addToFolder: "폴더에 추가",
+      folderNamePlaceholder: "폴더 이름 (예: 업무, 리서치)",
+      add: "추가",
       close: "닫기",
       exit: "나가기",
       exportPanelTitle: "내보내기",
@@ -263,14 +284,32 @@ export const koTranslations = {
       deleteDescSingular: "선택한 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
       deleteDescPlural: "선택한 {count}개의 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
       exportFormats: {
-        md: { name: "Markdown", desc: "노트, 문서, 작성 도구를 위한 Markdown 내보내기" },
-        txt: { name: "텍스트", desc: "빠르게 읽고 복사/붙여넣기 하기 좋은 일반 텍스트 내보내기" },
-        json: { name: "JSON", desc: "백업, 검토, 재처리를 위한 구조화된 내보내기" },
+        md: {
+          name: "Markdown",
+          desc: "노트, 문서, 작성 도구를 위한 Markdown 내보내기"
+        },
+        txt: {
+          name: "텍스트",
+          desc: "빠르게 읽고 복사/붙여넣기 하기 좋은 일반 텍스트 내보내기"
+        },
+        json: {
+          name: "JSON",
+          desc: "백업, 검토, 재처리를 위한 구조화된 내보내기"
+        }
       },
       exportModes: {
-        full: { label: "전체", desc: "스레드 전문을 로컬에 그대로 보관합니다." },
-        compact: { label: "컴팩트", desc: "다음 에이전트로 넘기기 위한 핵심 요약. 먼저 현재 LLM 설정을 시도한 후 로컬 대체 처리로 전환합니다." },
-        summary: { label: "요약", desc: "사람이 읽는 노트 형식. 먼저 현재 LLM 설정을 시도한 후 로컬 대체 처리로 전환합니다." },
+        full: {
+          label: "전체",
+          desc: "스레드 전문을 로컬에 그대로 보관합니다."
+        },
+        compact: {
+          label: "컴팩트",
+          desc: "다음 에이전트로 넘기기 위한 핵심 요약. 먼저 현재 LLM 설정을 시도한 후 로컬 대체 처리로 전환합니다."
+        },
+        summary: {
+          label: "요약",
+          desc: "사람이 읽는 노트 형식. 먼저 현재 LLM 설정을 시도한 후 로컬 대체 처리로 전환합니다."
+        }
       },
       copyExport: "내보내기 복사",
       downloadExport: "내보내기 다운로드",
@@ -281,10 +320,29 @@ export const koTranslations = {
       clipboardFailed: "생성된 내보내기를 클립보드에 복사하지 못했습니다.",
       clipboardHint: "클립보드 권한을 확인하거나 다운로드를 대신 사용하세요.",
       clipboardUnavailable: "복사를 사용할 수 없음",
-      exportPanelDesc: "데이터 화면과 같은 형식 행을 유지한 채 여기에서 내보내기 상세도를 선택하세요.",
-    },
+      exportPanelDesc: "데이터 화면과 같은 형식 행을 유지한 채 여기에서 내보내기 상세도를 선택하세요."
+    }
   },
-
+  exportDialog: {
+    title: "대화 {count}개 내보내기",
+    titlePlural: "대화 {count}개 내보내기",
+    tokens: "약 {count} 토큰",
+    content: "내용",
+    format: "형식",
+    modeFull: "전체",
+    modeFullDesc: "전체 기록",
+    modeCompact: "압축",
+    modeCompactDesc: "AI 압축",
+    modeSummary: "요약",
+    modeSummaryDesc: "핵심만",
+    formatMd: "Markdown",
+    formatTxt: "텍스트",
+    formatJson: "JSON",
+    download: "다운로드",
+    copy: "복사",
+    copied: "복사됨!",
+    close: "닫기"
+  },
   data: {
     storage: "저장 공간",
     storageDesc: "사용 공간, 할당량, 브라우저 세부 정보",
@@ -296,6 +354,41 @@ export const koTranslations = {
     exportAction: "내보내기",
     importJson: "JSON 가져오기",
     importJsonDesc: "복원 가능한 백업을 되돌려 캡처된 데이터 테이블을 교체합니다",
+    exportFormatLabel: "내보내기 형식",
+    exportedMessage: "{filename} 내보냄",
+    importConfirm: "{filename}을(를) 가져올까요?\n\n로컬 대화, 메시지, 요약, 주간 리포트, 주석, 검색 벡터가 JSON 백업으로 대체됩니다.\nLLM 설정, 노트, 주제, 탐색 세션은 변경되지 않습니다.",
+    importCancelled: "가져오기를 취소했습니다.",
+    importedMessage: "{filename}에서 {summary}을(를) 가져왔습니다",
+    importSummary: {
+      threads: "대화 {count}개",
+      messages: "메시지 {count}개",
+      summaries: "요약 {count}개",
+      weeklyReports: "주간 리포트 {count}개",
+      annotations: "주석 {count}개"
+    },
+    clearCacheConfirm: "캐시된 요약과 주간 리포트만 삭제할까요?\n대화와 메시지는 유지됩니다.",
+    cacheClearedMessage: "인사이트 캐시를 삭제했습니다. 대화와 메시지는 유지되었습니다.",
+    clearAllConfirm: "로컬의 모든 대화, 메시지, 요약, 주간 리포트가 삭제됩니다.\n계속하려면 DELETE를 입력하세요:",
+    clearCancelled: "삭제를 취소했습니다.",
+    dataCleared: "로컬 데이터를 삭제했습니다. LLM 설정은 유지됩니다.",
+    history: {
+      title: "플랫폼 기록 가져오기",
+      subtitle: "이 AI 플랫폼의 과거 대화를 가져옵니다",
+      description: "Vesti는 플랫폼 자체 API(현재 로그인 사용)로 기존 대화를 읽어 로컬에 저장합니다. 읽기 전용이며 아무것도 전송하거나 제출하지 않습니다.",
+      supportedNote: "지원: ChatGPT 및 Claude. 더 많은 플랫폼이 추가될 예정입니다.",
+      unsupportedTab: "활성 탭에서 ChatGPT 또는 Claude를 연 다음 돌아와 기록을 가져오세요.",
+      notLoggedIn: "먼저 활성 탭에서 {platform}에 로그인한 후 다시 시도하세요.",
+      ready: "{platform}에서 가져올 준비가 되었습니다.",
+      start: "{platform} 기록 가져오기",
+      starting: "시작 중…",
+      cancel: "취소",
+      listing: "대화 찾는 중…",
+      running: "가져오는 중… {processed}/{discovered}",
+      doneSummary: "완료. {saved}개 가져옴 · 새 메시지 {newMessages}개 · {skipped}개 건너뜀 · {failed}개 실패.",
+      cancelledSummary: "취소됨. 지금까지 {saved}개 가져옴.",
+      errorSummary: "가져오기 실패: {error}",
+      confirm: "{platform}에서 대화 기록을 가져올까요? Vesti는 플랫폼 자체 API로 대화를 읽어 로컬에 저장합니다. 아무것도 전송하거나 제출하지 않습니다."
+    },
     cleanup: "정리",
     cleanupDesc: "요약 캐시를 삭제하거나 모든 로컬 데이터를 지웁니다",
     dashboard: "대시보드",
@@ -337,9 +430,8 @@ export const koTranslations = {
     importData: "데이터 가져오기",
     clearAllData: "모든 데이터 지우기",
     clearInsightsCache: "인사이트 캐시 지우기",
-    noUndo: "이 작업은 되돌릴 수 없습니다.",
+    noUndo: "이 작업은 되돌릴 수 없습니다."
   },
-
   insights: {
     title: "인사이트",
     onDemand: "온디맨드",
@@ -415,7 +507,7 @@ export const koTranslations = {
     depthLabels: {
       deep: "깊이 파고들기",
       moderate: "보통 수준 분석",
-      superficial: "가볍게 훑어보기",
+      superficial: "가볍게 훑어보기"
     },
     latestRegenerationFailed: "최근 재생성에 실패했습니다.",
     failedToGenerateWeekly: "주간 다이제스트 생성에 실패했습니다.",
@@ -432,23 +524,63 @@ export const koTranslations = {
     moreThreads: "{count}개 더",
     thread: "스레드",
     phases: {
-      loadingSummaries: { label: "스레드 요약 불러오는 중", desc: "선택한 주의 저장된 요약을 읽는 중", hint: "약 12초", status: "이번 주 스레드 요약을 불러오는 중..." },
-      patternDetection: { label: "패턴 감지", desc: "스레드 간 빈도 및 반복 분석", hint: "약 14초", status: "반복되는 패턴을 탐색하는 중..." },
-      crossDomainMapping: { label: "분야 간 매핑", desc: "구조적 동형성 감지", hint: "약 15초", status: "분야를 넘나드는 공명을 매핑하는 중..." },
-      composing: { label: "작성 및 저장", desc: "다이제스트 작성 및 저장", hint: "약 10초", status: "다이제스트를 작성하고 기록하는 중..." },
+      loadingSummaries: {
+        label: "스레드 요약 불러오는 중",
+        desc: "선택한 주의 저장된 요약을 읽는 중",
+        hint: "약 12초",
+        status: "이번 주 스레드 요약을 불러오는 중..."
+      },
+      patternDetection: {
+        label: "패턴 감지",
+        desc: "스레드 간 빈도 및 반복 분석",
+        hint: "약 14초",
+        status: "반복되는 패턴을 탐색하는 중..."
+      },
+      crossDomainMapping: {
+        label: "분야 간 매핑",
+        desc: "구조적 동형성 감지",
+        hint: "약 15초",
+        status: "분야를 넘나드는 공명을 매핑하는 중..."
+      },
+      composing: {
+        label: "작성 및 저장",
+        desc: "다이제스트 작성 및 저장",
+        hint: "약 10초",
+        status: "다이제스트를 작성하고 기록하는 중..."
+      }
     },
     threadPhases: {
-      preparing: { label: "파이프라인 초기화 중", desc: "캐시를 확인하고 컨텍스트 창을 깨우는 중", status: "대화 컨텍스트를 준비하는 중..." },
-      distilling: { label: "논리 추출 중", desc: "턴 사이에 무엇이 바뀌었는지 추적", status: "핵심 논리를 추출하는 중..." },
-      curating: { label: "요약 정리 중", desc: "여정 단계와 인사이트 용어집 구성", status: "구조화된 요약을 정리하는 중..." },
-      finalising: { label: "산출물 마무리 중", desc: "저장소 레코드를 기록하고 카드를 새로고침", status: "마무리하고 저장하는 중..." },
-    },
+      preparing: {
+        label: "파이프라인 초기화 중",
+        desc: "캐시를 확인하고 컨텍스트 창을 깨우는 중",
+        status: "대화 컨텍스트를 준비하는 중..."
+      },
+      distilling: {
+        label: "논리 추출 중",
+        desc: "턴 사이에 무엇이 바뀌었는지 추적",
+        status: "핵심 논리를 추출하는 중..."
+      },
+      curating: {
+        label: "요약 정리 중",
+        desc: "여정 단계와 인사이트 용어집 구성",
+        status: "구조화된 요약을 정리하는 중..."
+      },
+      finalising: {
+        label: "산출물 마무리 중",
+        desc: "저장소 레코드를 기록하고 카드를 새로고침",
+        status: "마무리하고 저장하는 중..."
+      }
+    }
   },
-
   reader: {
     loading: "불러오는 중...",
     buildingIndex: "검색 인덱스 구축 중...",
     noMessages: "메시지 없음",
+    copy: "복사",
+    copied: "복사됨",
+    copyTeX: "TeX 복사",
+    copyCode: "코드 복사",
+    plain: "일반",
     searchResults: "검색 결과",
     resultOf: "/",
     prevResult: "이전 결과",
@@ -460,10 +592,9 @@ export const koTranslations = {
       captured: "캡처됨",
       sourceTime: "출처 시각",
       summaryStarted: "시작",
-      summaryUpdated: "마지막 업데이트",
-    },
+      summaryUpdated: "마지막 업데이트"
+    }
   },
-
   message: {
     you: "나",
     aiPrefix: "AI",
@@ -473,16 +604,15 @@ export const koTranslations = {
     attachment: "첨부 파일",
     attachments: "첨부 파일",
     artifact: "아티팩트",
-    artifacts: "아티팩트",
+    artifacts: "아티팩트"
   },
-
   capture: {
     status: {
       ready: "준비 완료",
       mirrorMode: "미러 모드에서는 수동 보관이 필요하지 않습니다.",
       unsupported_tab: "활성 탭에서 ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi 또는 Yuanbao 스레드를 여세요.",
       no_transient: "활성 스레드 스냅샷이 아직 감지되지 않았습니다.",
-      content_unreachable: "페이지 콘텐츠 스크립트에 연결할 수 없습니다. 페이지를 새로고침하고 다시 시도하세요.",
+      content_unreachable: "페이지 콘텐츠 스크립트에 연결할 수 없습니다. 페이지를 새로고침하고 다시 시도하세요."
     },
     errors: {
       archiveModeDisabled: "수동 보관은 스마트 또는 수동 모드에서만 사용할 수 있습니다.",
@@ -493,17 +623,21 @@ export const koTranslations = {
       emptyPayload: "보관할 파싱된 메시지가 없습니다.",
       storageLimit: "저장 공간 하드 한도에 도달했습니다. 보관하기 전에 데이터를 내보내거나 지우세요.",
       persistFailed: "보관 쓰기에 실패했습니다. 다시 시도하세요.",
-      forceArchiveFailed: "수동 보관에 실패했습니다. 다시 시도하세요.",
-    },
+      forceArchiveFailed: "수동 보관에 실패했습니다. 다시 시도하세요."
+    }
   },
-
   dashboard: {
-    tabs: { library: "라이브러리", explore: "탐색", network: "네트워크" },
+    tabs: {
+      library: "라이브러리",
+      explore: "탐색",
+      network: "네트워크",
+      prompts: "프롬프트"
+    },
     nav: {
       backToExplore: "탐색으로 돌아가기",
       backToNetwork: "네트워크로 돌아가기",
       dashboardSections: "대시보드 섹션",
-      closeDrawer: "드로어 배경 닫기",
+      closeDrawer: "드로어 배경 닫기"
     },
     settings: {
       settings: "설정",
@@ -551,7 +685,7 @@ export const koTranslations = {
       readyForOneShotExport: "한 번에 내보낼 준비 완료",
       noSharedDatabasesFound: "공유된 데이터베이스를 아직 찾지 못했습니다. 연동 앱과 데이터베이스를 공유한 후 새로고침하세요.",
       selectedDatabaseMessage: "{title}을 선택했습니다.",
-      themeUpdateFailed: "테마 업데이트에 실패했습니다.",
+      themeUpdateFailed: "테마 업데이트에 실패했습니다."
     },
     library: {
       allConversations: "모든 대화",
@@ -715,8 +849,28 @@ export const koTranslations = {
       noPreviewAvailable: "미리보기 없음",
       closeSidebar: "사이드바 닫기",
       openSidebar: "사이드바 열기",
+      emptyDetailTitle: "선택된 대화 없음",
+      emptyDetailHint: "왼쪽에서 대화를 선택하면 여기에 표시됩니다."
     },
     explore: {
+      modeAgent: "에이전트",
+      modeClassic: "클래식",
+      scopeAll: "전체",
+      scopeSelected: "선택됨",
+      executionDetails: "실행 세부 정보",
+      drawerPlan: "계획",
+      drawerToolCalls: "도구 호출",
+      drawerSources: "출처",
+      drawerContextDraft: "컨텍스트 초안",
+      plannerIntent: "의도",
+      plannerRoute: "경로",
+      plannerSourceLimit: "출처 제한",
+      plannerSummaryTarget: "요약 대상 수",
+      sourceControls: "출처 제어",
+      regenerateAnswer: "답변 다시 생성",
+      saveSelection: "선택 저장",
+      savingSelection: "저장 중...",
+      saveDraft: "저장",
       chooseConversationsTitle: "대화 선택",
       chooseConversationsDesc: "에이전트가 사용할 수 있는 대화를 검색하고 미리보고 선택하세요.",
       applySelected: "선택 적용",
@@ -725,6 +879,30 @@ export const koTranslations = {
       noPreviewAvailable: "미리보기 없음",
       closeSidebar: "사이드바 닫기",
       openSidebar: "사이드바 열기",
+      emptyDetailTitle: "선택된 대화 없음",
+      emptyDetailHint: "왼쪽에서 대화를 선택하면 여기에 표시됩니다.",
+      summaryCard: {
+        coreQuestion: "핵심 질문",
+        thinkingJourney: "사고 여정",
+        step: "단계",
+        example: "예: ",
+        keyInsights: "핵심 인사이트",
+        unresolvedThreads: "미해결 스레드",
+        metaObservations: "메타 관찰",
+        thinkingStyle: "사고 스타일:",
+        emotionalTone: "감정 톤:",
+        depth: "깊이:",
+        nextSteps: "다음 단계",
+        fallback: "대체 일반 텍스트"
+      },
+      sendToButton: "보내기…",
+      sendToNotionConversation: "Notion — 대화",
+      sendToNotionSummary: "Notion — 요약",
+      sendToObsidianConversation: "Obsidian — 대화",
+      sendToObsidianSummary: "Obsidian — 요약",
+      sendToExporting: "내보내는 중…",
+      sendToDone: "전송됨 ✓",
+      sendToFailed: "내보내기 실패",
       noConversationsSelected: "선택된 대화 0개",
       oneConversationSelected: "선택된 대화 1개",
       multipleConversationsSelected: "선택된 대화 {count}개",
@@ -767,13 +945,13 @@ export const koTranslations = {
           "가벼운 라이브러리 단서를 스캔하는 중...",
           "출처 근거를 수집하는 중...",
           "컨텍스트 초안을 작성하는 중...",
-          "더 긴 답변을 종합하는 중...",
+          "더 긴 답변을 종합하는 중..."
         ],
         classic: [
           "질문을 이해하는 중...",
           "인덱싱된 컨텍스트를 검색하는 중...",
-          "더 긴 답변을 종합하는 중...",
-        ],
+          "더 긴 답변을 종합하는 중..."
+        ]
       },
       starterDecks: [
         {
@@ -786,24 +964,24 @@ export const koTranslations = {
             {
               title: "이번 주 요약",
               prompt: "이번 주에 작업한 내용을 요약하고 주요 결정을 강조해 주세요.",
-              detail: "최근 대화 묶음을 간결한 리뷰로 정리하기에 좋습니다.",
+              detail: "최근 대화 묶음을 간결한 리뷰로 정리하기에 좋습니다."
             },
             {
               title: "의사결정 흐름 찾기",
               prompt: "최종 결정에 어떻게 도달했는지 설명하는 대화를 보여 주세요.",
-              detail: "결론만이 아니라 그 배경이 되는 맥락이 필요할 때 사용하세요.",
+              detail: "결론만이 아니라 그 배경이 되는 맥락이 필요할 때 사용하세요."
             },
             {
               title: "관련 스레드 묶기",
               prompt: "이 주제에 관해 가장 관련 있는 대화를 묶고 왜 함께 묶이는지 설명해 주세요.",
-              detail: "전체 원본 대화 기록을 노출하지 않고 주제를 군집화하는 데 유용합니다.",
+              detail: "전체 원본 대화 기록을 노출하지 않고 주제를 군집화하는 데 유용합니다."
             },
             {
               title: "빠른 브리프 만들기",
               prompt: "가장 관련 있는 대화로 짧은 브리프를 만들고 출처에 근거를 두세요.",
-              detail: "깔끔한 인계나 요약 노트를 원할 때의 간결한 출발점입니다.",
-            },
-          ],
+              detail: "깔끔한 인계나 요약 노트를 원할 때의 간결한 출발점입니다."
+            }
+          ]
         },
         {
           eyebrow: "기본은 프라이빗",
@@ -815,24 +993,24 @@ export const koTranslations = {
             {
               title: "무엇이 바뀌었나?",
               prompt: "지난 한 주 동안 내 대화에서 무엇이 바뀌었나요?",
-              detail: "필요 이상으로 끌어오지 않고 진행 상황을 드러내는 안전한 방법입니다.",
+              detail: "필요 이상으로 끌어오지 않고 진행 상황을 드러내는 안전한 방법입니다."
             },
             {
               title: "막힘 군집화",
               prompt: "내 대화에서 반복되는 막힘이나 미해결 질문을 군집화해 주세요.",
-              detail: "반복되는 고충과 논의가 계속 맴돌던 지점을 드러내는 데 도움이 됩니다.",
+              detail: "반복되는 고충과 논의가 계속 맴돌던 지점을 드러내는 데 도움이 됩니다."
             },
             {
               title: "하나의 주제 추적",
               prompt: "프라이버시 또는 검색에 관한 주요 논의를 추적하고 그 흐름을 요약해 주세요.",
-              detail: "여러 대화에 걸친 하나의 줄기를 따라가기에 좋습니다.",
+              detail: "여러 대화에 걸친 하나의 줄기를 따라가기에 좋습니다."
             },
             {
               title: "다음 단계 드러내기",
               prompt: "가장 관련 있는 대화가 시사하는 다음 행동을 드러내 주세요.",
-              detail: "흩어진 논의를 실용적인 후속 작업 목록으로 바꿉니다.",
-            },
-          ],
+              detail: "흩어진 논의를 실용적인 후속 작업 목록으로 바꿉니다."
+            }
+          ]
         },
         {
           eyebrow: "단계적으로 작업하기",
@@ -844,30 +1022,30 @@ export const koTranslations = {
             {
               title: "주간 정리",
               prompt: "주요 테마와 후속 작업이 담긴 간결한 주간 정리를 만들어 주세요.",
-              detail: "간결하면서도 유용한 주간 다이제스트를 위해 설계되었습니다.",
+              detail: "간결하면서도 유용한 주간 다이제스트를 위해 설계되었습니다."
             },
             {
               title: "테마 맵",
               prompt: "아키텍처와 도구에 관한 내 대화의 주요 테마를 매핑해 주세요.",
-              detail: "먼저 라이브러리를 높은 수준에서 이해하고 싶을 때 유용합니다.",
+              detail: "먼저 라이브러리를 높은 수준에서 이해하고 싶을 때 유용합니다."
             },
             {
               title: "근거 먼저",
               prompt: "이 주제에 가장 관련 있는 대화를 나열하고 각각을 간략히 요약해 주세요.",
-              detail: "출처에 뒷받침된 답변을 원할 때 검색과 검토를 잇는 좋은 다리입니다.",
+              detail: "출처에 뒷받침된 답변을 원할 때 검색과 검토를 잇는 좋은 다리입니다."
             },
             {
               title: "결정 요약",
               prompt: "그 결정과 그에 이르게 한 근거를 요약해 주세요.",
-              detail: "짧고 확인하기 쉬워 빠른 인계 노트에 적합합니다.",
-            },
-          ],
-        },
+              detail: "짧고 확인하기 쉬워 빠른 인계 노트에 적합합니다."
+            }
+          ]
+        }
       ],
       libraryStarter: {
-        titleTemplate: '"{cue}" 이어가기',
-        promptTemplate: '"{cue}"를 이어가고, 핵심을 요약하기 전에 관련 컨텍스트를 검색해 주세요.',
-        detail: "가벼운 제목과 발췌 컨텍스트만 사용해 최근 라이브러리 단서로부터 생성되었습니다.",
+        titleTemplate: "\"{cue}\" 이어가기",
+        promptTemplate: "\"{cue}\"를 이어가고, 핵심을 요약하기 전에 관련 컨텍스트를 검색해 주세요.",
+        detail: "가벼운 제목과 발췌 컨텍스트만 사용해 최근 라이브러리 단서로부터 생성되었습니다."
       },
       toolLabels: {
         intent_planner: "의도 플래너",
@@ -877,7 +1055,7 @@ export const koTranslations = {
         search_rag: "시맨틱 검색",
         summary_tool: "요약 도구",
         context_compiler: "컨텍스트 컴파일러",
-        answer_synthesizer: "답변 합성기",
+        answer_synthesizer: "답변 합성기"
       },
       toolExplanations: {
         intent_planner: "사용자가 무엇을 요청하는지, 어떤 경로를 실행할지, 시간 범위가 필요한지를 모델로 판단합니다.",
@@ -887,24 +1065,24 @@ export const koTranslations = {
         search_rag: "의미적 유사도로 지식 베이스를 검색해 가장 관련 있는 대화를 가져옵니다.",
         summary_tool: "누락된 대화 요약을 채워 여러 출처의 답변을 더 쉽게 종합하고 확인하게 합니다.",
         context_compiler: "드로어에 표시되는 편집 가능한 컨텍스트 초안과 출처 집합을 구성합니다.",
-        answer_synthesizer: "수집된 근거로부터 최종 답변을 생성하고, 결과를 확인할 수 있는 위치를 사용자에게 알려 줍니다.",
+        answer_synthesizer: "수집된 근거로부터 최종 답변을 생성하고, 결과를 확인할 수 있는 위치를 사용자에게 알려 줍니다."
       },
       intentLabels: {
         fact_lookup: "사실 조회",
         cross_conversation_summary: "대화 횡단 요약",
         weekly_review: "주간 리뷰",
         timeline: "타임라인",
-        clarification_needed: "설명 필요",
+        clarification_needed: "설명 필요"
       },
       pathLabels: {
         rag: "시맨틱 검색",
         weekly_summary: "주간 요약",
-        clarify: "먼저 확인",
+        clarify: "먼저 확인"
       },
       toolStatus: {
         running: "실행 중",
         completed: "완료됨",
-        failed: "실패",
+        failed: "실패"
       },
       inRange: "범위 내",
       unknown: "알 수 없음",
@@ -924,7 +1102,6 @@ export const koTranslations = {
       scopePrefix: "범위:",
       timePrefix: "시간:",
       currentScopePrefix: "현재 범위:",
-      sourceControls: "출처 제어",
       openContextDraft: "컨텍스트 초안 열기",
       sources: "출처",
       noRelevantConversations: "관련 대화를 찾지 못했습니다",
@@ -955,7 +1132,6 @@ export const koTranslations = {
       errorLabel: "오류:",
       resizeSidebarAria: "Explore 사이드바 크기 조절",
       resizeDrawerAria: "Explore 세부 정보 드로어 크기 조절",
-      executionDetails: "실행 세부 정보",
       contextDraft: "컨텍스트 초안",
       plannerDecision: "플래너 판단",
       sourceLimitPrefix: "출처 한도:",
@@ -973,14 +1149,12 @@ export const koTranslations = {
       candidateSources: "후보 출처",
       noContextCandidates: "이 답변에는 컨텍스트 후보가 없습니다.",
       saving: "저장 중...",
-      saveSelection: "선택 저장",
-      regenerateAnswer: "답변 다시 생성",
       openDraft: "초안 열기",
       regenerationFootnote: "재생성은 선택한 대화만 사용해 새로운 턴을 추가합니다.",
       draftEditable: "초안 (편집 가능)",
       save: "저장",
       copy: "복사",
-      downloadTxt: "TXT 다운로드",
+      downloadTxt: "TXT 다운로드"
     },
     data: {
       title: "데이터 관리",
@@ -1012,7 +1186,7 @@ export const koTranslations = {
       localDataCleared: "로컬 데이터를 지웠습니다. LLM 설정은 유지됩니다.",
       exportedFile: "{filename}을 내보냈습니다",
       runningDataAction: "데이터 작업 실행 중...",
-      refreshingStorage: "저장 공간 새로고침 중...",
+      refreshingStorage: "저장 공간 새로고침 중..."
     },
     network: {
       emptyTitle: "시간순 네트워크가 여기에 표시됩니다.",
@@ -1051,10 +1225,166 @@ export const koTranslations = {
       gapInsightTitle: "아직 연결하지 않은 흐름",
       gapInsightTemplate: "{a} 와(과) {b} 를(을) 탐색했지만 아직 연결하지 않았어요",
       conceptMentionedIn: "{count}개의 대화에 등장",
-      relatedConversations: "관련 대화",
+      relatedConversations: "관련 대화"
     },
+    prompts: {
+      title: "자주 쓰는 프롬프트",
+      summary: "프롬프트 {count}개",
+      extractFromChats: "대화에서 추출",
+      extracting: "추출 중…",
+      extractTooltip: "최근 대화에서 재사용 가능한 프롬프트를 스캔합니다",
+      newPrompt: "새 프롬프트",
+      searchPlaceholder: "프롬프트 검색…",
+      favorites: "즐겨찾기",
+      allCategories: "모든 카테고리",
+      sortRecent: "최근",
+      sortQuality: "품질",
+      sortUsage: "많이 사용순",
+      loading: "프롬프트 불러오는 중…",
+      emptyNone: "아직 프롬프트가 없습니다.",
+      emptyFiltered: "현재 필터와 일치하는 프롬프트가 없습니다.",
+      emptyHint: "캡처한 대화에서 재사용 가능한 프롬프트를 추출하거나 직접 추가하세요.",
+      retry: "다시 시도",
+      favorite: "즐겨찾기 추가",
+      unfavorite: "즐겨찾기 해제",
+      copy: "프롬프트 복사",
+      deleteAria: "프롬프트 삭제",
+      closeEditor: "편집기 닫기",
+      editorNew: "새 프롬프트",
+      editorEdit: "프롬프트 편집",
+      fieldTitle: "트리거",
+      titlePlaceholder: "이 프롬프트를 불러올 짧은 트리거(선택)",
+      fieldBody: "프롬프트",
+      bodyPlaceholder: "재사용 가능한 프롬프트를 작성하세요. 자리 표시자에는 {{variables}}를 사용합니다.",
+      improveTooltip: "이 초안을 더 강력한 프롬프트로 다시 작성합니다(설정된 LLM 사용)",
+      improving: "개선 중…",
+      improveWithAI: "AI로 개선",
+      fieldCategory: "카테고리",
+      categoryPlaceholder: "예: 코딩",
+      fieldTags: "태그(쉼표로 구분)",
+      tagsPlaceholder: "코드, 리뷰",
+      markFavorite: "즐겨찾기로 표시(자주 사용)",
+      openSource: "원본 대화 열기",
+      save: "저장",
+      cancel: "취소",
+      deleteBtn: "삭제",
+      usedTimes: "{n}회 사용",
+      scorePoor: "기본",
+      scoreGood: "좋음",
+      scoreHigh: "고가치",
+      toastBodyEmpty: "프롬프트 본문은 비워둘 수 없습니다.",
+      toastSaved: "프롬프트를 저장했습니다.",
+      toastDuplicate: "동일한 프롬프트가 이미 있습니다.",
+      toastUpdated: "프롬프트를 업데이트했습니다.",
+      toastSaveFailed: "프롬프트 저장에 실패했습니다.",
+      toastDeleted: "프롬프트를 삭제했습니다.",
+      toastDeleteFailed: "프롬프트 삭제에 실패했습니다.",
+      toastFavoriteFailed: "즐겨찾기 업데이트에 실패했습니다.",
+      toastCopied: "클립보드에 복사했습니다.",
+      toastClipboard: "클립보드를 사용할 수 없습니다.",
+      toastImproved: "AI로 프롬프트를 개선했습니다.",
+      toastNoLlm: "LLM이 설정되지 않았습니다 — 설정에서 구성하면 AI 재작성을 사용할 수 있습니다.",
+      toastImproveFailed: "AI 완성에 실패했습니다.",
+      toastExtract: "{candidates}개 후보에서 새 프롬프트 {created}개를 보관했습니다.",
+      unavailable: "이 빌드에서는 프롬프트 관리를 사용할 수 없습니다.",
+      exportLabel: "내보내기",
+      importLabel: "가져오기",
+      importBackup: "프롬프트 백업 가져오기",
+      toastExported: "프롬프트 {n}개를 내보냈습니다.",
+      toastImported: "프롬프트 {n}개를 가져왔습니다({skipped}개 건너뜀).",
+      importFailed: "가져오기 실패 — 잘못된 백업 파일입니다.",
+      loadFailed: "프롬프트를 불러오지 못했습니다.",
+      draftFirst: "먼저 개선할 초안을 작성하세요.",
+      extractFailed: "추출에 실패했습니다.",
+      summaryLabel: "요약: ",
+      plazaTitle: "프롬프트 광장",
+      plazaSubtitle: "신뢰할 수 있는 출처의 고품질 추천 프롬프트.",
+      plazaDaily: "오늘의 추천",
+      plazaDailyHint: "매일 갱신됩니다.",
+      plazaUse: "사용",
+      plazaSourcePrefix: "출처: ",
+      supermarketTitle: "프롬프트 마켓",
+      supermarketSubtitle: "카테고리별로 더 많은 고품질 프롬프트를 둘러보고 광장에 추가하세요.",
+      myPlaza: "내 광장",
+      myPlazaEmpty: "아래 마켓에서 프롬프트를 추가해 나만의 광장을 만드세요.",
+      adopt: "추가",
+      adopted: "추가됨",
+      selectAria: "프롬프트 선택",
+      selectedCount: "{n}개 선택됨",
+      deleteSelected: "삭제",
+      clearSelection: "취소"
+    },
+    aiti: {
+      modeAsk: "질문",
+      modeAiti: "AITI",
+      modeRoundtable: "원탁",
+      title: "당신의 AITI — 사고의 강점",
+      subtitle: "당신의 대화에서 로컬로 계산됩니다. 판정이 아니라 강점의 반영입니다.",
+      insufficient: "아직 분석된 대화가 충분하지 않습니다 — 대화를 이어가면 당신의 초상이 완성됩니다.",
+      sample: "당신의 대화 {n}개에서 도출",
+      typeSeparator: " · ",
+      strengthsTitle: "당신의 사고 강점",
+      empoweringIntro: "당신의 AI 대화 전반에서 다음 강점이 두드러집니다:",
+      obsessionsTitle: "당신이 계속 투자하는 것",
+      evidence: "대화 {n}개에서 확인됨",
+      axisNeedsSignal: "신호가 더 필요함",
+      axisDepthLabel: "폭 ↔ 깊이",
+      axisDepthLeft: "탐험가",
+      axisDepthRight: "발굴가",
+      axisDepthLeftStrength: "폭넓게 탐구하며 여러 분야의 아이디어를 연결합니다.",
+      axisDepthRightStrength: "깊이 파고들어 복잡한 것을 철저히 익힙니다.",
+      axisMakerLabel: "이론 ↔ 실천",
+      axisMakerLeft: "이론가",
+      axisMakerRight: "실행가",
+      axisMakerLeftStrength: "원리와 모델로 사고하며 기초를 정확히 다집니다.",
+      axisMakerRightStrength: "실행 지향적이며 아이디어를 빠르게 실제 성과로 전환합니다.",
+      axisFocusLabel: "수렴 ↔ 발산",
+      axisFocusLeft: "수렴형",
+      axisFocusRight: "발산형",
+      axisFocusLeftStrength: "집중을 유지하며 중요한 답으로 수렴합니다.",
+      axisFocusRightStrength: "호기심을 따라 탐색하며 예상치 못한 가능성을 엽니다.",
+      axisAffectLabel: "냉철 ↔ 열정",
+      axisAffectLeft: "냉철형",
+      axisAffectRight: "열정형",
+      axisAffectLeftStrength: "복잡한 상황에서도 침착함을 유지하며 명확하게 판단합니다.",
+      axisAffectRightStrength: "탐구하는 대상에 강한 감정적 몰입을 발휘합니다."
+    },
+    learn: {
+      modeLearn: "학습",
+      title: "당신이 배워온 것",
+      subtitle: "당신의 대화를 개인 커리큘럼으로 정리합니다. 로컬에서 계산됩니다.",
+      insufficient: "아직 대화가 충분하지 않습니다 — 대화를 이어가면 학습 지도가 채워집니다.",
+      sample: "분석된 대화 {n}개에서",
+      domainsTitle: "지식 영역",
+      uncategorized: "미분류",
+      domainConversations: "대화 {n}개",
+      glossaryTitle: "배운 것들",
+      openLoopsTitle: "미완의 루프",
+      openLoopsEmpty: "미해결 스레드가 없습니다 — 깔끔하게 마무리되었습니다."
+    },
+    roundtable: {
+      title: "AI 원탁회의",
+      subtitle: "당신의 질문에 대해 다양한 관점의 패널을 소집하고, 사회자가 종합합니다.",
+      questionPlaceholder: "논의할 판단이 필요한 질문을 입력…",
+      personasLabel: "패널(최대 3명)",
+      run: "패널 소집",
+      running: "패널이 논의 중…",
+      latencyHint: "각 참석자가 순서대로 답하므로 시간이 조금 걸립니다.",
+      needQuestion: "먼저 질문을 입력하세요.",
+      seatsTitle: "패널",
+      synthesisTitle: "사회자의 종합",
+      consensus: "합의점",
+      disagreements: "주요 이견",
+      recommendation: "권장 사항",
+      openQuestions: "미해결 질문",
+      empty: "질문을 입력하고 패널을 소집하면 관점과 종합을 볼 수 있습니다.",
+      personaSkeptic: "회의론자",
+      personaOptimist: "낙관론자",
+      personaPragmatist: "실용주의자",
+      personaDomainExpert: "분야 전문가",
+      personaDevilsAdvocate: "악마의 변호인"
+    }
   },
-
   platforms: {
     ChatGPT: "ChatGPT",
     Claude: "Claude",
@@ -1063,6 +1393,79 @@ export const koTranslations = {
     Qwen: "Qwen",
     Doubao: "Doubao",
     Kimi: "Kimi",
-    Yuanbao: "Yuanbao",
+    Yuanbao: "Yuanbao"
   },
+  realTimeAssist: {
+    panelTitle: "프롬프트 품질",
+    issuesTitle: "제안",
+    score: {
+      label: "품질",
+      poor: "낮음",
+      fair: "보통",
+      good: "좋음",
+      excellent: "우수"
+    },
+    breakdown: {
+      length: "적절한 길이",
+      instruction: "명확한 동작 동사",
+      role: "역할 / 페르소나",
+      constraints: "제약 조건",
+      structure: "단계 또는 항목",
+      variables: "재사용 가능한 변수",
+      codeFence: "코드 블록",
+      questionPenalty: "짧은 질문만"
+    },
+    clarity: {
+      tooShort: "평가하기에 너무 짧음",
+      pureQuestion: "질문만 있고 지시가 없음",
+      noInstructionVerb: "명확한 동작 동사가 없음",
+      noRole: "역할이나 전문성이 설정되지 않음",
+      noFormat: "출력 형식이 지정되지 않음",
+      noConstraints: "제약 조건이 없음",
+      noExample: "예시가 없음",
+      noContext: "맥락이 부족함",
+      vagueScope: "범위가 넓거나 모호함",
+      noStructure: "길지만 구조가 없음",
+      undefinedVariables: "변수가 정의되지 않음"
+    },
+    suggestion: {
+      tooShort: "세부 정보를 추가하세요: 작업, 맥락, 좋은 답변의 모습을 설명하세요.",
+      pureQuestion: "지시문으로 바꾸세요: 작업, 답할 대상, 제약 조건을 명시하세요.",
+      noInstructionVerb: "명확한 동작 동사로 시작하세요(작성, 분석, 리팩터링, 요약…).",
+      noRole: "역할이나 전문성을 지정하세요. 예: \"당신은 시니어 TypeScript 엔지니어입니다…\".",
+      noFormat: "원하는 출력 형식을 설명하세요(항목 목록, 표, JSON, 글자 수).",
+      noConstraints: "제약 조건을 추가하세요: 포함할 것, 피할 것, 길이, 톤, 대상 독자.",
+      noExample: "기대하는 입력 및/또는 출력의 짧은 예시를 제시하세요.",
+      noContext: "모델에 필요한 배경을 추가하세요: 대상 독자, 목표, 이전 맥락.",
+      vagueScope: "범위를 좁히세요: 구체적인 사항, 입력, 정확한 결과물을 제시하세요.",
+      noStructure: "번호가 매겨진 단계나 항목으로 나누세요.",
+      undefinedVariables: "각 {{variable}}를 정의하세요: 무엇을 나타내는지 설명하고 예시 값을 제시하세요."
+    },
+    actions: {
+      optimize: "AI로 최적화",
+      optimizing: "최적화 중…",
+      replaceDraft: "초안 교체",
+      useSuggestion: "제안 사용",
+      cancel: "취소",
+      offlineHint: "설정에서 LLM을 구성하면 AI 재작성을 사용할 수 있습니다.",
+      completionFailed: "최적화에 실패했습니다. 다시 시도하세요.",
+      saveAsPrompt: "프롬프트로 저장"
+    },
+    toggle: {
+      label: "실시간 프롬프트 어시스턴트",
+      description: "입력하는 동안 프롬프트를 평가하고 개선을 제안합니다.",
+      enabled: "실시간 지원: 켜짐",
+      disabled: "실시간 지원: 꺼짐",
+      turnOffHere: "이 사이트에서 끄기",
+      openSettings: "설정 열기"
+    },
+    status: {
+      analyzing: "분석 중…",
+      ready: "최적화 준비 완료"
+    },
+    empty: {
+      noScore: "입력을 시작하면 제안이 표시됩니다.",
+      allClear: "문제가 없습니다 — 깔끔합니다."
+    }
+  }
 };

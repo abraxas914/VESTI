@@ -6,6 +6,7 @@ import type { TranslationsType } from "./translations/en";
 import { zhTranslations } from "./translations/zh";
 import { jaTranslations } from "./translations/ja";
 import { koTranslations } from "./translations/ko";
+import { withEnglishFallback } from "./mergeTranslations";
 import { detectAndSetLanguage, setLanguage, subscribeLanguageSettings } from "../services/languageSettingsService";
 
 // Translation registration point. To add a language: create translations/<code>.ts
@@ -13,11 +14,13 @@ import { detectAndSetLanguage, setLanguage, subscribeLanguageSettings } from "..
 // this map to stay complete, and the rest of the locale wiring lives in ./locales.
 export type Translations = TranslationsType;
 
+// Every locale is layered over English so an incomplete translation file falls
+// back to English strings instead of crashing the UI on a missing nested key.
 const translationsByLocale: Record<SupportedLocale, Translations> = {
   en: enTranslations,
-  zh: zhTranslations as unknown as Translations,
-  ja: jaTranslations as unknown as Translations,
-  ko: koTranslations as unknown as Translations,
+  zh: withEnglishFallback(zhTranslations),
+  ja: withEnglishFallback(jaTranslations),
+  ko: withEnglishFallback(koTranslations),
 };
 
 interface I18nContextValue {
