@@ -10,6 +10,7 @@ import {
   Play,
 } from "lucide-react";
 import { useI18n } from "~lib/i18n";
+import type { SupportedLocale } from "~lib/i18n/locales";
 import type {
   AsyncStatus,
   Conversation,
@@ -24,7 +25,7 @@ import type {
 } from "~lib/messaging/protocol";
 import {
   generateConversationSummary,
-  generateWeeklyReport,
+  generateWeeklyRecap,
   getConversationSummary,
   getConversations,
   getWeeklyReport,
@@ -32,15 +33,19 @@ import {
 import { resolveTurnCount } from "~lib/capture/turn-metrics";
 import {
   toChatSummaryData,
+  toWeeklyRecapData,
   toWeeklySummaryData,
 } from "~lib/services/insightAdapter";
 import { getConversationOriginAt } from "~lib/conversations/timestamps";
-import type { WeeklySummaryData } from "~lib/types/insightsPresentation";
+import type {
+  WeeklyRecapData,
+  WeeklySummaryData,
+} from "~lib/types/insightsPresentation";
 import { InsightsAccordionItem } from "../components/InsightsAccordionItem";
 import { InsightsWandIcon } from "../components/InsightsWandIcon";
 
 const COLLAPSE_AT = 3;
-const WEEKLY_DIGEST_SOON = true;
+const WEEKLY_DIGEST_SOON = false;
 
 type WeeklyDigestUiState =
   | "idle"
@@ -175,10 +180,13 @@ interface ThreadPipelineTimingState {
   terminal: boolean;
 }
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(
+  t: ReturnType<typeof useI18n>["t"],
+  error: unknown
+): string {
   if (error instanceof Error) {
     if (error.message.includes("STORAGE_HARD_LIMIT_REACHED")) {
-      return "Storage limit reached (1GB). Export or clear data in the Data tab.";
+      return t.insights.storageLimitError;
     }
     return error.message;
   }
@@ -310,6 +318,7 @@ function getThreadPhaseIndexFromPipelineStage(
 }
 
 function getThreadStatusFromPipelineStage(
+  t: ReturnType<typeof useI18n>["t"],
   stage: InsightPipelineStage,
   status: InsightPipelineStatus
 ): string {
@@ -319,17 +328,17 @@ function getThreadStatusFromPipelineStage(
 
   switch (stage) {
     case "initiating_pipeline":
-      return "Preparing conversation context...";
+      return t.insights.threadPhases.preparing.status;
     case "distilling_core_logic":
-      return "Distilling core logic...";
+      return t.insights.threadPhases.distilling.status;
     case "curating_summary":
-      return "Curating structured summary...";
+      return t.insights.threadPhases.curating.status;
     case "persisting_result":
-      return "Finalising and persisting...";
+      return t.insights.threadPhases.finalising.status;
     case "completed":
       return t.insights.summaryGenerated;
     default:
-      return "Generating summary...";
+      return t.insights.generating;
   }
 }
 
@@ -342,6 +351,114 @@ function getWeeklyPhaseByElapsed(elapsedMs: number): WeeklyGenerationPhase {
     }
   }
   return WEEKLY_PHASES[WEEKLY_PHASES.length - 1]?.phase ?? "loading_thread_summaries";
+}
+
+function getThreadPhaseLabel(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: ThreadTrackedStage
+): string {
+  switch (phase) {
+    case "initiating_pipeline":
+      return t.insights.threadPhases.preparing.label;
+    case "distilling_core_logic":
+      return t.insights.threadPhases.distilling.label;
+    case "curating_summary":
+      return t.insights.threadPhases.curating.label;
+    case "persisting_result":
+      return t.insights.threadPhases.finalising.label;
+    default:
+      return "";
+  }
+}
+
+function getThreadPhaseSublabel(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: ThreadTrackedStage
+): string {
+  switch (phase) {
+    case "initiating_pipeline":
+      return t.insights.threadPhases.preparing.desc;
+    case "distilling_core_logic":
+      return t.insights.threadPhases.distilling.desc;
+    case "curating_summary":
+      return t.insights.threadPhases.curating.desc;
+    case "persisting_result":
+      return t.insights.threadPhases.finalising.desc;
+    default:
+      return "";
+  }
+}
+
+function getThreadPhaseStatus(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: ThreadTrackedStage
+): string {
+  switch (phase) {
+    case "initiating_pipeline":
+      return t.insights.threadPhases.preparing.status;
+    case "distilling_core_logic":
+      return t.insights.threadPhases.distilling.status;
+    case "curating_summary":
+      return t.insights.threadPhases.curating.status;
+    case "persisting_result":
+      return t.insights.threadPhases.finalising.status;
+    default:
+      return t.insights.generating;
+  }
+}
+
+function getWeeklyPhaseLabel(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: WeeklyGenerationPhase
+): string {
+  switch (phase) {
+    case "loading_thread_summaries":
+      return t.insights.phases.loadingSummaries.label;
+    case "pattern_detection":
+      return t.insights.phases.patternDetection.label;
+    case "cross_domain_mapping":
+      return t.insights.phases.crossDomainMapping.label;
+    case "composing_and_persisting":
+      return t.insights.phases.composing.label;
+    default:
+      return "";
+  }
+}
+
+function getWeeklyPhaseSublabel(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: WeeklyGenerationPhase
+): string {
+  switch (phase) {
+    case "loading_thread_summaries":
+      return t.insights.phases.loadingSummaries.desc;
+    case "pattern_detection":
+      return t.insights.phases.patternDetection.desc;
+    case "cross_domain_mapping":
+      return t.insights.phases.crossDomainMapping.desc;
+    case "composing_and_persisting":
+      return t.insights.phases.composing.desc;
+    default:
+      return "";
+  }
+}
+
+function getWeeklyPhaseStatus(
+  t: ReturnType<typeof useI18n>["t"],
+  phase: WeeklyGenerationPhase
+): string {
+  switch (phase) {
+    case "loading_thread_summaries":
+      return t.insights.phases.loadingSummaries.status;
+    case "pattern_detection":
+      return t.insights.phases.patternDetection.status;
+    case "cross_domain_mapping":
+      return t.insights.phases.crossDomainMapping.status;
+    case "composing_and_persisting":
+      return t.insights.phases.composing.status;
+    default:
+      return t.insights.generatingDigest;
+  }
 }
 
 function toThreadTrackedStage(
@@ -369,10 +486,13 @@ function formatPhaseDuration(ms: number): string {
   return `${seconds.toFixed(1)}s`;
 }
 
-function toDepthLabel(depth: "superficial" | "moderate" | "deep"): string {
-  if (depth === "deep") return "深度拆解";
-  if (depth === "moderate") return "逐步深挖";
-  return "轻量梳理";
+function toDepthLabel(
+  t: ReturnType<typeof useI18n>["t"],
+  depth: "superficial" | "moderate" | "deep"
+): string {
+  if (depth === "deep") return t.insights.depthLabels.deep;
+  if (depth === "moderate") return t.insights.depthLabels.moderate;
+  return t.insights.depthLabels.superficial;
 }
 
 function getPlatformBadgeClass(platform: Platform): string {
@@ -449,6 +569,17 @@ function toWeeklyStableState(data: WeeklySummaryData | null): WeeklyStableUiStat
   return data.insufficient_data ? "sparse_week" : "ready";
 }
 
+// A weekly_recap.v1 report is always "ready" (warm recap never goes sparse);
+// other reports fall back to the weekly_lite stable-state logic.
+function resolveWeeklyStableState(
+  report: WeeklyReportRecord | null,
+  locale: SupportedLocale
+): WeeklyStableUiState {
+  if (!report) return "idle";
+  if (toWeeklyRecapData(report, locale)) return "ready";
+  return toWeeklyStableState(toWeeklySummaryData(report, locale));
+}
+
 interface InsightsPageProps {
   conversation: Conversation | null;
   refreshToken: number;
@@ -473,7 +604,7 @@ export function InsightsPage({
   const [weeklyConversations, setWeeklyConversations] = useState<Conversation[]>([]);
   const [isWeeklyListExpanded, setIsWeeklyListExpanded] = useState(false);
   const [weeklyRangeMode, setWeeklyRangeMode] =
-    useState<WeeklyRangeMode>("last_7_days");
+    useState<WeeklyRangeMode>("last_full_week");
 
   const [weeklyPhase, setWeeklyPhase] =
     useState<WeeklyGenerationPhase>("ready_to_compile");
@@ -498,6 +629,9 @@ export function InsightsPage({
   const weeklyUiStateRef = useRef<WeeklyDigestUiState>("idle");
   const weeklyHasReportRef = useRef(false);
   const weeklyGenerationRunRef = useRef(0);
+  // Tracks which last-full-week range we've already auto-generated, so the
+  // automatic recap fires at most once per range (no retry loop on failure).
+  const weeklyAutoGenRangeRef = useRef<string | null>(null);
 
   const weekAnchorKey = new Date().toDateString();
   const weeklyRange = useMemo(
@@ -513,14 +647,19 @@ export function InsightsPage({
       summary
         ? toChatSummaryData(summary, {
             conversationTitle: conversation?.title,
+            locale,
           })
         : null,
-    [summary, conversation?.title]
+    [summary, conversation?.title, locale]
   );
 
   const weeklyData = useMemo(
-    () => (weeklyReport ? toWeeklySummaryData(weeklyReport) : null),
-    [weeklyReport]
+    () => (weeklyReport ? toWeeklySummaryData(weeklyReport, locale) : null),
+    [weeklyReport, locale]
+  );
+  const weeklyRecapData = useMemo<WeeklyRecapData | null>(
+    () => (weeklyReport ? toWeeklyRecapData(weeklyReport, locale) : null),
+    [weeklyReport, locale]
   );
   const activeThreadPipelineEvent = useMemo(() => {
     if (!pipelineProgressEvent || !conversation) return null;
@@ -587,11 +726,15 @@ export function InsightsPage({
   const threadStatusText =
     summaryStatus === "loading" && activeThreadPipelineEvent
       ? getThreadStatusFromPipelineStage(
+          t,
           activeThreadPipelineEvent.stage,
           activeThreadPipelineEvent.status
         )
       : threadPhaseIndex >= 0
-        ? THREAD_PHASES[threadPhaseIndex]?.status ?? t.insights.generating
+        ? getThreadPhaseStatus(
+            t,
+            THREAD_TRACKED_STAGE_ORDER[threadPhaseIndex]!
+          )
         : t.insights.readyToGenerate;
   const getThreadPhaseTimeLabel = (index: number): string => {
     const fallbackHint = THREAD_PHASES[index]?.hint ?? "~10s";
@@ -652,8 +795,7 @@ export function InsightsPage({
   const weeklyStatusText =
     weeklyPhase === "ready_to_compile"
       ? t.insights.readyToCompile
-      : WEEKLY_PHASES.find((phase) => phase.phase === weeklyPhase)?.status ??
-        t.insights.generatingDigest;
+      : getWeeklyPhaseStatus(t, weeklyPhase);
   const weeklyRangeModeLabel =
     weeklyRangeMode === "last_7_days" ? t.insights.last7Days : t.insights.lastFullWeek;
 
@@ -850,7 +992,7 @@ export function InsightsPage({
         if (!active) return;
         setSummary(null);
         setSummaryStatus("error");
-        setSummaryError(getErrorMessage(error));
+        setSummaryError(getErrorMessage(t, error));
       });
 
     return () => {
@@ -914,15 +1056,27 @@ export function InsightsPage({
       .then((data) => {
         if (!active) return;
         setWeeklyReport(data);
-        const nextData = data ? toWeeklySummaryData(data) : null;
-        const nextStableState = toWeeklyStableState(nextData);
+        const nextStableState = resolveWeeklyStableState(data, locale);
         setWeeklyStableState(nextStableState);
         setWeeklyUiState(nextStableState);
         setWeeklyPhase("ready_to_compile");
+
+        // Auto-generate the recap for the completed week ("上周") once it has no
+        // stored report yet. "近 7 天" stays manual (it changes daily, so an
+        // auto recap would be stale immediately).
+        const rangeKey = `${weeklyRange.rangeStart}:${weeklyRange.rangeEnd}`;
+        if (
+          !data &&
+          weeklyRangeMode === "last_full_week" &&
+          weeklyAutoGenRangeRef.current !== rangeKey
+        ) {
+          weeklyAutoGenRangeRef.current = rangeKey;
+          void handleGenerateWeekly();
+        }
       })
       .catch((error) => {
         if (!active) return;
-        setWeeklyError(getErrorMessage(error));
+        setWeeklyError(getErrorMessage(t, error));
         setWeeklyUiState(weeklyHasReportRef.current ? weeklyStableRef.current : "error");
       });
 
@@ -947,7 +1101,7 @@ export function InsightsPage({
       setSummaryStatus("ready");
     } catch (error) {
       setSummaryStatus("error");
-      setSummaryError(getErrorMessage(error));
+      setSummaryError(getErrorMessage(t, error));
     }
   };
 
@@ -968,7 +1122,7 @@ export function InsightsPage({
     setWeeklyPauseStartedAt(null);
     setWeeklyPausedAccumulatedMs(0);
 
-    const result = await generateWeeklyReport(weeklyRange.rangeStart, weeklyRange.rangeEnd)
+    const result = await generateWeeklyRecap(weeklyRange.rangeStart, weeklyRange.rangeEnd)
       .then((data) => ({ ok: true as const, data }))
       .catch((error) => ({ ok: false as const, error }));
 
@@ -984,8 +1138,7 @@ export function InsightsPage({
 
     if (result.ok === true) {
       setWeeklyReport(result.data);
-      const nextData = toWeeklySummaryData(result.data);
-      const nextStableState = toWeeklyStableState(nextData);
+      const nextStableState = resolveWeeklyStableState(result.data, locale);
       setWeeklyStableState(nextStableState);
       setWeeklyUiState(nextStableState);
       setWeeklyError(null);
@@ -993,6 +1146,7 @@ export function InsightsPage({
     }
 
     const nextError = getErrorMessage(
+      t,
       result.ok === false ? result.error : "UNKNOWN_ERROR"
     );
     setWeeklyError(nextError);
@@ -1093,12 +1247,13 @@ export function InsightsPage({
                     : threadPhaseIndex === index
                       ? "ins-thread-phase-active"
                       : "ins-thread-phase-idle";
+                const trackedPhase = THREAD_TRACKED_STAGE_ORDER[index]!;
                 return (
-                  <div key={phase.label} className={`ins-thread-phase-row ${rowState}`}>
+                  <div key={trackedPhase} className={`ins-thread-phase-row ${rowState}`}>
                     <span className="ins-thread-phase-dot" />
                     <span className="min-w-0 flex-1">
-                      <span className="ins-thread-phase-label">{phase.label}</span>
-                      <span className="ins-thread-phase-sublabel">{phase.sublabel}</span>
+                      <span className="ins-thread-phase-label">{getThreadPhaseLabel(t, trackedPhase)}</span>
+                      <span className="ins-thread-phase-sublabel">{getThreadPhaseSublabel(t, trackedPhase)}</span>
                     </span>
                     <span className="ins-thread-phase-time">
                       {getThreadPhaseTimeLabel(index)}
@@ -1118,14 +1273,14 @@ export function InsightsPage({
             }`}
           >
             <section className="ins-thread-core-card">
-              <p className="ins-thread-core-label">{"\u6838\u5fc3\u95ee\u9898"}</p>
+              <p className="ins-thread-core-label">{t.insights.coreQuestion}</p>
               <p className="ins-thread-core-text">{summaryData.core_question}</p>
             </section>
 
             {threadJourneySteps.length > 0 && (
               <section>
                 <div className="ins-thread-sec-head">
-                  <span className="ins-thread-sec-label">{"\u601d\u8003\u8f68\u8ff9"}</span>
+                  <span className="ins-thread-sec-label">{t.insights.thinkingJourney}</span>
                   <span className="ins-thread-sec-line" />
                   <span className="ins-thread-sec-count">{threadJourneySteps.length}</span>
                 </div>
@@ -1148,7 +1303,7 @@ export function InsightsPage({
                               : "ins-thread-speaker-ai"
                           }`}
                         >
-                          {step.speaker === "User" ? "\u4f60" : "\u52a9\u624b"}
+                          {step.speaker === "User" ? t.message.you : t.message.aiPrefix}
                         </span>
                       </div>
                       <p className="ins-thread-step-assertion">{step.assertion}</p>
@@ -1167,7 +1322,7 @@ export function InsightsPage({
             {threadInsightItems.length > 0 && (
               <section>
                 <div className="ins-thread-sec-head">
-                  <span className="ins-thread-sec-label">{"\u5173\u952e\u6d1e\u5bdf"}</span>
+                  <span className="ins-thread-sec-label">{t.insights.keyInsights}</span>
                   <span className="ins-thread-sec-line" />
                   <span className="ins-thread-sec-count">{threadInsightItems.length}</span>
                 </div>
@@ -1185,7 +1340,7 @@ export function InsightsPage({
             {threadUnresolvedItems.length > 0 && (
               <section>
                 <div className="ins-thread-sec-head">
-                  <span className="ins-thread-sec-label">{"\u672a\u89e3\u95ee\u9898"}</span>
+                  <span className="ins-thread-sec-label">{t.insights.unresolvedThreads}</span>
                   <span className="ins-thread-sec-line" />
                   <span className="ins-thread-sec-count">{threadUnresolvedItems.length}</span>
                 </div>
@@ -1203,7 +1358,7 @@ export function InsightsPage({
             {threadNextStepItems.length > 0 && (
               <section>
                 <div className="ins-thread-sec-head">
-                  <span className="ins-thread-sec-label">{"\u4e0b\u4e00\u6b65\u5efa\u8bae"}</span>
+                  <span className="ins-thread-sec-label">{t.insights.nextSteps}</span>
                   <span className="ins-thread-sec-line" />
                   <span className="ins-thread-sec-count">{threadNextStepItems.length}</span>
                 </div>
@@ -1222,12 +1377,12 @@ export function InsightsPage({
 
             <section>
               <div className="ins-thread-sec-head">
-                <span className="ins-thread-sec-label">{"\u601d\u7ef4\u4fa7\u5199"}</span>
+                <span className="ins-thread-sec-label">{t.insights.metaObservations}</span>
                 <span className="ins-thread-sec-line" />
               </div>
               <div className="ins-thread-meta-row">
                 <span className="ins-thread-meta-chip ins-thread-meta-chip-depth">
-                  {toDepthLabel(summaryData.meta_observations.depth_level)}
+                  {toDepthLabel(t, summaryData.meta_observations.depth_level)}
                 </span>
                 <span className="ins-thread-meta-chip">
                   {summaryData.meta_observations.thinking_style}
@@ -1240,9 +1395,7 @@ export function InsightsPage({
 
             {threadRealWorldAnchors.length > 0 && (
               <p className="ins-meta-line">
-                {"\u5b9e\u8bc1\u6848\u4f8b\u8986\u76d6 "}
-                {threadRealWorldAnchors.length}
-                {" \u4e2a\u63a8\u7406\u8282\u70b9\u3002"}
+                {t.insights.reasoningNodes.replace("{count}", String(threadRealWorldAnchors.length))}
               </p>
             )}
           </div>
@@ -1272,13 +1425,13 @@ export function InsightsPage({
         {(threadSummaryUiState === "selected_error" ||
           threadSummaryUiState === "ready_error") && (
           <p className="ins-status-row ins-status-error">
-            Failed to generate summary. {summaryError}
+            {t.insights.failedToGenerateSummary} {summaryError}
             <button
               type="button"
               onClick={handleGenerateSummary}
               className="ins-inline-link"
             >
-              Retry
+              {t.common.retry}
             </button>
           </p>
         )}
@@ -1286,11 +1439,11 @@ export function InsightsPage({
         {summary && (
           <div className="ins-model-meta">
             <p className="ins-model-meta-line">
-              <span className="ins-model-meta-label">Model:</span>
+              <span className="ins-model-meta-label">{t.insights.modelLabel}:</span>
               <span className="ins-model-meta-value">{summary.modelId}</span>
             </p>
             <p className="ins-model-meta-line">
-              <span className="ins-model-meta-label">Generated:</span>
+              <span className="ins-model-meta-label">{t.insights.generatedLabel}:</span>
               <span className="ins-model-meta-value">
                 {formatDateTime(summary.createdAt, locale)}
               </span>
@@ -1306,7 +1459,7 @@ export function InsightsPage({
       <div
         className={`ins-week-range-toggle ${isWeeklyGenerating ? "is-disabled" : ""}`}
         role="radiogroup"
-        aria-label="Weekly digest range"
+        aria-label={t.insights.weeklyDigest}
       >
         <button
           type="button"
@@ -1318,7 +1471,7 @@ export function InsightsPage({
             weeklyRangeMode === "last_7_days" ? "is-active" : ""
           }`}
         >
-          Last 7 Days
+          {t.insights.last7Days}
         </button>
         <button
           type="button"
@@ -1330,7 +1483,7 @@ export function InsightsPage({
             weeklyRangeMode === "last_full_week" ? "is-active" : ""
           }`}
         >
-          Last Full Week
+          {t.insights.lastFullWeek}
         </button>
       </div>
     );
@@ -1373,8 +1526,8 @@ export function InsightsPage({
               <span className="ins-week-toggle-line" />
               <span className="ins-week-toggle-label">
                 {isWeeklyListExpanded
-                  ? "Collapse"
-                  : `${hiddenWeeklyConversationCount} more`}
+                  ? t.common.collapse
+                  : t.insights.moreThreads.replace("{count}", String(hiddenWeeklyConversationCount))}
               </span>
               <span className="ins-week-toggle-line" />
             </button>
@@ -1412,72 +1565,46 @@ export function InsightsPage({
 
         <div className="ins-week-gen-shell">
           <div className="ins-week-gen-header">
-            <span className="ins-week-wand-wrap" aria-hidden="true">
-              <span className="ins-week-wand-ring" />
-              <span className="ins-week-wand-chip">
-                <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
-              </span>
-            </span>
-
+            <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
             <div className="min-w-0 flex-1">
-              <p className="ins-week-status-copy">
-                {weeklyGenerationPaused
-                  ? t.insights.pausedResumeHint
-                  : weeklyStatusText}
-              </p>
+              <p className="ins-week-status-copy">{t.insights.recapGenerating}</p>
             </div>
-
             <span className="ins-week-timer">{formatTimer(weeklyElapsedMs)}</span>
-          </div>
-
-          <div className="ins-week-phase-track">
-            {WEEKLY_PHASES.map((phase, index) => {
-              const rowState =
-                weeklyPhaseIndex > index
-                  ? "ins-week-phase-done"
-                  : weeklyPhaseIndex === index
-                    ? "ins-week-phase-active"
-                    : "ins-week-phase-idle";
-
-              return (
-                <div key={phase.phase} className={`ins-week-phase-row ${rowState}`}>
-                  <span className="ins-week-phase-dot" />
-                  <span className="min-w-0 flex-1">
-                    <span className="ins-week-phase-label">{phase.label}</span>
-                    <span className="ins-week-phase-sublabel">{phase.sublabel}</span>
-                  </span>
-                  <span className="ins-week-phase-time">{phase.hint}</span>
-                  <span className="ins-week-phase-tick">OK</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="ins-week-gen-controls">
-            <button
-              type="button"
-              onClick={handleToggleWeeklyPause}
-              aria-pressed={weeklyGenerationPaused}
-              aria-label={weeklyGenerationPaused ? t.insights.resumeProgress : t.insights.pauseProgress}
-              className="ins-week-gen-control-btn"
-            >
-              {weeklyGenerationPaused ? (
-                <Play className="h-3.5 w-3.5" strokeWidth={1.8} />
-              ) : (
-                <Pause className="h-3.5 w-3.5" strokeWidth={1.8} />
-              )}
-              <span>{weeklyGenerationPaused ? t.insights.resume : t.insights.pause}</span>
-            </button>
-            <p className="ins-week-gen-control-note">
-              UI pause only. Background generation continues.
-            </p>
           </div>
         </div>
       </>
     );
   };
 
-  const renderWeeklyReady = () => {
+  const renderWeeklyRecap = (recap: WeeklyRecapData) => {
+    const statStripParts: string[] = [
+      t.insights.recapStatConversations.replace(
+        "{count}",
+        String(recap.stats.conversation_count)
+      ),
+      t.insights.recapStatActiveDays.replace(
+        "{count}",
+        String(recap.stats.active_days)
+      ),
+    ];
+    if (recap.stats.streak_weeks >= 1) {
+      statStripParts.push(
+        t.insights.recapStatStreak.replace(
+          "{count}",
+          String(recap.stats.streak_weeks)
+        )
+      );
+    }
+    if (recap.stats.top_platform && recap.stats.top_platform !== "—") {
+      statStripParts.push(
+        t.insights.recapStatPlatform.replace(
+          "{platform}",
+          recap.stats.top_platform
+        )
+      );
+    }
+    const statStrip = statStripParts.join(" · ");
+
     return (
       <>
         <div className="ins-week-banner">
@@ -1490,13 +1617,108 @@ export function InsightsPage({
 
         {weeklyError && (
           <p className="ins-status-row ins-status-error ins-week-inline-gap">
-            Latest regeneration failed. {weeklyError}
+            {t.insights.latestRegenerationFailed} {weeklyError}
             <button
               type="button"
               onClick={handleGenerateWeekly}
               className="ins-inline-link"
             >
-              Retry
+              {t.common.retry}
+            </button>
+          </p>
+        )}
+
+        <div className="ins-week-ready-shell">
+          <section className="ins-thread-core-card">
+            <p className="ins-thread-core-label">{t.insights.recapTitle}</p>
+            <p className="ins-thread-core-text">
+              {recap.mood_emoji} {recap.greeting}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {recap.persona_tag && (
+                <span className="ins-week-count-chip">{recap.persona_tag}</span>
+              )}
+              {statStrip && (
+                <span className="text-[11px] text-text-tertiary">{statStrip}</span>
+              )}
+            </div>
+          </section>
+
+          {recap.narrative.length > 0 && (
+            <section className="flex flex-col gap-2">
+              {recap.narrative.map((paragraph, index) => (
+                <p className="ins-thread-core-text" key={`recap-p-${index}`}>
+                  {paragraph}
+                </p>
+              ))}
+            </section>
+          )}
+
+          {recap.highlight && (
+            <section>
+              <div className="ins-week-sec-head">
+                <span className="ins-week-sec-label">{t.insights.recapHighlight}</span>
+                <span className="ins-week-sec-line" />
+              </div>
+              <article className="ins-week-highlight-item">
+                <p className="ins-week-highlight-text">{recap.highlight.title}</p>
+                <p className="ins-thread-insight-def">{recap.highlight.detail}</p>
+              </article>
+            </section>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGenerateWeekly}
+          className="ins-generate-btn"
+        >
+          <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
+          {t.insights.regenerate}
+        </button>
+
+        {weeklyReport && (
+          <div className="ins-model-meta">
+            <p className="ins-model-meta-line">
+              <span className="ins-model-meta-label">{t.insights.modelLabel}:</span>
+              <span className="ins-model-meta-value">{weeklyReport.modelId}</span>
+            </p>
+            <p className="ins-model-meta-line">
+              <span className="ins-model-meta-label">{t.insights.generatedLabel}:</span>
+              <span className="ins-model-meta-value">
+                {formatDateTime(weeklyReport.createdAt, locale)}
+              </span>
+            </p>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderWeeklyReady = () => {
+    if (weeklyRecapData) {
+      return renderWeeklyRecap(weeklyRecapData);
+    }
+
+    return (
+      <>
+        <div className="ins-week-banner">
+          <p className="ins-week-range">{weeklyRangeLabel}</p>
+          <span className="ins-week-count-chip">
+            {weeklyCountLabel} - {weeklyRangeModeLabel}
+          </span>
+        </div>
+        {renderWeeklyRangeToggle()}
+
+        {weeklyError && (
+          <p className="ins-status-row ins-status-error ins-week-inline-gap">
+            {t.insights.latestRegenerationFailed} {weeklyError}
+            <button
+              type="button"
+              onClick={handleGenerateWeekly}
+              className="ins-inline-link"
+            >
+              {t.common.retry}
             </button>
           </p>
         )}
@@ -1505,7 +1727,7 @@ export function InsightsPage({
           {weeklyHighlightItems.length > 0 && (
             <section>
               <div className="ins-week-sec-head">
-                <span className="ins-week-sec-label">Highlights</span>
+                <span className="ins-week-sec-label">{t.insights.highlights}</span>
                 <span className="ins-week-sec-line" />
               </div>
               <div className="ins-week-highlight-list">
@@ -1521,7 +1743,7 @@ export function InsightsPage({
           {weeklyRecurringItems.length > 0 && (
             <section>
               <div className="ins-week-sec-head">
-                <span className="ins-week-sec-label">Recurring Questions</span>
+                <span className="ins-week-sec-label">{t.insights.recurringQuestions}</span>
                 <span className="ins-week-sec-line" />
               </div>
               <div className="ins-week-recurring-list">
@@ -1538,7 +1760,7 @@ export function InsightsPage({
           {weeklyCrossDomainEchoes.length > 0 && (
             <section>
               <div className="ins-week-sec-head">
-                <span className="ins-week-sec-label">Cross-Domain Echo</span>
+                <span className="ins-week-sec-label">{t.insights.crossDomainEcho}</span>
                 <span className="ins-week-sec-line" />
               </div>
               <div className="ins-week-echo-list">
@@ -1549,13 +1771,13 @@ export function InsightsPage({
                       <span className="ins-week-echo-arrow">&lt;-&gt;</span>
                       <span className="ins-week-echo-domain-tag">{echo.domain_b}</span>
                     </div>
-                    <p className="ins-week-echo-label">Shared logic</p>
+                    <p className="ins-week-echo-label">{t.insights.sharedLogic}</p>
                     <p className="ins-week-echo-text">{echo.shared_logic}</p>
                     {echo.evidence_ids.length > 0 && (
                       <div className="ins-week-ref-list">
                         {echo.evidence_ids.map((id) => (
                           <span key={id} className="ins-week-ref-chip">
-                            Thread {id}
+                            {t.insights.thread} {id}
                           </span>
                         ))}
                       </div>
@@ -1569,7 +1791,7 @@ export function InsightsPage({
           {weeklyUnresolvedItems.length > 0 && (
             <section>
               <div className="ins-week-sec-head">
-                <span className="ins-week-sec-label">Unresolved</span>
+                <span className="ins-week-sec-label">{t.insights.unresolved}</span>
                 <span className="ins-week-sec-line" />
               </div>
               <div className="ins-week-unresolved-list">
@@ -1586,7 +1808,7 @@ export function InsightsPage({
           {weeklyNextWeekItems.length > 0 && (
             <section>
               <div className="ins-week-sec-head">
-                <span className="ins-week-sec-label">Next Week</span>
+                <span className="ins-week-sec-label">{t.insights.nextWeek}</span>
                 <span className="ins-week-sec-line" />
               </div>
               <div className="ins-week-focus-list">
@@ -1607,17 +1829,17 @@ export function InsightsPage({
           className="ins-generate-btn"
         >
           <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
-          Regenerate
+          {t.insights.regenerate}
         </button>
 
         {weeklyReport && (
           <div className="ins-model-meta">
             <p className="ins-model-meta-line">
-              <span className="ins-model-meta-label">Model:</span>
+              <span className="ins-model-meta-label">{t.insights.modelLabel}:</span>
               <span className="ins-model-meta-value">{weeklyReport.modelId}</span>
             </p>
             <p className="ins-model-meta-line">
-              <span className="ins-model-meta-label">Generated:</span>
+              <span className="ins-model-meta-label">{t.insights.generatedLabel}:</span>
               <span className="ins-model-meta-value">
                 {formatDateTime(weeklyReport.createdAt, locale)}
               </span>
@@ -1641,38 +1863,36 @@ export function InsightsPage({
 
         {weeklyError && (
           <p className="ins-status-row ins-status-error ins-week-inline-gap">
-            Latest regeneration failed. {weeklyError}
+            {t.insights.latestRegenerationFailed} {weeklyError}
             <button
               type="button"
               onClick={handleGenerateWeekly}
               className="ins-inline-link"
             >
-              Retry
+              {t.common.retry}
             </button>
           </p>
         )}
 
         <div className="ins-week-sparse-card">
           <p className="ins-week-sparse-title">
-            Not enough data to generate this week&apos;s digest
+            {t.insights.notEnoughData}
           </p>
           {weeklySparseReason === "sub3" && (
             <p className="ins-week-sparse-body">
-              This range has fewer than 3 substantial summaries. Weekly Digest will
-              resume automatically when enough structured evidence is available.
+              {t.insights.sub3Hint}
             </p>
           )}
           {weeklySparseReason === "semantic_degraded" && (
             <p className="ins-week-quality-note">
-              Enough summaries were found, but semantic quality gate downgraded this
-              run to prevent low-signal fragments.
+              {t.insights.semanticDegradedHint}
             </p>
           )}
           <div className="ins-week-sparse-stats">
             <span>{t.insights.threadsStartedInRange}: {weeklyThreadCount}</span>
             <span>
-              Substantial summaries:{" "}
-              {weeklySubstantialCount === null ? "unknown" : weeklySubstantialCount}
+              {t.insights.substantialSummaries}:{" "}
+              {weeklySubstantialCount === null ? t.common.unknown : weeklySubstantialCount}
             </span>
           </div>
         </div>
@@ -1683,7 +1903,7 @@ export function InsightsPage({
           className="ins-generate-btn"
         >
           <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
-          Regenerate
+          {t.insights.regenerate}
         </button>
       </>
     );
@@ -1702,7 +1922,7 @@ export function InsightsPage({
 
         <div className="ins-summary-result">
           <p className="ins-status-row ins-status-error">
-            Failed to generate weekly digest. {weeklyError ?? "Unknown error."}
+            {t.insights.failedToGenerateWeekly} {weeklyError ?? t.insights.unknownError}
           </p>
           <button
             type="button"
@@ -1710,7 +1930,7 @@ export function InsightsPage({
             className="ins-generate-btn ins-week-inline-gap"
           >
             <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
-            Retry
+            {t.common.retry}
           </button>
         </div>
       </>

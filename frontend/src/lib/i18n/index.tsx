@@ -4,15 +4,23 @@ import type { SupportedLocale } from "./locales";
 import { enTranslations } from "./translations/en";
 import type { TranslationsType } from "./translations/en";
 import { zhTranslations } from "./translations/zh";
+import { jaTranslations } from "./translations/ja";
+import { koTranslations } from "./translations/ko";
+import { withEnglishFallback } from "./mergeTranslations";
 import { detectAndSetLanguage, setLanguage, subscribeLanguageSettings } from "../services/languageSettingsService";
 
-// Widened, string-leaf translations shape (same nested keys as en, any strings)
-// so both en (literal) and zh assign cleanly and consumers read plain strings.
+// Translation registration point. To add a language: create translations/<code>.ts
+// (mirroring en.ts) and add one line here. The Record<SupportedLocale, …> type forces
+// this map to stay complete, and the rest of the locale wiring lives in ./locales.
 export type Translations = TranslationsType;
 
-const translationsMap: Record<SupportedLocale, Translations> = {
+// Every locale is layered over English so an incomplete translation file falls
+// back to English strings instead of crashing the UI on a missing nested key.
+const translationsByLocale: Record<SupportedLocale, Translations> = {
   en: enTranslations,
-  zh: zhTranslations,
+  zh: withEnglishFallback(zhTranslations),
+  ja: withEnglishFallback(jaTranslations),
+  ko: withEnglishFallback(koTranslations),
 };
 
 interface I18nContextValue {
@@ -36,14 +44,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then((resolvedLocale) => {
         if (cancelled) return;
         setLocaleState(resolvedLocale);
-        setT(translationsMap[resolvedLocale]);
+        setT(translationsByLocale[resolvedLocale]);
       })
       .catch(() => {});
 
     const unsubscribe = subscribeLanguageSettings((settings) => {
       if (cancelled) return;
       setLocaleState(settings.locale);
-      setT(translationsMap[settings.locale]);
+      setT(translationsByLocale[settings.locale]);
     });
 
     return () => {
@@ -55,7 +63,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const changeLocale = useCallback(async (newLocale: SupportedLocale) => {
     await setLanguage(newLocale);
     setLocaleState(newLocale);
-    setT(translationsMap[newLocale]);
+    setT(translationsByLocale[newLocale]);
   }, []);
 
   return (

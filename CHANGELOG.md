@@ -11,6 +11,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ## [Unreleased]
 
 ### Added
+- Added multi-language support for the UI and AI-generated content (English / 中文 / 日本語 / 한국어), driven by a central locale registry; thread summaries, the weekly recap, and Explore answers all follow the selected language.
 - **Real local search (CJK-aware, ranked)** — the #1 user need. Replaced the naive
   substring scan with a dependency-free engine: Lucene-style CJK character
   unigram+bigram tokenization (Chinese/Japanese queries actually match, incl. the

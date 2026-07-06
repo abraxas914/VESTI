@@ -1,6 +1,9 @@
 "use client";
 
-import { PLATFORM_FILTER_OPTIONS } from "../../constants/platform";
+import {
+  PLATFORM_FILTER_OPTIONS,
+  getPlatformLabel,
+} from "../../constants/platform";
 import type { Platform } from "../../types";
 import { GRAPH_PLATFORM_COLORS } from "./temporal-graph-utils";
 
@@ -19,7 +22,7 @@ export function GraphLegend({ edgeLabel }: GraphLegendProps) {
             className="h-[7px] w-[7px] rounded-full"
             style={{ backgroundColor: GRAPH_PLATFORM_COLORS[platform] }}
           />
-          <span>{platform}</span>
+          <span>{getPlatformLabel(platform)}</span>
         </div>
       ))}
       <div className="flex items-center gap-1.5">

@@ -455,6 +455,7 @@ interface FallbackCodeBlockViewProps {
 }
 
 function FallbackCodeBlockView({ code, language }: FallbackCodeBlockViewProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 

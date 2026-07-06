@@ -4,6 +4,7 @@ import type {
   ConversationSummaryV2,
   ConversationSummaryV2Legacy,
   WeeklyLiteReportV1,
+  WeeklyRecapV1,
   WeeklyReportV1,
 } from "../types";
 
@@ -19,6 +20,15 @@ const MAX_DEFINITION_LENGTH = 320;
 const MAX_WEEKLY_CROSS_DOMAIN_ECHOES = 4;
 const DEFAULT_WEEKLY_HIGHLIGHT = "本周形成了可复用的阶段性结论。";
 const DEFAULT_WEEKLY_SUGGESTED_FOCUS = "下周优先推进一个高价值问题并记录验证结果。";
+
+// weekly_recap.v1 clamp limits (warm, short copy).
+const MAX_RECAP_TEXT_LENGTH = 120;
+const MAX_RECAP_DETAIL_LENGTH = 200;
+const MAX_RECAP_PERSONA_LENGTH = 24;
+const MAX_RECAP_EMOJI_LENGTH = 8;
+const MAX_RECAP_PLATFORM_LENGTH = 40;
+const MAX_RECAP_NARRATIVE_LENGTH = 280;
+const MAX_RECAP_NARRATIVE_ITEMS = 4;
 
 type WeeklyCrossDomainEcho = WeeklyLiteReportV1["cross_domain_echoes"][number];
 type WeeklyNarrativeField =
@@ -229,6 +239,85 @@ const weeklyLiteSchema = z.object({
       return v;
     },
     z.boolean()
+  ),
+});
+
+const weeklyRecapSchema = z.object({
+  schema: z.literal("weekly_recap.v1").optional(),
+  greeting: z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, MAX_RECAP_TEXT_LENGTH) : v),
+    z.string().min(1).max(MAX_RECAP_TEXT_LENGTH)
+  ),
+  persona_tag: z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, MAX_RECAP_PERSONA_LENGTH) : v),
+    z.string().min(1).max(MAX_RECAP_PERSONA_LENGTH)
+  ),
+  stats: z.object({
+    conversation_count: z.preprocess(
+      (v) => (typeof v === "string" ? Number(v) : v),
+      z.number().int().min(0)
+    ),
+    active_days: z.preprocess(
+      (v) => (typeof v === "string" ? Number(v) : v),
+      z.number().int().min(0)
+    ),
+    streak_weeks: z.preprocess(
+      (v) => (typeof v === "string" ? Number(v) : v),
+      z.number().int().min(0)
+    ),
+    top_platform: z.preprocess(
+      (v) => (typeof v === "string" ? v.slice(0, MAX_RECAP_PLATFORM_LENGTH) : v),
+      z.string().min(1).max(MAX_RECAP_PLATFORM_LENGTH)
+    ),
+    week_over_week_delta: z.preprocess(
+      (v) => {
+        if (v === null || v === undefined) return null;
+        if (typeof v === "string") {
+          const trimmed = v.trim();
+          return trimmed ? Number(trimmed) : null;
+        }
+        return v;
+      },
+      z.number().int().nullable()
+    ),
+  }),
+  highlight: z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return null;
+      if (typeof v !== "object") return null;
+      const row = v as Record<string, unknown>;
+      const title = typeof row.title === "string" ? row.title.trim() : "";
+      const detail = typeof row.detail === "string" ? row.detail.trim() : "";
+      if (!title && !detail) return null;
+      return { title, detail };
+    },
+    z
+      .object({
+        title: z.string().min(1).max(MAX_RECAP_TEXT_LENGTH),
+        detail: z.string().min(1).max(MAX_RECAP_DETAIL_LENGTH),
+      })
+      .nullable()
+  ),
+  narrative: z.preprocess(
+    (v) => {
+      if (Array.isArray(v)) {
+        return v
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim().slice(0, MAX_RECAP_NARRATIVE_LENGTH))
+          .filter((item) => item.length > 0)
+          .slice(0, MAX_RECAP_NARRATIVE_ITEMS);
+      }
+      if (typeof v === "string") {
+        const trimmed = v.trim();
+        return trimmed ? [trimmed.slice(0, MAX_RECAP_NARRATIVE_LENGTH)] : [];
+      }
+      return [];
+    },
+    z.array(z.string().min(1).max(MAX_RECAP_NARRATIVE_LENGTH)).max(MAX_RECAP_NARRATIVE_ITEMS)
+  ),
+  mood_emoji: z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, MAX_RECAP_EMOJI_LENGTH) : v),
+    z.string().min(1).max(MAX_RECAP_EMOJI_LENGTH)
   ),
 });
 
@@ -1331,6 +1420,97 @@ export function parseWeeklyLiteReportObject(value: unknown): {
   };
 }
 
+function clampRecapText(value: string, maxLength: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+export function normalizeWeeklyRecap(input: {
+  schema?: "weekly_recap.v1";
+  greeting: string;
+  persona_tag: string;
+  mood_emoji: string;
+  narrative: string[];
+  highlight: { title: string; detail: string } | null;
+  stats: {
+    conversation_count: number;
+    active_days: number;
+    streak_weeks: number;
+    top_platform: string;
+    week_over_week_delta: number | null;
+  };
+}): WeeklyRecapV1 {
+  const greeting =
+    clampRecapText(input.greeting, MAX_RECAP_TEXT_LENGTH) || "Nice work this week.";
+  const personaTag =
+    clampRecapText(input.persona_tag, MAX_RECAP_PERSONA_LENGTH) || "Explorer";
+  const moodEmoji = clampRecapText(input.mood_emoji, MAX_RECAP_EMOJI_LENGTH) || "✨";
+  const topPlatform =
+    clampRecapText(input.stats.top_platform, MAX_RECAP_PLATFORM_LENGTH) || "—";
+
+  const narrative = (Array.isArray(input.narrative) ? input.narrative : [])
+    .map((item) => clampRecapText(item, MAX_RECAP_NARRATIVE_LENGTH))
+    .filter((item) => item.length > 0)
+    .slice(0, MAX_RECAP_NARRATIVE_ITEMS);
+
+  let highlight: WeeklyRecapV1["highlight"] = null;
+  if (input.highlight) {
+    const title = clampRecapText(input.highlight.title, MAX_RECAP_TEXT_LENGTH);
+    const detail = clampRecapText(input.highlight.detail, MAX_RECAP_DETAIL_LENGTH);
+    if (title && detail) {
+      highlight = { title, detail };
+    }
+  }
+
+  const toCount = (value: number): number =>
+    Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+
+  const delta = input.stats.week_over_week_delta;
+
+  return {
+    schema: "weekly_recap.v1",
+    greeting,
+    persona_tag: personaTag,
+    mood_emoji: moodEmoji,
+    narrative,
+    highlight,
+    stats: {
+      conversation_count: toCount(input.stats.conversation_count),
+      active_days: toCount(input.stats.active_days),
+      streak_weeks: toCount(input.stats.streak_weeks),
+      top_platform: topPlatform,
+      week_over_week_delta:
+        typeof delta === "number" && Number.isFinite(delta)
+          ? Math.trunc(delta)
+          : null,
+    },
+  };
+}
+
+export function parseWeeklyRecapObject(value: unknown): {
+  success: true;
+  data: WeeklyRecapV1;
+} | {
+  success: false;
+  errors: string[];
+} {
+  const parsed = weeklyRecapSchema.safeParse(value);
+  if (!parsed.success) {
+    return {
+      success: false,
+      errors: parsed.error.issues.map(
+        (issue) => `${issue.path.join(".") || "root"}: ${issue.message}`
+      ),
+    };
+  }
+
+  return {
+    success: true,
+    data: normalizeWeeklyRecap(
+      parsed.data as Parameters<typeof normalizeWeeklyRecap>[0]
+    ),
+  };
+}
+
 function removeTrailingCommas(input: string): string {
   let output = "";
   let inString = false;
@@ -1569,5 +1749,22 @@ export const insightSchemaHints = {
     suggested_focus: ["string"],
     evidence: [{ conversation_id: "number", note: "string" }],
     insufficient_data: "boolean",
+  },
+  weekly_recap: {
+    schema: "weekly_recap.v1",
+    greeting: "string (punchy one-line title, <= 120 chars)",
+    persona_tag: "string (<= 24 chars, e.g. 'Deep Diver')",
+    mood_emoji: "string (a single emoji)",
+    narrative: [
+      "string (2-3 warm second-person paragraphs, each 1-2 sentences, <= 280 chars; weave the real numbers in naturally)",
+    ],
+    highlight: { title: "string", detail: "string (<= 200 chars)" },
+    stats: {
+      conversation_count: "number",
+      active_days: "number",
+      streak_weeks: "number",
+      top_platform: "string",
+      week_over_week_delta: "number | null",
+    },
   },
 };

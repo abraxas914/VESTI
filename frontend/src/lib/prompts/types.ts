@@ -1,10 +1,13 @@
 import type { Conversation, ConversationSummaryV2, Message } from "../types";
+import type { SupportedLocale } from "../i18n/locales";
 import type { ExportPromptProfile } from "../services/llmModelProfile";
+import type { WeeklyStats } from "../services/weeklyStats";
 
 export type PromptType =
   | "compaction"
   | "conversationSummary"
   | "weeklyDigest"
+  | "weeklyRecap"
   | "exportCompact"
   | "exportSummary";
 export type PromptVariant = "current" | "experimental";
@@ -15,7 +18,7 @@ export interface CompactionPromptPayload {
   conversationOriginAt?: number;
   messages: Message[];
   transcriptOverride?: string;
-  locale?: "zh" | "en";
+  locale?: SupportedLocale;
 }
 
 export interface ConversationSummaryPromptPayload {
@@ -24,7 +27,7 @@ export interface ConversationSummaryPromptPayload {
   conversationOriginAt?: number;
   messages: Message[];
   transcriptOverride?: string;
-  locale?: "zh" | "en";
+  locale?: SupportedLocale;
 }
 
 export interface WeeklyDigestPromptPayload {
@@ -40,7 +43,22 @@ export interface WeeklyDigestPromptPayload {
     summary: string;
   }>;
   maxConversations?: number;
-  locale?: "zh" | "en";
+  locale?: SupportedLocale;
+}
+
+export interface WeeklyRecapPromptPayload {
+  stats: WeeklyStats;
+  highlightContext: {
+    title: string;
+    topic: string | null;
+    messageCount: number;
+    turnCount: number;
+    isStarred: boolean;
+    summaryGist?: string;
+  } | null;
+  rangeStart: number;
+  rangeEnd: number;
+  locale: SupportedLocale;
 }
 
 export interface ExportCompressionPromptPayload {
@@ -228,6 +246,7 @@ export interface PromptPayloadMap {
   compaction: CompactionPromptPayload;
   conversationSummary: ConversationSummaryPromptPayload;
   weeklyDigest: WeeklyDigestPromptPayload;
+  weeklyRecap: WeeklyRecapPromptPayload;
   exportCompact: ExportCompressionPromptPayload;
   exportSummary: ExportCompressionPromptPayload;
 }
