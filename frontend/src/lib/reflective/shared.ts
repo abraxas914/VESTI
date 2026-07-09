@@ -393,8 +393,8 @@ export function estimateInterdisciplinaryFromConversations(
   const distinctTopics = new Set(conversations.map((c) => c.topic_id ?? `platform:${c.platform}`));
   const distinctPlatforms = new Set(conversations.map((c) => c.platform));
 
-  // Normalize: 1 unique bucket → ~30, 5+ → ~90.
+  // Scale gently: 2 buckets → ~32, 6 buckets → ~80, 8+ → 100.
   const bucketCount = distinctTopics.size + distinctPlatforms.size * 0.5;
-  const score = 20 + Math.min(80, bucketCount * 14);
+  const score = 20 + Math.min(80, Math.max(0, (bucketCount - 1) * 12));
   return Math.min(100, Math.round(score));
 }
