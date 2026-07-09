@@ -1352,7 +1352,21 @@ export const koTranslations = {
       axisAffectLeft: "냉철형",
       axisAffectRight: "열정형",
       axisAffectLeftStrength: "복잡한 상황에서도 침착함을 유지하며 명확하게 판단합니다.",
-      axisAffectRightStrength: "탐구하는 대상에 강한 감정적 몰입을 발휘합니다."
+      axisAffectRightStrength: "탐구하는 대상에 강한 감정적 몰입을 발휘합니다.",
+      axisCuriosityLabel: "안정 ↔ 호기심",
+      axisCuriosityLeft: "안정형",
+      axisCuriosityRight: "호기심형",
+      axisCuriosityLeftStrength: "효율적으로 답을 얻고 간결한 해결을 선호합니다.",
+      axisCuriosityRightStrength: "자유롭게 질문하고 단서를 따라 어디까지나 탐구합니다.",
+      axisInterdisciplinaryLabel: "집중 ↔ 학제",
+      axisInterdisciplinaryLeft: "집중형",
+      axisInterdisciplinaryRight: "학제형",
+      axisInterdisciplinaryLeftStrength: "특정 영역에 깊이 파고들어 전문성을 쌓습니다.",
+      axisInterdisciplinaryRightStrength: "영역을 넘나들며 아이디어를 연결하고 먼 분야를 엮습니다.",
+      trendsTitle: "최근 방향",
+      trendRising: "상승",
+      trendFalling: "하락",
+      trendStable: "안정"
     },
     learn: {
       modeLearn: "학습",

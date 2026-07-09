@@ -5,21 +5,25 @@
 // user-triggered outside this file.
 
 import type { Conversation, Message, SummaryRecord } from "../types";
-import type { AitiAxisScore, AitiObsession, AitiProfile } from "~vendor/vesti-ui";
+import type { AitiAxisScore, AitiObsession, AitiProfile, AitiTrend } from "~vendor/vesti-ui";
 import {
   computeConfidence,
   depthOfSummary,
   depthScoreOf,
   estimateAffectFromMessages,
+  estimateCuriosityFromMessages,
   estimateDepthFromMessages,
+  estimateInterdisciplinaryFromConversations,
   estimateMakerTheoristFromMessages,
   estimateOpenLoopsFromMessages,
   groupMessagesByConversation,
   latestSummaryByConversation,
+  partitionByWindow,
 } from "../reflective/shared";
 
 const MIN_AITI_SAMPLE = 2;
 const MAX_OBSESSIONS = 10;
+const TREND_WINDOW_DAYS = 30;
 
 interface Feat {
   conversationId: number;
@@ -29,12 +33,16 @@ interface Feat {
   theorist: boolean;
   unresolved: number;
   affect: 1 | -1 | null;
+  curiosity: number | null;
   terms: string[];
 }
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.min(hi, Math.max(lo, v));
 
-function extractFromSummary(rec: SummaryRecord): Feat | null {
+function extractFromSummary(
+  rec: SummaryRecord,
+  messagesByConv?: Map<number, Message[]>,
+): Feat | null {
   if (typeof rec.conversationId !== "number") return null;
 
   const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
@@ -50,6 +58,9 @@ function extractFromSummary(rec: SummaryRecord): Feat | null {
     ? (s["tech_stack_detected"] as unknown[])
     : [];
   const insights = Array.isArray(s["key_insights"]) ? (s["key_insights"] as unknown[]) : [];
+  const unresolvedThreads = Array.isArray(s["unresolved_threads"])
+    ? (s["unresolved_threads"] as unknown[])
+    : [];
 
   const terms: string[] = [];
   for (const ki of insights) {
@@ -62,9 +73,18 @@ function extractFromSummary(rec: SummaryRecord): Feat | null {
 
   const maker = actionable >= 1 || techStackArr.length >= 1;
   const theorist = insights.length >= 2;
-  const unresolved = Array.isArray(s["unresolved_threads"])
-    ? (s["unresolved_threads"] as unknown[]).length
-    : 0;
+  const unresolved = unresolvedThreads.length;
+
+  // Curiosity proxy from structured summary: lots of insights + open threads.
+  const curiosityFromSummary =
+    insights.length + unresolvedThreads.length > 0
+      ? clamp(30 + insights.length * 8 + unresolvedThreads.length * 6)
+      : null;
+
+  // Fallback curiosity from messages if available.
+  const msgs = messagesByConv?.get(rec.conversationId);
+  const curiosity =
+    curiosityFromSummary ?? (msgs && msgs.length > 0 ? estimateCuriosityFromMessages(msgs) : null);
 
   const tone = meta && typeof meta["emotional_tone"] === "string" ? meta["emotional_tone"].toLowerCase() : "";
   const sentiment = typeof s["sentiment"] === "string" ? s["sentiment"] : null;
@@ -94,6 +114,7 @@ function extractFromSummary(rec: SummaryRecord): Feat | null {
     theorist,
     unresolved,
     affect,
+    curiosity,
     terms,
   };
 }
@@ -109,6 +130,7 @@ function extractFromMessages(
   const { maker, theorist } = estimateMakerTheoristFromMessages(messages);
   const affect = estimateAffectFromMessages(messages);
   const unresolved = estimateOpenLoopsFromMessages(messages).length;
+  const curiosity = estimateCuriosityFromMessages(messages);
 
   // Terms: collect from message text (simple frequency fallback).
   const termCounts = new Map<string, string>();
@@ -137,6 +159,7 @@ function extractFromMessages(
     theorist,
     unresolved,
     affect,
+    curiosity,
     terms,
   };
 }
@@ -147,6 +170,114 @@ function evidence(feats: Feat[], rank: (f: Feat) => number, n = 3): number[] {
     .sort((a, b) => rank(b) - rank(a))
     .slice(0, n)
     .map((f) => f.conversationId);
+}
+
+function buildAxis(
+  key: string,
+  score: number,
+  feats: Feat[],
+  rank: (f: Feat) => number,
+): AitiAxisScore {
+  const ev = evidence(feats, rank);
+  return {
+    key,
+    score: Math.round(score),
+    evidenceConversationIds: ev,
+    hasSignal: ev.length > 0,
+  };
+}
+
+/** Compute the four core axes plus extended axes from a feature set. */
+function computeAxes(feats: Feat[]): AitiAxisScore[] {
+  const sampleSize = feats.length;
+
+  // depth
+  const depthVals = feats.map((f) => f.depth).filter((d): d is number => d !== null);
+  const depthScore = depthVals.length
+    ? clamp(depthVals.reduce((a, b) => a + b, 0) / depthVals.length)
+    : 50;
+
+  // maker vs theorist
+  const makerFrac = feats.filter((f) => f.maker).length / sampleSize;
+  const theoristFrac = feats.filter((f) => f.theorist).length / sampleSize;
+  const makerScore = clamp(50 + 50 * (makerFrac - theoristFrac));
+
+  // focus: more unresolved threads → more "wanderer"
+  const avgUnresolved = feats.reduce((a, f) => a + f.unresolved, 0) / sampleSize;
+  const focusScore = clamp(20 + avgUnresolved * 22);
+
+  // affect
+  const affectFeats = feats.filter((f) => f.affect !== null);
+  const spiritedFrac = affectFeats.length
+    ? affectFeats.filter((f) => f.affect === 1).length / affectFeats.length
+    : 0;
+  const coolFrac = affectFeats.length
+    ? affectFeats.filter((f) => f.affect === -1).length / affectFeats.length
+    : 0;
+  const affectScore = affectFeats.length ? clamp(50 + 50 * (spiritedFrac - coolFrac)) : 50;
+
+  // curiosity
+  const curiosityVals = feats.map((f) => f.curiosity).filter((c): c is number => c !== null);
+  const curiosityScore = curiosityVals.length
+    ? clamp(curiosityVals.reduce((a, b) => a + b, 0) / curiosityVals.length)
+    : 50;
+
+  return [
+    buildAxis("depth", depthScore, feats, (f) => f.depth ?? 0),
+    buildAxis("maker", makerScore, feats, (f) =>
+      makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
+    ),
+    buildAxis("focus", focusScore, feats, (f) => f.unresolved),
+    buildAxis("affect", affectScore, feats, (f) =>
+      affectScore >= 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
+    ),
+    buildAxis("curiosity", curiosityScore, feats, (f) => f.curiosity ?? 0),
+  ];
+}
+
+function computeObsessions(feats: Feat[]): AitiObsession[] {
+  const counts = new Map<string, { display: string; count: number }>();
+  for (const f of feats) {
+    const seenInConv = new Set<string>();
+    for (const raw of f.terms) {
+      const term = raw.trim();
+      if (term.length < 2 || term.length > 40) continue;
+      const key = term.toLowerCase();
+      if (seenInConv.has(key)) continue;
+      seenInConv.add(key);
+      const entry = counts.get(key);
+      if (entry) entry.count += 1;
+      else counts.set(key, { display: term, count: 1 });
+    }
+  }
+  return Array.from(counts.values())
+    .filter((e) => e.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, MAX_OBSESSIONS)
+    .map((e) => ({ term: e.display, count: e.count }));
+}
+
+function computeTrends(allFeats: Feat[], recentFeats: Feat[]): AitiTrend[] | undefined {
+  if (recentFeats.length < 2 || allFeats.length < 3) return undefined;
+
+  const allAxes = computeAxes(allFeats);
+  const recentAxes = computeAxes(recentFeats);
+  const recentMap = new Map(recentAxes.map((a) => [a.key, a.score]));
+
+  const trends: AitiTrend[] = [];
+  for (const axis of allAxes) {
+    const recentScore = recentMap.get(axis.key);
+    if (recentScore === undefined) continue;
+    const delta = recentScore - axis.score;
+    if (Math.abs(delta) < 5) {
+      trends.push({ key: axis.key, direction: "stable", delta: 0, windowLabel: "Last 30 days" });
+    } else if (delta > 0) {
+      trends.push({ key: axis.key, direction: "rising", delta: Math.round(delta), windowLabel: "Last 30 days" });
+    } else {
+      trends.push({ key: axis.key, direction: "falling", delta: Math.round(Math.abs(delta)), windowLabel: "Last 30 days" });
+    }
+  }
+  return trends.length > 0 ? trends : undefined;
 }
 
 export interface ComputeAitiOptions {
@@ -174,7 +305,7 @@ export function computeAiti(
     const summary = summaryByConv.get(conv.id);
     const msgs = messagesByConv.get(conv.id) || [];
     const feat = summary
-      ? extractFromSummary(summary)
+      ? extractFromSummary(summary, messagesByConv)
       : extractFromMessages(conv.id, msgs);
     if (feat) feats.push(feat);
   }
@@ -201,87 +332,22 @@ export function computeAiti(
     };
   }
 
-  // depth
-  const depthVals = feats.map((f) => f.depth).filter((d): d is number => d !== null);
-  const depthScore = depthVals.length
-    ? clamp(depthVals.reduce((a, b) => a + b, 0) / depthVals.length)
-    : 50;
+  const axes = computeAxes(feats);
 
-  // maker vs theorist
-  const makerFrac = feats.filter((f) => f.maker).length / sampleSize;
-  const theoristFrac = feats.filter((f) => f.theorist).length / sampleSize;
-  const makerScore = clamp(50 + 50 * (makerFrac - theoristFrac));
+  // Interdisciplinary axis depends on conversation-level metadata, not per-conv features.
+  const interdisciplinaryScore = estimateInterdisciplinaryFromConversations(liveConversations);
+  axes.push({
+    key: "interdisciplinary",
+    score: interdisciplinaryScore,
+    evidenceConversationIds: liveConversations.slice(0, 3).map((c) => c.id),
+    hasSignal: liveConversations.length >= 2,
+  });
 
-  // focus: more unresolved threads → more "wanderer"
-  const avgUnresolved = feats.reduce((a, f) => a + f.unresolved, 0) / sampleSize;
-  const focusScore = clamp(20 + avgUnresolved * 22);
+  const obsessions = computeObsessions(feats);
 
-  // affect
-  const affectFeats = feats.filter((f) => f.affect !== null);
-  const spiritedFrac = affectFeats.length
-    ? affectFeats.filter((f) => f.affect === 1).length / affectFeats.length
-    : 0;
-  const coolFrac = affectFeats.length
-    ? affectFeats.filter((f) => f.affect === -1).length / affectFeats.length
-    : 0;
-  const affectScore = affectFeats.length ? clamp(50 + 50 * (spiritedFrac - coolFrac)) : 50;
-
-  const depthEvidence = evidence(feats, (f) => f.depth ?? 0);
-  const makerEvidence = evidence(feats, (f) =>
-    makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
-  );
-  const focusEvidence = evidence(feats, (f) => f.unresolved);
-  const affectEvidence = evidence(feats, (f) =>
-    affectScore >= 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
-  );
-
-  const axes: AitiAxisScore[] = [
-    {
-      key: "depth",
-      score: Math.round(depthScore),
-      evidenceConversationIds: depthEvidence,
-      hasSignal: depthEvidence.length > 0,
-    },
-    {
-      key: "maker",
-      score: Math.round(makerScore),
-      evidenceConversationIds: makerEvidence,
-      hasSignal: makerEvidence.length > 0,
-    },
-    {
-      key: "focus",
-      score: Math.round(focusScore),
-      evidenceConversationIds: focusEvidence,
-      hasSignal: focusEvidence.length > 0,
-    },
-    {
-      key: "affect",
-      score: Math.round(affectScore),
-      evidenceConversationIds: affectEvidence,
-      hasSignal: affectEvidence.length > 0,
-    },
-  ];
-
-  // obsessions: most frequent insight terms / tech across conversations
-  const counts = new Map<string, { display: string; count: number }>();
-  for (const f of feats) {
-    const seenInConv = new Set<string>();
-    for (const raw of f.terms) {
-      const term = raw.trim();
-      if (term.length < 2 || term.length > 40) continue;
-      const key = term.toLowerCase();
-      if (seenInConv.has(key)) continue;
-      seenInConv.add(key);
-      const entry = counts.get(key);
-      if (entry) entry.count += 1;
-      else counts.set(key, { display: term, count: 1 });
-    }
-  }
-  const obsessions: AitiObsession[] = Array.from(counts.values())
-    .filter((e) => e.count >= 2)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, MAX_OBSESSIONS)
-    .map((e) => ({ term: e.display, count: e.count }));
+  // Trends: compare recent window to all-time.
+  const { recent } = partitionByWindow(feats, TREND_WINDOW_DAYS);
+  const trends = computeTrends(feats, recent);
 
   return {
     available: true,
@@ -289,6 +355,7 @@ export function computeAiti(
     confidence,
     axes,
     obsessions,
+    trends,
     generatedAt: Date.now(),
   };
 }

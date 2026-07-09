@@ -356,3 +356,45 @@ export function depthScoreOf(level: DepthLevel | null): number | null {
   if (!level) return null;
   return { superficial: 15, moderate: 55, deep: 90 }[level];
 }
+
+// ---------------------------------------------------------------------------
+// Extended AITI axes: curiosity and interdisciplinary spread.
+// ---------------------------------------------------------------------------
+
+/** Estimate curiosity score (0..100) from a conversation's user messages.
+ *  More genuine questions and longer follow-up chains → higher score. */
+export function estimateCuriosityFromMessages(messages: Message[]): number {
+  const userMsgs = messages.filter((m) => m.role === "user");
+  if (userMsgs.length === 0) return 50;
+
+  const questionCount = userMsgs.filter((m) =>
+    QUESTION_MARKERS.some((q) => m.content_text.toLowerCase().includes(q)),
+  ).length;
+
+  // Follow-up chains: user messages after AI responses suggest engagement.
+  let followUps = 0;
+  for (let i = 1; i < messages.length; i += 1) {
+    if (messages[i].role === "user" && messages[i - 1].role === "ai") followUps += 1;
+  }
+
+  const questionRatio = questionCount / userMsgs.length;
+  const followUpRatio = followUps / Math.max(1, userMsgs.length);
+  const score = 30 + questionRatio * 50 + followUpRatio * 30;
+  return Math.min(100, Math.round(score));
+}
+
+/** Estimate interdisciplinary score (0..100) from conversation diversity.
+ *  More distinct topics and platforms → higher score. */
+export function estimateInterdisciplinaryFromConversations(
+  conversations: Conversation[],
+): number {
+  if (conversations.length === 0) return 50;
+
+  const distinctTopics = new Set(conversations.map((c) => c.topic_id ?? `platform:${c.platform}`));
+  const distinctPlatforms = new Set(conversations.map((c) => c.platform));
+
+  // Normalize: 1 unique bucket → ~30, 5+ → ~90.
+  const bucketCount = distinctTopics.size + distinctPlatforms.size * 0.5;
+  const score = 20 + Math.min(80, bucketCount * 14);
+  return Math.min(100, Math.round(score));
+}

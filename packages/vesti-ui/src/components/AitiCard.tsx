@@ -113,6 +113,20 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
       leftStrength: labels.axisAffectLeftStrength,
       rightStrength: labels.axisAffectRightStrength,
     },
+    curiosity: {
+      label: labels.axisCuriosityLabel,
+      left: labels.axisCuriosityLeft,
+      right: labels.axisCuriosityRight,
+      leftStrength: labels.axisCuriosityLeftStrength,
+      rightStrength: labels.axisCuriosityRightStrength,
+    },
+    interdisciplinary: {
+      label: labels.axisInterdisciplinaryLabel,
+      left: labels.axisInterdisciplinaryLeft,
+      right: labels.axisInterdisciplinaryRight,
+      leftStrength: labels.axisInterdisciplinaryLeftStrength,
+      rightStrength: labels.axisInterdisciplinaryRightStrength,
+    },
   };
 
   const confidenceLabel: Record<string, string> = {
@@ -259,6 +273,38 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
             );
           })}
         </div>
+
+        {/* Trends */}
+        {profile.trends && profile.trends.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.trendsTitle}</div>
+            <div className="flex flex-wrap gap-2">
+              {profile.trends.map((t) => {
+                const isRising = t.direction === "rising";
+                const isFalling = t.direction === "falling";
+                const label = isRising ? labels.trendRising : isFalling ? labels.trendFalling : labels.trendStable;
+                return (
+                  <span
+                    key={t.key}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] ${
+                      isRising
+                        ? "border-green-500/20 bg-green-500/10 text-green-600"
+                        : isFalling
+                          ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                          : "border-border-subtle bg-bg-surface-card text-text-secondary"
+                    }`}
+                  >
+                    <span className={isRising ? "rotate-0" : isFalling ? "rotate-180" : ""}>
+                      {isRising || isFalling ? "↑" : "→"}
+                    </span>
+                    {axisMeta[t.key]?.label || t.key}: {label}
+                    {t.delta > 0 ? ` +${t.delta}` : null}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Obsessions */}
         {profile.obsessions.length > 0 && (

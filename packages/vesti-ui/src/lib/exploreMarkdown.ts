@@ -22,11 +22,20 @@ export function buildAitiMarkdown(
     maker: [labels.axisMakerLeftStrength, labels.axisMakerRightStrength],
     focus: [labels.axisFocusLeftStrength, labels.axisFocusRightStrength],
     affect: [labels.axisAffectLeftStrength, labels.axisAffectRightStrength],
+    curiosity: [labels.axisCuriosityLeftStrength, labels.axisCuriosityRightStrength],
+    interdisciplinary: [labels.axisInterdisciplinaryLeftStrength, labels.axisInterdisciplinaryRightStrength],
   };
   for (const axis of profile.axes) {
     const pair = axisStrength[axis.key];
     if (!pair) continue;
     lines.push(`- ${axis.score >= 50 ? pair[1] : pair[0]}`);
+  }
+  if (profile.trends && profile.trends.length > 0) {
+    lines.push("", `## ${labels.trendsTitle}`, "");
+    for (const t of profile.trends) {
+      const dir = t.direction === "rising" ? labels.trendRising : t.direction === "falling" ? labels.trendFalling : labels.trendStable;
+      lines.push(`- ${axisStrength[t.key] ? t.key : t.key}: ${dir}${t.delta ? ` (+${t.delta})` : ""}`);
+    }
   }
   if (profile.obsessions.length > 0) {
     lines.push("", `## ${labels.obsessionsTitle}`, "");

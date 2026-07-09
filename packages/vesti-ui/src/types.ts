@@ -1393,6 +1393,20 @@ export interface DashboardLabels {
     axisAffectRight: string;
     axisAffectLeftStrength: string;
     axisAffectRightStrength: string;
+    axisCuriosityLabel: string;
+    axisCuriosityLeft: string;
+    axisCuriosityRight: string;
+    axisCuriosityLeftStrength: string;
+    axisCuriosityRightStrength: string;
+    axisInterdisciplinaryLabel: string;
+    axisInterdisciplinaryLeft: string;
+    axisInterdisciplinaryRight: string;
+    axisInterdisciplinaryLeftStrength: string;
+    axisInterdisciplinaryRightStrength: string;
+    trendsTitle: string;
+    trendRising: string;
+    trendFalling: string;
+    trendStable: string;
   };
   learn: {
     modeLearn: string;
@@ -1456,10 +1470,19 @@ export interface PlazaCategory {
 /** Reflective-module confidence level. Mirrors sample size + signal quality. */
 export type ReflectiveConfidence = "low" | "medium" | "high";
 
+/** Known AITI axes. Consumers can render any string key, but these are canonical. */
+export type AitiAxisKey =
+  | "depth"
+  | "maker"
+  | "focus"
+  | "affect"
+  | "curiosity"
+  | "interdisciplinary";
+
 /** AITI (个人内向探索) — a locally-computed "thinking fingerprint". */
 export interface AitiAxisScore {
-  /** stable axis key: "depth" | "maker" | "focus" | "affect" */
-  key: string;
+  /** stable axis key */
+  key: AitiAxisKey | (string & {});
   /** 0..100, toward the axis's RIGHT pole */
   score: number;
   /** up to a few source conversations that contributed most (evidence) */

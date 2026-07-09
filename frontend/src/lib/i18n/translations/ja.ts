@@ -1352,7 +1352,21 @@ export const jaTranslations = {
       axisAffectLeft: "冷静型",
       axisAffectRight: "情熱型",
       axisAffectLeftStrength: "複雑な状況でも冷静さを保ち、明晰な判断を維持します。",
-      axisAffectRightStrength: "探究する対象に強い情熱を注ぎます。"
+      axisAffectRightStrength: "探究する対象に強い情熱を注ぎます。",
+      axisCuriosityLabel: "落ち着き ↔ 好奇心",
+      axisCuriosityLeft: "落ち着き型",
+      axisCuriosityRight: "好奇型",
+      axisCuriosityLeftStrength: "効率的に答えを得ようとし、簡潔な解決を好みます。",
+      axisCuriosityRightStrength: "自由に質問し、手がかりを辿ってどこまでも探求します。",
+      axisInterdisciplinaryLabel: "専門 ↔ 学際",
+      axisInterdisciplinaryLeft: "専門型",
+      axisInterdisciplinaryRight: "学際型",
+      axisInterdisciplinaryLeftStrength: "特定領域に深く掘り下げ、専門性を積み上げます。",
+      axisInterdisciplinaryRightStrength: "領域を横断してアイデアを結びつけ、遠い分野を織り交ぜます。",
+      trendsTitle: "最近の傾向",
+      trendRising: "上昇",
+      trendFalling: "下降",
+      trendStable: "横ばい"
     },
     learn: {
       modeLearn: "学習",
