@@ -1,32 +1,25 @@
-// AITI (个人内向探索) — a "thinking fingerprint" computed 100% locally from the
-// per-conversation summaries VESTI already stores. No LLM, no new extraction, no
-// raw chat text: it only aggregates the structured signals in
-// ConversationSummary (meta_observations.depth_level/emotional_tone,
-// key_insights, unresolved_threads, actionable_next_steps, tech_stack, sentiment)
-// into four evidence-linked axes + the user's top recurring "obsessions".
-//
-// Output is locale-agnostic (scores + keys + evidence ids); the UI applies the
-// localized axis labels and assembles the type code.
+// AITI (个人内向探索) — a "thinking fingerprint" computed locally from the
+// per-conversation summaries VESTI already stores, with a lightweight fallback
+// that uses raw messages when summaries are sparse or missing. No LLM is
+// invoked during computation; any narrative generation is optional and
+// user-triggered outside this file.
 
-import type { SummaryRecord } from "../types";
-import type { AitiProfile, AitiAxisScore, AitiObsession } from "~vendor/vesti-ui";
+import type { Conversation, Message, SummaryRecord } from "../types";
+import type { AitiAxisScore, AitiObsession, AitiProfile } from "~vendor/vesti-ui";
+import {
+  computeConfidence,
+  depthOfSummary,
+  depthScoreOf,
+  estimateAffectFromMessages,
+  estimateDepthFromMessages,
+  estimateMakerTheoristFromMessages,
+  estimateOpenLoopsFromMessages,
+  groupMessagesByConversation,
+  latestSummaryByConversation,
+} from "../reflective/shared";
 
-const MIN_AITI_SAMPLE = 5;
-const DEPTH_SCORE: Record<string, number> = {
-  superficial: 15,
-  moderate: 55,
-  deep: 90,
-};
+const MIN_AITI_SAMPLE = 2;
 const MAX_OBSESSIONS = 10;
-
-const SPIRITED_KW = [
-  "excit", "curious", "enthusi", "passion", "frustrat", "anx", "eager", "worried",
-  "兴奋", "好奇", "热", "焦", "沮", "急", "激动", "兴趣",
-];
-const COOL_KW = [
-  "calm", "neutral", "analy", "method", "object", "ration", "measured",
-  "冷静", "中性", "理性", "客观", "平和", "沉稳",
-];
 
 interface Feat {
   conversationId: number;
@@ -35,24 +28,28 @@ interface Feat {
   maker: boolean;
   theorist: boolean;
   unresolved: number;
-  affect: 1 | -1 | null; // 1 = spirited, -1 = cool
+  affect: 1 | -1 | null;
   terms: string[];
 }
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.min(hi, Math.max(lo, v));
 
-function extract(rec: SummaryRecord): Feat | null {
-  const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
-  if (!s || typeof s !== "object") return null;
+function extractFromSummary(rec: SummaryRecord): Feat | null {
   if (typeof rec.conversationId !== "number") return null;
 
-  const meta = s.meta_observations as Record<string, unknown> | undefined;
-  const depthLevel = meta && typeof meta.depth_level === "string" ? meta.depth_level : null;
-  const depth = depthLevel && depthLevel in DEPTH_SCORE ? DEPTH_SCORE[depthLevel] : null;
+  const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
+  if (!s || typeof s !== "object") return null;
 
-  const actionable = Array.isArray(s.actionable_next_steps) ? s.actionable_next_steps.length : 0;
-  const techStackArr = Array.isArray(s.tech_stack_detected) ? (s.tech_stack_detected as unknown[]) : [];
-  const insights = Array.isArray(s.key_insights) ? (s.key_insights as unknown[]) : [];
+  const meta = s["meta_observations"] as Record<string, unknown> | undefined;
+  const depth = depthScoreOf(depthOfSummary(rec));
+
+  const actionable = Array.isArray(s["actionable_next_steps"])
+    ? (s["actionable_next_steps"] as unknown[]).length
+    : 0;
+  const techStackArr = Array.isArray(s["tech_stack_detected"])
+    ? (s["tech_stack_detected"] as unknown[])
+    : [];
+  const insights = Array.isArray(s["key_insights"]) ? (s["key_insights"] as unknown[]) : [];
 
   const terms: string[] = [];
   for (const ki of insights) {
@@ -65,12 +62,22 @@ function extract(rec: SummaryRecord): Feat | null {
 
   const maker = actionable >= 1 || techStackArr.length >= 1;
   const theorist = insights.length >= 2;
-  const unresolved = Array.isArray(s.unresolved_threads) ? s.unresolved_threads.length : 0;
+  const unresolved = Array.isArray(s["unresolved_threads"])
+    ? (s["unresolved_threads"] as unknown[]).length
+    : 0;
 
-  const tone = meta && typeof meta.emotional_tone === "string" ? meta.emotional_tone.toLowerCase() : "";
-  const sentiment = typeof s.sentiment === "string" ? s.sentiment : null;
+  const tone = meta && typeof meta["emotional_tone"] === "string" ? meta["emotional_tone"].toLowerCase() : "";
+  const sentiment = typeof s["sentiment"] === "string" ? s["sentiment"] : null;
   let affect: 1 | -1 | null = null;
   if (tone) {
+    const SPIRITED_KW = [
+      "excit", "curious", "enthusi", "passion", "frustrat", "anx", "eager", "worried",
+      "兴奋", "好奇", "热", "焦", "沮", "急", "激动", "兴趣",
+    ];
+    const COOL_KW = [
+      "calm", "neutral", "analy", "method", "object", "ration", "measured",
+      "冷静", "中性", "理性", "客观", "平和", "沉稳",
+    ];
     if (SPIRITED_KW.some((k) => tone.includes(k))) affect = 1;
     else if (COOL_KW.some((k) => tone.includes(k))) affect = -1;
   }
@@ -91,15 +98,47 @@ function extract(rec: SummaryRecord): Feat | null {
   };
 }
 
-/** Keep the latest summary per conversation. */
-function dedupeLatest(records: SummaryRecord[]): SummaryRecord[] {
-  const byConv = new Map<number, SummaryRecord>();
-  for (const rec of records) {
-    if (typeof rec.conversationId !== "number") continue;
-    const prev = byConv.get(rec.conversationId);
-    if (!prev || (rec.createdAt ?? 0) > (prev.createdAt ?? 0)) byConv.set(rec.conversationId, rec);
+function extractFromMessages(
+  conversationId: number,
+  messages: Message[],
+): Feat | null {
+  if (messages.length === 0) return null;
+
+  const depthLevel = estimateDepthFromMessages(messages);
+  const depth = depthScoreOf(depthLevel);
+  const { maker, theorist } = estimateMakerTheoristFromMessages(messages);
+  const affect = estimateAffectFromMessages(messages);
+  const unresolved = estimateOpenLoopsFromMessages(messages).length;
+
+  // Terms: collect from message text (simple frequency fallback).
+  const termCounts = new Map<string, string>();
+  for (const m of messages) {
+    const text = (m.content_text || "").trim();
+    if (!text) continue;
+    const words = text
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 2 && w.length <= 40);
+    for (const w of words) {
+      const key = w.toLowerCase();
+      if (!termCounts.has(key) || w.length > (termCounts.get(key)?.length ?? 0)) {
+        termCounts.set(key, w);
+      }
+    }
   }
-  return Array.from(byConv.values());
+
+  const terms = Array.from(termCounts.values()).slice(0, 12);
+
+  return {
+    conversationId,
+    createdAt: messages[messages.length - 1]?.created_at || 0,
+    depth,
+    maker,
+    theorist,
+    unresolved,
+    affect,
+    terms,
+  };
 }
 
 function evidence(feats: Feat[], rank: (f: Feat) => number, n = 3): number[] {
@@ -110,14 +149,56 @@ function evidence(feats: Feat[], rank: (f: Feat) => number, n = 3): number[] {
     .map((f) => f.conversationId);
 }
 
-export function computeAiti(records: SummaryRecord[]): AitiProfile {
-  const feats = dedupeLatest(records)
-    .map(extract)
-    .filter((f): f is Feat => f !== null);
+export interface ComputeAitiOptions {
+  /** Raw messages used as a fallback when summaries are sparse or absent. */
+  messages?: Message[];
+  /** Conversations used to map messages and enrich metadata. */
+  conversations?: Conversation[];
+}
+
+export function computeAiti(
+  records: SummaryRecord[],
+  options: ComputeAitiOptions = {},
+): AitiProfile {
+  const { messages = [], conversations = [] } = options;
+  const summaryByConv = latestSummaryByConversation(records);
+  const messagesByConv = groupMessagesByConversation(messages);
+  const liveConversations = conversations.filter((c) => !c.is_trash);
+
+  // Build features from summaries when available; otherwise fall back to messages.
+  const feats: Feat[] = [];
+  const convIds = new Set<number>();
+
+  for (const conv of liveConversations) {
+    convIds.add(conv.id);
+    const summary = summaryByConv.get(conv.id);
+    const msgs = messagesByConv.get(conv.id) || [];
+    const feat = summary
+      ? extractFromSummary(summary)
+      : extractFromMessages(conv.id, msgs);
+    if (feat) feats.push(feat);
+  }
+
+  // Also include conversations that only have messages but were not in the live list.
+  for (const [convId, msgs] of messagesByConv.entries()) {
+    if (convIds.has(convId) || msgs.length === 0) continue;
+    const feat = extractFromMessages(convId, msgs);
+    if (feat) feats.push(feat);
+  }
 
   const sampleSize = feats.length;
+  const hasSummaries = summaryByConv.size > 0;
+  const confidence = computeConfidence(sampleSize, hasSummaries);
+
   if (sampleSize < MIN_AITI_SAMPLE) {
-    return { available: false, sampleSize, axes: [], obsessions: [] };
+    return {
+      available: false,
+      sampleSize,
+      confidence,
+      axes: [],
+      obsessions: [],
+      generatedAt: Date.now(),
+    };
   }
 
   // depth
@@ -145,10 +226,6 @@ export function computeAiti(records: SummaryRecord[]): AitiProfile {
     : 0;
   const affectScore = affectFeats.length ? clamp(50 + 50 * (spiritedFrac - coolFrac)) : 50;
 
-  // Evidence per axis. An empty list means the score is a neutral default with
-  // nothing behind it (e.g. no conversation carried a depth_level / affect cue),
-  // so hasSignal=false and the UI renders that axis muted instead of confidently
-  // assigning a flattering pole.
   const depthEvidence = evidence(feats, (f) => f.depth ?? 0);
   const makerEvidence = evidence(feats, (f) =>
     makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
@@ -206,5 +283,15 @@ export function computeAiti(records: SummaryRecord[]): AitiProfile {
     .slice(0, MAX_OBSESSIONS)
     .map((e) => ({ term: e.display, count: e.count }));
 
-  return { available: true, sampleSize, axes, obsessions };
+  return {
+    available: true,
+    sampleSize,
+    confidence,
+    axes,
+    obsessions,
+    generatedAt: Date.now(),
+  };
 }
+
+// Re-export for consumers that want to build fallback-aware pipelines.
+export type { Feat };

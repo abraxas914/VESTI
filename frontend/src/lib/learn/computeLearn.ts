@@ -1,53 +1,50 @@
-// "学习 Learn" — reframes the captured KB as a personal curriculum, computed 100%
-// locally (no LLM, no new extraction) from data VESTI already stores: topics
-// (domains), per-conversation summary signals (key_insights → glossary;
-// unresolved_threads → open loops; depth_level → depth mix). Mirrors computeAiti:
-// pure + locale-agnostic; the host applies localized labels.
+// "学习 Learn" — reframes the captured KB as a personal curriculum.
+//
+// Primary input is per-conversation structured summaries (when available).
+// When summaries are sparse or missing, the module falls back to lightweight
+// lexical signals extracted from conversation titles, snippets, and messages so
+// that even users with only a few conversations see a useful learning map.
 
-import type { Conversation, SummaryRecord, Topic } from "../types";
+import type { Conversation, Message, SummaryRecord, Topic } from "../types";
 import type {
-  LearnProfile,
   LearnDomain,
   LearnGlossaryEntry,
   LearnOpenLoop,
+  LearnProfile,
 } from "~vendor/vesti-ui";
+import {
+  buildTermIndexFromConversations,
+  computeConfidence,
+  depthOfSummary,
+  estimateOpenLoopsFromMessages,
+  groupMessagesByConversation,
+  latestSummaryByConversation,
+} from "../reflective/shared";
 
-const MIN_LEARN_SAMPLE = 3;
+const MIN_LEARN_SAMPLE = 1;
 const MAX_GLOSSARY = 24;
 const MAX_OPEN_LOOPS = 14;
 
-type Depth = "superficial" | "moderate" | "deep";
-
-function latestSummaryByConversation(summaries: SummaryRecord[]): Map<number, SummaryRecord> {
-  const byConv = new Map<number, SummaryRecord>();
-  for (const rec of summaries) {
-    if (typeof rec.conversationId !== "number") continue;
-    const prev = byConv.get(rec.conversationId);
-    if (!prev || (rec.createdAt ?? 0) > (prev.createdAt ?? 0)) byConv.set(rec.conversationId, rec);
-  }
-  return byConv;
-}
-
-function depthOf(rec: SummaryRecord | undefined): Depth | null {
-  const meta = rec && (rec.structured as unknown as Record<string, unknown> | null | undefined)?.["meta_observations"];
-  const level = meta && typeof (meta as { depth_level?: unknown }).depth_level === "string"
-    ? (meta as { depth_level: string }).depth_level
-    : null;
-  return level === "superficial" || level === "moderate" || level === "deep" ? level : null;
+export interface ComputeLearnOptions {
+  /** Raw messages used as a fallback when summaries are sparse or absent. */
+  messages?: Message[];
 }
 
 export function computeLearn(
   summaries: SummaryRecord[],
   topics: Topic[],
   conversations: Conversation[],
+  options: ComputeLearnOptions = {},
 ): LearnProfile {
+  const { messages = [] } = options;
   const summaryByConv = latestSummaryByConversation(summaries);
+  const messagesByConv = groupMessagesByConversation(messages);
   const liveConvs = conversations.filter((c) => !c.is_archived && !c.is_trash);
 
-  // ---- Domains: group conversations by topic, with a depth mix ----
   const topicName = new Map<number, string>();
   for (const t of topics) if (typeof t.id === "number") topicName.set(t.id, t.name);
 
+  // ---- Domains: group conversations by topic, with a depth mix ----
   const domainAgg = new Map<
     string,
     { topicId: number | null; name: string; count: number; deep: number; moderate: number; superficial: number }
@@ -68,7 +65,7 @@ export function computeLearn(
       domainAgg.set(key, entry);
     }
     entry.count += 1;
-    const d = depthOf(summaryByConv.get(conv.id));
+    const d = depthOfSummary(summaryByConv.get(conv.id));
     if (d) entry[d] += 1;
   }
   const domains: LearnDomain[] = Array.from(domainAgg.values())
@@ -83,14 +80,11 @@ export function computeLearn(
     }));
 
   // ---- Glossary: key_insights terms across summaries (deduped + ranked) ----
-  // Rank by how often a term recurs (then recency) so the most-studied terms
-  // survive the MAX_GLOSSARY cap — taking the arbitrary first-N in storage order
-  // would drop high-value terms.
   type GlossaryAgg = LearnGlossaryEntry & { count: number; recencyAt: number };
   const glossaryMap = new Map<string, GlossaryAgg>();
   for (const rec of summaryByConv.values()) {
     const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
-    const insights = s && Array.isArray(s.key_insights) ? (s.key_insights as unknown[]) : [];
+    const insights = s && Array.isArray(s["key_insights"]) ? (s["key_insights"] as unknown[]) : [];
     const recencyAt = rec.createdAt ?? 0;
     for (const ki of insights) {
       let term = "";
@@ -119,6 +113,25 @@ export function computeLearn(
       }
     }
   }
+
+  // Fallback glossary from raw messages when summaries are missing.
+  if (summaryByConv.size === 0) {
+    const termIndex = buildTermIndexFromConversations(liveConvs, messagesByConv);
+    for (const [, entry] of termIndex) {
+      if (entry.count < 2) continue; // require recurrence to reduce noise
+      const key = entry.display.toLowerCase();
+      if (!glossaryMap.has(key)) {
+        glossaryMap.set(key, {
+          term: entry.display,
+          definition: "",
+          conversationId: entry.conversationId,
+          count: entry.count,
+          recencyAt: entry.recencyAt,
+        });
+      }
+    }
+  }
+
   const glossary: LearnGlossaryEntry[] = Array.from(glossaryMap.values())
     .sort((a, b) => b.count - a.count || b.recencyAt - a.recencyAt)
     .slice(0, MAX_GLOSSARY)
@@ -131,9 +144,11 @@ export function computeLearn(
   // ---- Open loops: unresolved_threads with their source conversation ----
   const openLoops: LearnOpenLoop[] = [];
   const seenLoops = new Set<string>();
+
+  // Primary: structured unresolved_threads.
   for (const rec of summaryByConv.values()) {
     const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
-    const threads = s && Array.isArray(s.unresolved_threads) ? (s.unresolved_threads as unknown[]) : [];
+    const threads = s && Array.isArray(s["unresolved_threads"]) ? (s["unresolved_threads"] as unknown[]) : [];
     for (const t of threads) {
       if (typeof t !== "string") continue;
       const text = t.trim();
@@ -147,8 +162,44 @@ export function computeLearn(
     if (openLoops.length >= MAX_OPEN_LOOPS) break;
   }
 
-  const sampleSize = summaryByConv.size;
-  const available = liveConvs.length >= MIN_LEARN_SAMPLE && (domains.length > 0 || glossary.length > 0);
+  // Fallback: user questions from raw messages.
+  if (openLoops.length === 0) {
+    for (const conv of liveConvs) {
+      const msgs = messagesByConv.get(conv.id) || [];
+      const loops = estimateOpenLoopsFromMessages(msgs);
+      for (const text of loops) {
+        const key = text.toLowerCase();
+        if (seenLoops.has(key)) continue;
+        seenLoops.add(key);
+        openLoops.push({ text, conversationId: conv.id });
+        if (openLoops.length >= MAX_OPEN_LOOPS) break;
+      }
+      if (openLoops.length >= MAX_OPEN_LOOPS) break;
+    }
+  }
 
-  return { available, sampleSize, domains, glossary, openLoops };
+  const sampleSize = liveConvs.length;
+  const hasSummaries = summaryByConv.size > 0;
+  const confidence = computeConfidence(sampleSize, hasSummaries);
+  const available = sampleSize >= MIN_LEARN_SAMPLE && (domains.length > 0 || glossary.length > 0);
+
+  // When no topics exist, synthesize domain names from conversation titles.
+  const finalDomains = domains.map((d) => ({
+    ...d,
+    name:
+      d.name ||
+      (d.topicId === null
+        ? liveConvs.find((c) => c.topic_id === null)?.platform || "Uncategorized"
+        : ""),
+  }));
+
+  return {
+    available,
+    sampleSize,
+    confidence,
+    domains: finalDomains,
+    glossary,
+    openLoops,
+    generatedAt: Date.now(),
+  };
 }

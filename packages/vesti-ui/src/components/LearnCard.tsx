@@ -15,11 +15,20 @@ interface LearnCardProps {
 }
 
 export function LearnCard({ profile, labels, onOpenConversation, storage, sendToLabels }: LearnCardProps) {
+  const confidenceLabel: Record<string, string> = {
+    low: labels.confidenceLow,
+    medium: labels.confidenceMedium,
+    high: labels.confidenceHigh,
+  };
+
   if (!profile || !profile.available) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-10 text-center">
         <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
         <p className="mt-2 max-w-md text-[13px] text-text-tertiary">{labels.insufficient}</p>
+        {labels.insufficientHint ? (
+          <p className="mt-3 max-w-sm text-[12px] text-text-tertiary/70">{labels.insufficientHint}</p>
+        ) : null}
       </div>
     );
   }
@@ -28,7 +37,23 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+          <div>
+            <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-text-tertiary">
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 ${
+                  profile.confidence === "low"
+                    ? "bg-bg-tertiary text-text-tertiary"
+                    : profile.confidence === "medium"
+                      ? "bg-accent-primary-light text-accent-primary"
+                      : "bg-green-500/10 text-green-600"
+                }`}
+              >
+                {labels.confidenceLabel}: {confidenceLabel[profile.confidence] || profile.confidence}
+              </span>
+              <span>{labels.sample.replace("{n}", String(profile.sampleSize))}</span>
+            </div>
+          </div>
           {storage && sendToLabels ? (
             <SendToMenu
               storage={storage}
@@ -38,9 +63,9 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
           ) : null}
         </div>
         <p className="mt-1 text-[12px] text-text-tertiary">{labels.subtitle}</p>
-        <p className="mt-1 text-[11.5px] text-text-tertiary">
-          {labels.sample.replace("{n}", String(profile.sampleSize))}
-        </p>
+        {profile.confidence === "low" && labels.insufficientHint ? (
+          <p className="mt-1 text-[11.5px] text-text-tertiary">{labels.insufficientHint}</p>
+        ) : null}
 
         {/* Domains */}
         {profile.domains.length > 0 && (

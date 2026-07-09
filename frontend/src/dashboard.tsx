@@ -199,18 +199,19 @@ function VestiDashboardInner() {
     void setPlazaAdoptedMany(ids, adopt).then(setAdoptedIds);
   }, []);
 
-  // AITI (个人内向探索): computed 100% locally from stored summaries. Recomputed
-  // when the dataset signals a change (VESTI_DATA_UPDATED).
+  // AITI (个人内向探索): computed locally from stored summaries, with a
+  // messages fallback so even sparse data produces a confidence-graded profile.
+  // Recomputed when the dataset signals a change (VESTI_DATA_UPDATED).
   const [aiti, setAiti] = useState<AitiProfile | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     const recompute = () => {
-      void getAllSummaries()
-        .then((summaries) => {
-          if (!cancelled) setAiti(computeAiti(summaries));
+      void Promise.all([getAllSummaries(), getConversations(), getMessages()])
+        .then(([summaries, conversations, messages]) => {
+          if (!cancelled) setAiti(computeAiti(summaries, { conversations, messages }));
         })
         .catch(() => {
-          if (!cancelled) setAiti({ available: false, sampleSize: 0, axes: [], obsessions: [] });
+          if (!cancelled) setAiti({ available: false, sampleSize: 0, confidence: "low", axes: [], obsessions: [] });
         });
     };
     recompute();
@@ -230,18 +231,19 @@ function VestiDashboardInner() {
     };
   }, []);
 
-  // Learn (学习): local curriculum view from summaries + topics + conversations.
+  // Learn (学习): local curriculum view from summaries + topics + conversations,
+  // with a messages fallback for sparse data.
   const [learn, setLearn] = useState<LearnProfile | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     const recompute = () => {
-      void Promise.all([getAllSummaries(), getTopics(), getConversations()])
-        .then(([summaries, topics, conversations]) => {
-          if (!cancelled) setLearn(computeLearn(summaries, topics, conversations));
+      void Promise.all([getAllSummaries(), getTopics(), getConversations(), getMessages()])
+        .then(([summaries, topics, conversations, messages]) => {
+          if (!cancelled) setLearn(computeLearn(summaries, topics, conversations, { messages }));
         })
         .catch(() => {
           if (!cancelled) {
-            setLearn({ available: false, sampleSize: 0, domains: [], glossary: [], openLoops: [] });
+            setLearn({ available: false, sampleSize: 0, confidence: "low", domains: [], glossary: [], openLoops: [] });
           }
         });
     };
