@@ -153,6 +153,111 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
             </ul>
           )}
         </div>
+
+        {/* Learning path */}
+        {profile.learningPath && profile.learningPath.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.learningPathTitle}</div>
+            <div className="flex flex-col gap-2">
+              {profile.learningPath.map((stage) => (
+                <div
+                  key={stage.stage}
+                  className="rounded-xl border border-border-subtle bg-bg-surface-card p-3"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[12px] font-medium text-text-primary">
+                      {labels.learningPathStage.replace("{n}", String(stage.stage))}: {stage.title}
+                    </span>
+                    {stage.estimatedMinutes ? (
+                      <span className="shrink-0 text-[10.5px] text-text-tertiary">
+                        {labels.learningPathEstimatedMinutes.replace("{n}", String(stage.estimatedMinutes))}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-text-secondary">{stage.description}</p>
+                  {stage.concepts.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {stage.concepts.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-full border border-border-subtle bg-bg-tertiary px-2 py-0.5 text-[10.5px] text-text-secondary"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Review queue */}
+        {profile.reviewQueue && profile.reviewQueue.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.reviewQueueTitle}</div>
+            <ul className="flex flex-col gap-1.5">
+              {profile.reviewQueue.map((item) => {
+                const isDue = item.dueAt <= Date.now();
+                return (
+                  <li
+                    key={item.term}
+                    className={`flex items-center justify-between rounded-lg border border-border-subtle bg-bg-surface-card p-2.5 ${
+                      item.conversationId && onOpenConversation ? "cursor-pointer hover:bg-bg-tertiary" : ""
+                    }`}
+                    onClick={
+                      item.conversationId && onOpenConversation
+                        ? () => onOpenConversation(item.conversationId as number)
+                        : undefined
+                    }
+                  >
+                    <span className="text-[13px] text-text-primary">{item.term}</span>
+                    <span
+                      className={`shrink-0 text-[10.5px] ${
+                        isDue ? "font-medium text-accent-primary" : "text-text-tertiary"
+                      }`}
+                    >
+                      {isDue ? labels.reviewDueNow : labels.reviewDueSoon}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* Goals */}
+        {profile.goals && profile.goals.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.goalsTitle}</div>
+            <div className="flex flex-col gap-2">
+              {profile.goals.map((goal) => (
+                <div key={goal.id} className="rounded-xl border border-border-subtle bg-bg-surface-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] font-medium text-text-primary">{goal.text}</span>
+                    <span className="text-[11px] text-text-tertiary">{goal.progress}%</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
+                    <div className="h-full bg-accent-primary" style={{ width: `${goal.progress}%` }} />
+                  </div>
+                  {goal.matchedTerms.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {goal.matchedTerms.map((t) => (
+                        <span
+                          key={t}
+                          className="text-[10px] text-text-tertiary"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

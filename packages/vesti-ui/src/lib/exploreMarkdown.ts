@@ -71,6 +71,33 @@ export function buildLearnMarkdown(
     for (const loop of profile.openLoops) lines.push(`- ${loop.text}`);
     lines.push("");
   }
+  if (profile.learningPath && profile.learningPath.length > 0) {
+    lines.push(`## ${labels.learningPathTitle}`, "");
+    for (const stage of profile.learningPath) {
+      lines.push(
+        `### ${labels.learningPathStage.replace("{n}", String(stage.stage))}: ${stage.title}`,
+      );
+      lines.push(stage.description);
+      if (stage.concepts.length > 0) {
+        lines.push("Concepts: " + stage.concepts.join(", "));
+      }
+      lines.push("");
+    }
+  }
+  if (profile.reviewQueue && profile.reviewQueue.length > 0) {
+    lines.push(`## ${labels.reviewQueueTitle}`, "");
+    for (const item of profile.reviewQueue) {
+      lines.push(`- **${item.term}**`);
+    }
+    lines.push("");
+  }
+  if (profile.goals && profile.goals.length > 0) {
+    lines.push(`## ${labels.goalsTitle}`, "");
+    for (const goal of profile.goals) {
+      lines.push(`- **${goal.text}** — ${goal.progress}%`);
+    }
+    lines.push("");
+  }
   lines.push(`_${labels.sample.replace("{n}", String(profile.sampleSize))}_`);
   return lines.join("\n").trim() + "\n";
 }

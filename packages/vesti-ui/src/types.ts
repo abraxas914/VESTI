@@ -1425,6 +1425,15 @@ export interface DashboardLabels {
     glossaryTitle: string;
     openLoopsTitle: string;
     openLoopsEmpty: string;
+    learningPathTitle: string;
+    learningPathStage: string;
+    learningPathEstimatedMinutes: string;
+    reviewQueueTitle: string;
+    reviewQueueEmpty: string;
+    reviewDueNow: string;
+    reviewDueSoon: string;
+    goalsTitle: string;
+    goalsEmpty: string;
   };
   roundtable: {
     title: string;

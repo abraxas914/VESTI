@@ -1384,7 +1384,16 @@ export const koTranslations = {
       domainConversations: "대화 {n}개",
       glossaryTitle: "배운 것들",
       openLoopsTitle: "미완의 루프",
-      openLoopsEmpty: "미해결 스레드가 없습니다 — 깔끔하게 마무리되었습니다."
+      openLoopsEmpty: "미해결 스레드가 없습니다 — 깔끔하게 마무리되었습니다.",
+      learningPathTitle: "추천 학습 경로",
+      learningPathStage: "단계 {n}",
+      learningPathEstimatedMinutes: "약 {n}분",
+      reviewQueueTitle: "복습 예정",
+      reviewQueueEmpty: "현재 복습 예정 항목이 없습니다.",
+      reviewDueNow: "지금 복습",
+      reviewDueSoon: "곧 복습",
+      goalsTitle: "학습 목표",
+      goalsEmpty: "아직 추론된 목표가 없습니다 — 대화를 이어가면 나타납니다."
     },
     roundtable: {
       title: "AI 원탁회의",

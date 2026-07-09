@@ -1384,7 +1384,16 @@ export const jaTranslations = {
       domainConversations: "{n} 件の会話",
       glossaryTitle: "学んだ事柄",
       openLoopsTitle: "未完のループ",
-      openLoopsEmpty: "未解決の論点はありません — きれいに片付いています。"
+      openLoopsEmpty: "未解決の論点はありません — きれいに片付いています。",
+      learningPathTitle: "推奨学習パス",
+      learningPathStage: "ステージ {n}",
+      learningPathEstimatedMinutes: "約 {n} 分",
+      reviewQueueTitle: "復習予定",
+      reviewQueueEmpty: "現在、復習予定の項目はありません。",
+      reviewDueNow: "今すぐ復習",
+      reviewDueSoon: "まもなく復習",
+      goalsTitle: "学習目標",
+      goalsEmpty: "まだ目標が推定されていません — 会話を続けると表示されます。"
     },
     roundtable: {
       title: "AI 円卓会議",
