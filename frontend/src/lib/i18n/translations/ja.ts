@@ -850,7 +850,21 @@ export const jaTranslations = {
       closeSidebar: "サイドバーを閉じる",
       openSidebar: "サイドバーを開く",
       emptyDetailTitle: "会話が選択されていません",
-      emptyDetailHint: "左から会話を選ぶとここに表示されます。"
+      emptyDetailHint: "左から会話を選ぶとここに表示されます。",
+      summaryCard: {
+        coreQuestion: "核心の問い",
+        thinkingJourney: "思考の旅",
+        step: "ステップ",
+        example: "例：",
+        keyInsights: "重要な洞察",
+        unresolvedThreads: "未解決の糸口",
+        metaObservations: "メタ観察",
+        thinkingStyle: "思考スタイル：",
+        emotionalTone: "感情トーン：",
+        depth: "深さ：",
+        nextSteps: "次のステップ",
+        fallback: "プレーンテキスト fallback",
+      },
     },
     explore: {
       modeAgent: "エージェント",
@@ -1395,7 +1409,7 @@ export const jaTranslations = {
       reviewDueNow: "今すぐ復習",
       reviewDueSoon: "まもなく復習",
       goalsTitle: "学習目標",
-      goalsEmpty: "まだ目標が推定されていません — 会話を続けると表示されます。"
+      goalsEmpty: "まだ目標が推定されていません — 会話を続けると表示されます。",
       learningPathFoundationTitle: "{domain} の基盤を固める",
       learningPathExpandTitle: "{domains} をつなぐ",
       learningPathApplyTitle: "未解決の問いに取り組む",
@@ -1403,7 +1417,8 @@ export const jaTranslations = {
       learningPathFoundationDesc: "会話によく出てくる核心概念を定着させます。",
       learningPathExpandDesc: "核心トピックと隣接領域を橋渡しし、より豊かなマップを作ります。",
       learningPathApplyDesc: "学んだことを使って、会話に残った未解決の糸口に取り組みます。",
-      learningPathSynthesizeDesc: "一歩引いて、領域や用語を横断して点を線で結びます。",\n      learningGoalDeepen: "{domain} を深める",
+      learningPathSynthesizeDesc: "一歩引いて、領域や用語を横断して点を線で結びます。",
+      learningGoalDeepen: "{domain} を深める",
     },
     roundtable: {
       title: "AI 円卓会議",

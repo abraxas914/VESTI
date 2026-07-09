@@ -30,4 +30,5 @@ export type {
   RoundtableSeatTurn,
   RoundtableSynthesis,
   RoundtableResult,
+  DashboardLabels,
 } from "@vesti/ui";

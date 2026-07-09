@@ -2266,7 +2266,7 @@ async function resolveStoredNoteFields(
         ? existing.title.trim()
         : ""
 
-  const title = titleFromFrontmatter ?? fallbackTitle || "Untitled"
+  const title = (titleFromFrontmatter ?? fallbackTitle) || "Untitled"
   const sourceType = input.source_type ?? existing?.source_type ?? "native"
   const sourcePath =
     input.source_path !== undefined
@@ -2603,6 +2603,10 @@ async function persistPreparedObsidianVault(
         tags: preparedNote.importMeta.tags,
         assets: mappedAssets,
         source_mtime: preparedNote.sourceMtime,
+        source_file_hash: preparedNote.sourceFileHash,
+        last_imported_note_hash: existing.import_meta?.last_imported_note_hash ?? null,
+        imported_at: existing.import_meta?.imported_at ?? now,
+        last_imported_at: now,
         conflict: {
           detected_at: now,
           incoming_source_file_hash: preparedNote.sourceFileHash,

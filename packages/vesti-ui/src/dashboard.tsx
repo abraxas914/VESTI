@@ -262,6 +262,22 @@ const DEFAULT_LABELS: DashboardLabels = {
     noPreviewAvailable: "No preview available",
     closeSidebar: "Close sidebar",
     openSidebar: "Open sidebar",
+    emptyDetailTitle: "No conversation selected",
+    emptyDetailHint: "Pick a conversation from the left to read it here.",
+    summaryCard: {
+      coreQuestion: "Core question",
+      thinkingJourney: "Thinking journey",
+      step: "Step",
+      example: "Example:",
+      keyInsights: "Key insights",
+      unresolvedThreads: "Unresolved threads",
+      metaObservations: "Meta observations",
+      thinkingStyle: "Thinking style:",
+      emotionalTone: "Emotional tone:",
+      depth: "Depth:",
+      nextSteps: "Next steps",
+      fallback: "Plain text fallback",
+    },
     sendToButton: "Send to…",
     sendToNotionConversation: "Notion — conversation",
     sendToNotionSummary: "Notion — summary",
@@ -824,6 +840,7 @@ type DashboardProps = {
   labels?: DashboardLabels;
   plaza?: PlazaData;
   onPlazaAdoptToggle?: (id: string, adopt: boolean) => void;
+  onPlazaAdoptToggleMany?: (ids: string[], adopt: boolean) => void;
   aiti?: AitiProfile;
   learn?: LearnProfile;
 };
@@ -840,6 +857,7 @@ export function VestiDashboard({
   labels: providedLabels,
   plaza,
   onPlazaAdoptToggle,
+  onPlazaAdoptToggleMany,
   aiti,
   learn,
 }: DashboardProps) {
@@ -1374,6 +1392,7 @@ export function VestiDashboard({
                 labels={labels.prompts}
                 plaza={plaza}
                 onPlazaAdoptToggle={onPlazaAdoptToggle}
+                onPlazaAdoptToggleMany={onPlazaAdoptToggleMany}
               />
             </div>
           )}

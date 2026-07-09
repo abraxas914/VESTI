@@ -206,8 +206,11 @@ function VestiDashboardInner() {
   useEffect(() => {
     let cancelled = false;
     const recompute = () => {
-      void Promise.all([getAllSummaries(), getConversations(), getMessages()])
-        .then(([summaries, conversations, messages]) => {
+      void Promise.all([getAllSummaries(), getConversations()])
+        .then(async ([summaries, conversations]) => {
+          const messages = (
+            await Promise.all(conversations.map((c) => getMessages(c.id)))
+          ).flat();
           if (!cancelled) setAiti(computeAiti(summaries, { conversations, messages }));
         })
         .catch(() => {
@@ -237,8 +240,11 @@ function VestiDashboardInner() {
   useEffect(() => {
     let cancelled = false;
     const recompute = () => {
-      void Promise.all([getAllSummaries(), getTopics(), getConversations(), getMessages()])
-        .then(([summaries, topics, conversations, messages]) => {
+      void Promise.all([getAllSummaries(), getTopics(), getConversations()])
+        .then(async ([summaries, topics, conversations]) => {
+          const messages = (
+            await Promise.all(conversations.map((c) => getMessages(c.id)))
+          ).flat();
           if (!cancelled) setLearn(computeLearn(summaries, topics, conversations, { messages, labels: t.dashboard.learn }));
         })
         .catch(() => {
