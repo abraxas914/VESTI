@@ -32,12 +32,12 @@ import {
   buildDefaultLlmSettings,
   BYOK_MODEL_WHITELIST,
   DEFAULT_BACKUP_MODEL,
+  DEFAULT_BYOK_BASE_URL,
   DEFAULT_PROXY_BASE_URL,
   DEFAULT_PROXY_URL,
   DEFAULT_STABLE_MODEL,
   getLlmAccessMode,
   getProxyBaseUrl,
-  MODELSCOPE_BASE_URL,
   normalizeLlmSettings,
   sanitizeByokModelId
 } from "~lib/services/llmConfig"
@@ -478,8 +478,8 @@ function resolveSettingsForMode(settings: LlmConfig): LlmConfig {
   const mode = getLlmAccessMode(settings)
   const next = normalizeLlmSettings({
     ...settings,
-    baseUrl: MODELSCOPE_BASE_URL,
-    gatewayLock: "modelscope",
+    baseUrl: DEFAULT_BYOK_BASE_URL,
+    gatewayLock: "openai_compatible",
     updatedAt: Date.now()
   })
 
@@ -577,7 +577,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
   const isCustomMode = mode === "custom_byok"
   const isSmartMode = captureSettings.mode === "smart"
   const isManualMode = captureSettings.mode === "manual"
-  const byokEndpointHost = getEndpointHost(MODELSCOPE_BASE_URL)
+  const byokEndpointHost = getEndpointHost(DEFAULT_BYOK_BASE_URL)
   const proxyContextSource =
     savedLlmSettingsState &&
     getLlmAccessMode(savedLlmSettingsState) === "demo_proxy"
@@ -1224,7 +1224,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                         )
                       }
                       className="model-access-input"
-                      placeholder="https://vesti-proxy.vercel.app"
+                      placeholder="https://vesti-gate.vercel.app"
                     />
                   </div>
 

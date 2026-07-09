@@ -10,18 +10,43 @@ import {
   STEP_3_5_FLASH_MODEL,
 } from "./llmModelProfile";
 
+// Legacy ModelScope endpoints (kept for BYOK users still on ModelScope)
 export const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1/";
-export const DEFAULT_PROXY_BASE_URL = "https://vesti-proxy.vercel.app/api";
+
+// Default demo proxy: Vesti AI Gateway Proxy on Vercel
+export const DEFAULT_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
 export const DEFAULT_PROXY_URL = `${DEFAULT_PROXY_BASE_URL}/chat`;
 export const DEFAULT_PROXY_EMBEDDINGS_URL = `${DEFAULT_PROXY_BASE_URL}/embeddings`;
-export const DEFAULT_STABLE_MODEL = KIMI_K2_5_MODEL;
-export const DEFAULT_BACKUP_MODEL = STEP_3_5_FLASH_MODEL;
+
+// 默认代理 service token，与 vesti-gate 代理默认值保持一致。
+// 用户无需手动填写，Demo proxy 模式开箱即用。
+// token 名称保留 "kcq" 前缀仅用于历史兼容，实际对应阿里云百炼上游。
+export const DEFAULT_PROXY_SERVICE_TOKEN = "vesti-kcq-default-d850d4dcd610a0e2e919eb610f42066faff1e1c57c0c047c";
+
+// Default BYOK endpoint: 阿里云百炼（DashScope），OpenAI-compatible
+export const DEFAULT_BYOK_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/";
+
+// Default chat models for demo proxy / BYOK fallback
+export const DEFAULT_STABLE_MODEL = "qwen-plus";
+export const DEFAULT_BACKUP_MODEL = "qwen-turbo";
+
+// Kept for backward compatibility with older stored configs and legacy BYOK users
+export const LEGACY_KIMI_K2_5_MODEL = KIMI_K2_5_MODEL;
+export const LEGACY_STEP_3_5_FLASH_MODEL = STEP_3_5_FLASH_MODEL;
+
 export const DEFAULT_MAX_TOKENS = 1600;
 const LEGACY_DEFAULT_MAX_TOKENS = 800;
 const MAX_TOKENS_CAP = 1600;
+
+// BYOK model whitelist: recommended models for the unified AI gateway.
+// We keep legacy ModelScope / Moonshot / StepFun IDs so existing BYOK users don't break.
 export const BYOK_MODEL_WHITELIST = [
   DEFAULT_STABLE_MODEL,
   DEFAULT_BACKUP_MODEL,
+  "qwen-max",
+  "qwen-coder-plus",
+  "deepseek-v3",
+  "deepseek-r1",
   LEGACY_DS14_MODEL,
   LEGACY_QWEN14_MODEL,
   "deepseek-ai/DeepSeek-V3",
@@ -29,12 +54,14 @@ export const BYOK_MODEL_WHITELIST = [
   "Qwen/Qwen3-8B",
   "Qwen/Qwen3-32B",
   "deepseek-ai/DeepSeek-V3.2",
+  LEGACY_KIMI_K2_5_MODEL,
+  LEGACY_STEP_3_5_FLASH_MODEL,
 ] as const;
 
 // Reserved for future export-compression routing enablement after real API validation.
 export const FUTURE_MODELSCOPE_EXPORT_MODEL_CANDIDATES: readonly string[] = [];
 export const FUTURE_MOONSHOT_DIRECT_EXPORT_MODEL_CANDIDATES = [
-  KIMI_K2_5_MODEL,
+  LEGACY_KIMI_K2_5_MODEL,
 ] as const;
 
 export type ProxyRoute = "chat" | "embeddings";
@@ -79,6 +106,12 @@ function normalizeProxyBaseCandidate(value: string | undefined): string {
   } catch {
     return trimSlashes(raw).replace(/\/(chat|embeddings)$/i, "");
   }
+}
+
+function normalizeByokBaseUrl(value: string | undefined): string {
+  const raw = (value || "").trim();
+  if (!raw) return DEFAULT_BYOK_BASE_URL;
+  return trimSlashes(raw) + "/";
 }
 
 function normalizeMaxTokens(value: number | undefined): number {
@@ -135,8 +168,8 @@ export function needsProxySettingsBackfill(
 
 export function buildDefaultLlmSettings(now = Date.now()): LlmConfig {
   return {
-    provider: "modelscope",
-    baseUrl: MODELSCOPE_BASE_URL,
+    provider: "openai_compatible",
+    baseUrl: DEFAULT_BYOK_BASE_URL,
     apiKey: "",
     modelId: DEFAULT_STABLE_MODEL,
     temperature: 0.3,
@@ -145,8 +178,8 @@ export function buildDefaultLlmSettings(now = Date.now()): LlmConfig {
     mode: "demo_proxy",
     proxyBaseUrl: DEFAULT_PROXY_BASE_URL,
     proxyUrl: DEFAULT_PROXY_URL,
-    proxyServiceToken: "",
-    gatewayLock: "modelscope",
+    proxyServiceToken: DEFAULT_PROXY_SERVICE_TOKEN,
+    gatewayLock: "openai_compatible",
     customModelId: DEFAULT_STABLE_MODEL,
     streamMode: "off",
     reasoningPolicy: "off",
@@ -175,15 +208,15 @@ export function normalizeLlmSettings(
     return {
       ...fallback,
       ...settings,
-      provider: "modelscope",
-      baseUrl: MODELSCOPE_BASE_URL,
+      provider: "openai_compatible",
+      baseUrl: DEFAULT_BYOK_BASE_URL,
       modelId: DEFAULT_STABLE_MODEL,
       maxTokens,
       mode,
       proxyBaseUrl,
       proxyUrl,
       proxyServiceToken,
-      gatewayLock: "modelscope",
+      gatewayLock: "openai_compatible",
       customModelId: DEFAULT_STABLE_MODEL,
       streamMode: settings.streamMode === "on" ? "on" : "off",
       reasoningPolicy:
@@ -201,15 +234,15 @@ export function normalizeLlmSettings(
   return {
     ...fallback,
     ...settings,
-    provider: "modelscope",
-    baseUrl: MODELSCOPE_BASE_URL,
+    provider: "openai_compatible",
+    baseUrl: normalizeByokBaseUrl(settings.baseUrl),
     modelId: byokModelId,
     maxTokens,
     mode,
     proxyBaseUrl,
     proxyUrl,
     proxyServiceToken,
-    gatewayLock: "modelscope",
+    gatewayLock: "openai_compatible",
     customModelId: byokModelId,
     streamMode: settings.streamMode === "on" ? "on" : "off",
     reasoningPolicy:
