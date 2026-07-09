@@ -1222,6 +1222,8 @@ export interface DashboardLabels {
     sendToNotionSummary?: string;
     sendToObsidianConversation?: string;
     sendToObsidianSummary?: string;
+    sendToNotion?: string;
+    sendToObsidian?: string;
     sendToExporting?: string;
     sendToDone?: string;
     sendToFailed?: string;
@@ -1434,6 +1436,15 @@ export interface DashboardLabels {
     reviewDueSoon: string;
     goalsTitle: string;
     goalsEmpty: string;
+    learningPathFoundationTitle: string;
+    learningPathExpandTitle: string;
+    learningPathApplyTitle: string;
+    learningPathSynthesizeTitle: string;
+    learningPathFoundationDesc: string;
+    learningPathExpandDesc: string;
+    learningPathApplyDesc: string;
+    learningPathSynthesizeDesc: string;
+    learningGoalDeepen: string;
   };
   roundtable: {
     title: string;

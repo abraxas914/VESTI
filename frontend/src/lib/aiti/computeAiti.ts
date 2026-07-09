@@ -7,6 +7,8 @@
 import type { Conversation, Message, SummaryRecord } from "../types";
 import type { AitiAxisScore, AitiObsession, AitiProfile, AitiTrend } from "~vendor/vesti-ui";
 import {
+  COOL_KW,
+  SPIRITED_KW,
   computeConfidence,
   depthOfSummary,
   depthScoreOf,
@@ -16,6 +18,7 @@ import {
   estimateInterdisciplinaryFromConversations,
   estimateMakerTheoristFromMessages,
   estimateOpenLoopsFromMessages,
+  extractTermsFromText,
   groupMessagesByConversation,
   latestSummaryByConversation,
   partitionByWindow,
@@ -39,6 +42,54 @@ interface Feat {
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.min(hi, Math.max(lo, v));
 
+// Normalize V1/V2/V2Legacy summary fields into a common shape for AITI.
+function normalizeSummaryFields(s: Record<string, unknown>) {
+  const insightsRaw: unknown[] =
+    Array.isArray(s["key_insights"])
+      ? (s["key_insights"] as unknown[])
+      : Array.isArray(s["key_takeaways"])
+        ? (s["key_takeaways"] as unknown[])
+        : [];
+
+  const actionableRaw: unknown[] =
+    Array.isArray(s["actionable_next_steps"])
+      ? (s["actionable_next_steps"] as unknown[])
+      : Array.isArray(s["action_items"])
+        ? (s["action_items"] as unknown[])
+        : [];
+
+  const techStackRaw: unknown[] = Array.isArray(s["tech_stack_detected"])
+    ? (s["tech_stack_detected"] as unknown[])
+    : [];
+
+  const unresolvedRaw: unknown[] = Array.isArray(s["unresolved_threads"])
+    ? (s["unresolved_threads"] as unknown[])
+    : [];
+
+  const terms: string[] = [];
+  for (const ki of insightsRaw) {
+    if (typeof ki === "string") terms.push(ki);
+    else if (ki && typeof ki === "object" && typeof (ki as Record<string, unknown>).term === "string") {
+      terms.push((ki as { term: string }).term);
+    }
+  }
+  for (const t of techStackRaw) if (typeof t === "string") terms.push(t);
+
+  const meta = s["meta_observations"] && typeof s["meta_observations"] === "object"
+    ? (s["meta_observations"] as Record<string, unknown>)
+    : undefined;
+
+  return {
+    insights: insightsRaw,
+    actionable: actionableRaw,
+    techStack: techStackRaw,
+    unresolved: unresolvedRaw,
+    terms,
+    meta,
+    sentiment: typeof s["sentiment"] === "string" ? s["sentiment"] : undefined,
+  };
+}
+
 function extractFromSummary(
   rec: SummaryRecord,
   messagesByConv?: Map<number, Message[]>,
@@ -48,37 +99,17 @@ function extractFromSummary(
   const s = rec.structured as unknown as Record<string, unknown> | null | undefined;
   if (!s || typeof s !== "object") return null;
 
-  const meta = s["meta_observations"] as Record<string, unknown> | undefined;
+  const fields = normalizeSummaryFields(s);
   const depth = depthScoreOf(depthOfSummary(rec));
 
-  const actionable = Array.isArray(s["actionable_next_steps"])
-    ? (s["actionable_next_steps"] as unknown[]).length
-    : 0;
-  const techStackArr = Array.isArray(s["tech_stack_detected"])
-    ? (s["tech_stack_detected"] as unknown[])
-    : [];
-  const insights = Array.isArray(s["key_insights"]) ? (s["key_insights"] as unknown[]) : [];
-  const unresolvedThreads = Array.isArray(s["unresolved_threads"])
-    ? (s["unresolved_threads"] as unknown[])
-    : [];
-
-  const terms: string[] = [];
-  for (const ki of insights) {
-    if (typeof ki === "string") terms.push(ki);
-    else if (ki && typeof ki === "object" && typeof (ki as { term?: unknown }).term === "string") {
-      terms.push((ki as { term: string }).term);
-    }
-  }
-  for (const t of techStackArr) if (typeof t === "string") terms.push(t);
-
-  const maker = actionable >= 1 || techStackArr.length >= 1;
-  const theorist = insights.length >= 2;
-  const unresolved = unresolvedThreads.length;
+  const maker = fields.actionable.length >= 1 || fields.techStack.length >= 1;
+  const theorist = fields.insights.length >= 2;
+  const unresolved = fields.unresolved.length;
 
   // Curiosity proxy from structured summary: lots of insights + open threads.
   const curiosityFromSummary =
-    insights.length + unresolvedThreads.length > 0
-      ? clamp(30 + insights.length * 8 + unresolvedThreads.length * 6)
+    fields.insights.length + fields.unresolved.length > 0
+      ? clamp(30 + fields.insights.length * 8 + fields.unresolved.length * 6)
       : null;
 
   // Fallback curiosity from messages if available.
@@ -86,21 +117,28 @@ function extractFromSummary(
   const curiosity =
     curiosityFromSummary ?? (msgs && msgs.length > 0 ? estimateCuriosityFromMessages(msgs) : null);
 
-  const tone = meta && typeof meta["emotional_tone"] === "string" ? meta["emotional_tone"].toLowerCase() : "";
-  const sentiment = typeof s["sentiment"] === "string" ? s["sentiment"] : null;
+  const tone = fields.meta && typeof fields.meta["emotional_tone"] === "string"
+    ? fields.meta["emotional_tone"].toLowerCase()
+    : "";
+  const sentiment = fields.sentiment ?? null;
   let affect: 1 | -1 | null = null;
+
+  // Structured emotional tone takes priority.
   if (tone) {
-    const SPIRITED_KW = [
-      "excit", "curious", "enthusi", "passion", "frustrat", "anx", "eager", "worried",
-      "兴奋", "好奇", "热", "焦", "沮", "急", "激动", "兴趣",
-    ];
-    const COOL_KW = [
-      "calm", "neutral", "analy", "method", "object", "ration", "measured",
-      "冷静", "中性", "理性", "客观", "平和", "沉稳",
-    ];
     if (SPIRITED_KW.some((k) => tone.includes(k))) affect = 1;
     else if (COOL_KW.some((k) => tone.includes(k))) affect = -1;
   }
+
+  // Fallback to message-level affect when the summary has no tone signal.
+  if (affect === null) {
+    const msgs = messagesByConv?.get(rec.conversationId);
+    if (msgs && msgs.length > 0) {
+      affect = estimateAffectFromMessages(msgs);
+    }
+  }
+
+  // Sentiment is a last resort: any strong valence reads as "spirited",
+  // neutral reads as "cool-headed".
   if (affect === null && sentiment) {
     if (sentiment === "positive" || sentiment === "negative") affect = 1;
     else if (sentiment === "neutral") affect = -1;
@@ -115,7 +153,7 @@ function extractFromSummary(
     unresolved,
     affect,
     curiosity,
-    terms,
+    terms: fields.terms,
   };
 }
 
@@ -132,28 +170,33 @@ function extractFromMessages(
   const unresolved = estimateOpenLoopsFromMessages(messages).length;
   const curiosity = estimateCuriosityFromMessages(messages);
 
-  // Terms: collect from message text (simple frequency fallback).
-  const termCounts = new Map<string, string>();
-  for (const m of messages) {
+  // Terms: collect from message text using the shared extractor, ranked by
+  // frequency across the conversation and then by recency (last message wins).
+  const termCounts = new Map<string, { display: string; count: number; lastAt: number }>();
+  for (let i = 0; i < messages.length; i += 1) {
+    const m = messages[i];
     const text = (m.content_text || "").trim();
     if (!text) continue;
-    const words = text
-      .replace(/[^\p{L}\p{N}\s]/gu, " ")
-      .split(/\s+/)
-      .filter((w) => w.length >= 2 && w.length <= 40);
-    for (const w of words) {
-      const key = w.toLowerCase();
-      if (!termCounts.has(key) || w.length > (termCounts.get(key)?.length ?? 0)) {
-        termCounts.set(key, w);
+    for (const term of extractTermsFromText(text)) {
+      const key = term.toLowerCase();
+      const existing = termCounts.get(key);
+      if (existing) {
+        existing.count += 1;
+        existing.lastAt = i;
+      } else {
+        termCounts.set(key, { display: term, count: 1, lastAt: i });
       }
     }
   }
 
-  const terms = Array.from(termCounts.values()).slice(0, 12);
+  const terms = Array.from(termCounts.values())
+    .sort((a, b) => b.count - a.count || b.lastAt - a.lastAt)
+    .slice(0, 12)
+    .map((e) => e.display);
 
   return {
     conversationId,
-    createdAt: messages[messages.length - 1]?.created_at || 0,
+    createdAt: messages[messages.length - 1]?.created_at ?? 0,
     depth,
     maker,
     theorist,
@@ -225,11 +268,11 @@ function computeAxes(feats: Feat[]): AitiAxisScore[] {
   return [
     buildAxis("depth", depthScore, feats, (f) => f.depth ?? 0),
     buildAxis("maker", makerScore, feats, (f) =>
-      makerScore >= 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
+      makerScore > 50 ? (f.maker ? 1 : 0) : f.theorist ? 1 : 0,
     ),
     buildAxis("focus", focusScore, feats, (f) => f.unresolved),
     buildAxis("affect", affectScore, feats, (f) =>
-      affectScore >= 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
+      affectScore > 50 ? (f.affect === 1 ? 1 : 0) : f.affect === -1 ? 1 : 0,
     ),
     buildAxis("curiosity", curiosityScore, feats, (f) => f.curiosity ?? 0),
   ];
@@ -270,7 +313,7 @@ function computeTrends(allFeats: Feat[], recentFeats: Feat[]): AitiTrend[] | und
     if (recentScore === undefined) continue;
     const delta = recentScore - axis.score;
     if (Math.abs(delta) < 5) {
-      trends.push({ key: axis.key, direction: "stable", delta: 0, windowLabel: "Last 30 days" });
+      trends.push({ key: axis.key, direction: "stable", delta: Math.round(Math.abs(delta)), windowLabel: "Last 30 days" });
     } else if (delta > 0) {
       trends.push({ key: axis.key, direction: "rising", delta: Math.round(delta), windowLabel: "Last 30 days" });
     } else {
@@ -296,12 +339,10 @@ export function computeAiti(
   const messagesByConv = groupMessagesByConversation(messages);
   const liveConversations = conversations.filter((c) => !c.is_trash);
 
-  // Build features from summaries when available; otherwise fall back to messages.
+  // Build one feature per live conversation. Prefer the latest structured
+  // summary; fall back to raw messages when no summary exists.
   const feats: Feat[] = [];
-  const convIds = new Set<number>();
-
   for (const conv of liveConversations) {
-    convIds.add(conv.id);
     const summary = summaryByConv.get(conv.id);
     const msgs = messagesByConv.get(conv.id) || [];
     const feat = summary
@@ -310,15 +351,8 @@ export function computeAiti(
     if (feat) feats.push(feat);
   }
 
-  // Also include conversations that only have messages but were not in the live list.
-  for (const [convId, msgs] of messagesByConv.entries()) {
-    if (convIds.has(convId) || msgs.length === 0) continue;
-    const feat = extractFromMessages(convId, msgs);
-    if (feat) feats.push(feat);
-  }
-
   const sampleSize = feats.length;
-  const hasSummaries = summaryByConv.size > 0;
+  const hasSummaries = liveConversations.some((c) => summaryByConv.has(c.id));
   const confidence = computeConfidence(sampleSize, hasSummaries);
 
   if (sampleSize < MIN_AITI_SAMPLE) {
@@ -334,13 +368,13 @@ export function computeAiti(
 
   const axes = computeAxes(feats);
 
-  // Interdisciplinary axis depends on conversation-level metadata, not per-conv features.
+  // Interdisciplinary axis depends on conversation-level metadata.
   const interdisciplinaryScore = estimateInterdisciplinaryFromConversations(liveConversations);
   axes.push({
     key: "interdisciplinary",
     score: interdisciplinaryScore,
     evidenceConversationIds: liveConversations.slice(0, 3).map((c) => c.id),
-    hasSignal: liveConversations.length >= 2,
+    hasSignal: liveConversations.length >= 2 && interdisciplinaryScore >= 35,
   });
 
   const obsessions = computeObsessions(feats);
@@ -359,6 +393,3 @@ export function computeAiti(
     generatedAt: Date.now(),
   };
 }
-
-// Re-export for consumers that want to build fallback-aware pipelines.
-export type { Feat };

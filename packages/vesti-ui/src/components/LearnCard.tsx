@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { DashboardLabels, LearnProfile, StorageApi } from "../types";
 import { SendToMenu } from "./SendToMenu";
 import { buildLearnMarkdown } from "../lib/exploreMarkdown";
@@ -12,6 +13,35 @@ interface LearnCardProps {
   onOpenConversation?: (conversationId: number) => void;
   storage?: StorageApi;
   sendToLabels?: DashboardLabels["library"];
+}
+
+function openConversationKey(prefix: string, id: number | undefined, index: number): string {
+  return `${prefix}-${id ?? "none"}-${index}`;
+}
+
+function clickableProps(
+  onOpen?: () => void,
+  ariaLabel?: string,
+): {
+  role?: "button";
+  tabIndex?: number;
+  onClick?: () => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLLIElement>) => void;
+  "aria-label"?: string;
+} {
+  if (!onOpen) return {};
+  return {
+    role: "button",
+    tabIndex: 0,
+    onClick: onOpen,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onOpen();
+      }
+    },
+    "aria-label": ariaLabel,
+  };
 }
 
 export function LearnCard({ profile, labels, onOpenConversation, storage, sendToLabels }: LearnCardProps) {
@@ -78,7 +108,7 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
                 const modPct = Math.round((d.moderate / total) * 100);
                 return (
                   <div
-                    key={`${d.topicId ?? "null"}`}
+                    key={`${d.topicId ?? "null"}-${d.name || "uncategorized"}`}
                     className="rounded-xl border border-border-subtle bg-bg-surface-card p-3"
                   >
                     <div className="flex items-baseline justify-between gap-2">
@@ -90,10 +120,18 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
                       </span>
                     </div>
                     {d.deep + d.moderate + d.superficial > 0 && (
-                      <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
-                        <div className="bg-accent-primary" style={{ width: `${deepPct}%` }} />
-                        <div className="bg-accent-primary/50" style={{ width: `${modPct}%` }} />
-                      </div>
+                      <>
+                        <div
+                          className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-bg-tertiary"
+                          title={`Deep ${d.deep} · Moderate ${d.moderate} · Superficial ${d.superficial}`}
+                        >
+                          <div className="bg-accent-primary" style={{ width: `${deepPct}%` }} />
+                          <div className="bg-accent-primary/50" style={{ width: `${modPct}%` }} />
+                        </div>
+                        <div className="sr-only">
+                          {`Deep ${d.deep}, Moderate ${d.moderate}, Superficial ${d.superficial}`}
+                        </div>
+                      </>
                     )}
                   </div>
                 );
@@ -107,26 +145,30 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
           <div className="mt-6">
             <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.glossaryTitle}</div>
             <ul className="flex flex-col gap-2">
-              {profile.glossary.map((g) => (
-                <li
-                  key={g.term}
-                  className={`rounded-lg border border-border-subtle bg-bg-surface-card p-2.5 ${
-                    g.conversationId && onOpenConversation ? "cursor-pointer hover:bg-bg-tertiary" : ""
-                  }`}
-                  onClick={
-                    g.conversationId && onOpenConversation
-                      ? () => onOpenConversation(g.conversationId as number)
-                      : undefined
-                  }
-                >
-                  <div className="text-[13px] font-medium text-text-primary">{g.term}</div>
-                  {g.definition ? (
-                    <div className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-text-secondary">
-                      {g.definition}
-                    </div>
-                  ) : null}
-                </li>
-              ))}
+              {profile.glossary.map((g, i) => {
+                const handleOpen = g.conversationId
+                  ? () => onOpenConversation?.(g.conversationId as number)
+                  : undefined;
+                return (
+                  <li
+                    key={openConversationKey("glossary", g.conversationId, i)}
+                    className={`rounded-lg border border-border-subtle bg-bg-surface-card p-2.5 ${
+                      handleOpen ? "cursor-pointer hover:bg-bg-tertiary" : ""
+                    }`}
+                    {...clickableProps(
+                      handleOpen,
+                      handleOpen ? `${labels.glossaryTitle}: ${g.term}` : undefined,
+                    )}
+                  >
+                    <div className="text-[13px] font-medium text-text-primary">{g.term}</div>
+                    {g.definition ? (
+                      <div className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-text-secondary">
+                        {g.definition}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -138,18 +180,26 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
             <p className="text-[11.5px] text-text-tertiary">{labels.openLoopsEmpty}</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {profile.openLoops.map((loop, i) => (
-                <li
-                  key={`${loop.conversationId}-${i}`}
-                  className={`flex items-start gap-2.5 text-[13px] leading-relaxed text-text-primary ${
-                    onOpenConversation ? "cursor-pointer hover:text-accent-primary" : ""
-                  }`}
-                  onClick={onOpenConversation ? () => onOpenConversation(loop.conversationId) : undefined}
-                >
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary/60" />
-                  <span>{loop.text}</span>
-                </li>
-              ))}
+              {profile.openLoops.map((loop, i) => {
+                const handleOpen = onOpenConversation
+                  ? () => onOpenConversation(loop.conversationId)
+                  : undefined;
+                return (
+                  <li
+                    key={openConversationKey("loop", loop.conversationId, i)}
+                    className={`flex items-start gap-2.5 text-[13px] leading-relaxed text-text-primary ${
+                      handleOpen ? "cursor-pointer hover:text-accent-primary" : ""
+                    }`}
+                    {...clickableProps(
+                      handleOpen,
+                      handleOpen ? `${labels.openLoopsTitle}: ${loop.text}` : undefined,
+                    )}
+                  >
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary/60" />
+                    <span>{loop.text}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -194,68 +244,81 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
         )}
 
         {/* Review queue */}
-        {profile.reviewQueue && profile.reviewQueue.length > 0 && (
+        {profile.reviewQueue !== undefined && (
           <div className="mt-6">
             <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.reviewQueueTitle}</div>
-            <ul className="flex flex-col gap-1.5">
-              {profile.reviewQueue.map((item) => {
-                const isDue = item.dueAt <= Date.now();
-                return (
-                  <li
-                    key={item.term}
-                    className={`flex items-center justify-between rounded-lg border border-border-subtle bg-bg-surface-card p-2.5 ${
-                      item.conversationId && onOpenConversation ? "cursor-pointer hover:bg-bg-tertiary" : ""
-                    }`}
-                    onClick={
-                      item.conversationId && onOpenConversation
-                        ? () => onOpenConversation(item.conversationId as number)
-                        : undefined
-                    }
-                  >
-                    <span className="text-[13px] text-text-primary">{item.term}</span>
-                    <span
-                      className={`shrink-0 text-[10.5px] ${
-                        isDue ? "font-medium text-accent-primary" : "text-text-tertiary"
+            {profile.reviewQueue.length === 0 ? (
+              <p className="text-[11.5px] text-text-tertiary">{labels.reviewQueueEmpty}</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {profile.reviewQueue.map((item, i) => {
+                  const isDue = item.dueAt <= Date.now();
+                  const handleOpen = item.conversationId
+                    ? () => onOpenConversation?.(item.conversationId as number)
+                    : undefined;
+                  return (
+                    <li
+                      key={openConversationKey("review", item.conversationId, i)}
+                      className={`flex items-center justify-between rounded-lg border border-border-subtle bg-bg-surface-card p-2.5 ${
+                        handleOpen ? "cursor-pointer hover:bg-bg-tertiary" : ""
                       }`}
+                      {...clickableProps(
+                        handleOpen,
+                        handleOpen ? `${labels.reviewQueueTitle}: ${item.term}` : undefined,
+                      )}
                     >
-                      {isDue ? labels.reviewDueNow : labels.reviewDueSoon}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                      <span className="text-[13px] text-text-primary">{item.term}</span>
+                      <span
+                        className={`shrink-0 text-[10.5px] ${
+                          isDue ? "font-medium text-accent-primary" : "text-text-tertiary"
+                        }`}
+                      >
+                        {isDue ? labels.reviewDueNow : labels.reviewDueSoon}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
 
         {/* Goals */}
-        {profile.goals && profile.goals.length > 0 && (
+        {profile.goals !== undefined && (
           <div className="mt-6">
             <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.goalsTitle}</div>
-            <div className="flex flex-col gap-2">
-              {profile.goals.map((goal) => (
-                <div key={goal.id} className="rounded-xl border border-border-subtle bg-bg-surface-card p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-medium text-text-primary">{goal.text}</span>
-                    <span className="text-[11px] text-text-tertiary">{goal.progress}%</span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
-                    <div className="h-full bg-accent-primary" style={{ width: `${goal.progress}%` }} />
-                  </div>
-                  {goal.matchedTerms.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {goal.matchedTerms.map((t) => (
-                        <span
-                          key={t}
-                          className="text-[10px] text-text-tertiary"
-                        >
-                          {t}
-                        </span>
-                      ))}
+            {profile.goals.length === 0 ? (
+              <p className="text-[11.5px] text-text-tertiary">{labels.goalsEmpty}</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {profile.goals.map((goal) => {
+                  const clampedProgress = Math.min(100, Math.max(0, goal.progress));
+                  return (
+                    <div key={goal.id} className="rounded-xl border border-border-subtle bg-bg-surface-card p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[13px] font-medium text-text-primary">{goal.text}</span>
+                        <span className="text-[11px] text-text-tertiary">{clampedProgress}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
+                        <div
+                          className="h-full bg-accent-primary"
+                          style={{ width: `${clampedProgress}%` }}
+                        />
+                      </div>
+                      {goal.matchedTerms.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {goal.matchedTerms.map((t) => (
+                            <span key={t} className="text-[10px] text-text-tertiary">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

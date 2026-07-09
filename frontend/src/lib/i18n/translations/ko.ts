@@ -900,6 +900,8 @@ export const koTranslations = {
       sendToNotionSummary: "Notion — 요약",
       sendToObsidianConversation: "Obsidian — 대화",
       sendToObsidianSummary: "Obsidian — 요약",
+      sendToNotion: "Notion",
+      sendToObsidian: "Obsidian",
       sendToExporting: "내보내는 중…",
       sendToDone: "전송됨 ✓",
       sendToFailed: "내보내기 실패",
@@ -1394,6 +1396,14 @@ export const koTranslations = {
       reviewDueSoon: "곧 복습",
       goalsTitle: "학습 목표",
       goalsEmpty: "아직 추론된 목표가 없습니다 — 대화를 이어가면 나타납니다."
+      learningPathFoundationTitle: "{domain} 기반 다지기",
+      learningPathExpandTitle: "{domains} 연결하기",
+      learningPathApplyTitle: "풀리지 않은 질문 다루기",
+      learningPathSynthesizeTitle: "지식 지도 통합하기",
+      learningPathFoundationDesc: "대화에서 가장 자주 등장하는 핵심 개념을 확실히 합니다.",
+      learningPathExpandDesc: "핵심 주제와 인접 영역을 연결해 더 풍부한 지도를 만듭니다.",
+      learningPathApplyDesc: "배운 것을 활용해 대화에 남은 미해결 실마리를 해결합니다.",
+      learningPathSynthesizeDesc: "한 걸음 물러서서 영역과 용어를 넘나드는 점들을 선으로 잇습니다.",\n      learningGoalDeepen: "{domain} 깊이 파기",
     },
     roundtable: {
       title: "AI 원탁회의",

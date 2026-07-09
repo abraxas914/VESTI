@@ -900,6 +900,8 @@ export const jaTranslations = {
       sendToNotionSummary: "Notion — 要約",
       sendToObsidianConversation: "Obsidian — 会話",
       sendToObsidianSummary: "Obsidian — 要約",
+      sendToNotion: "Notion",
+      sendToObsidian: "Obsidian",
       sendToExporting: "エクスポート中…",
       sendToDone: "送信済み ✓",
       sendToFailed: "エクスポートに失敗しました",
@@ -1394,6 +1396,14 @@ export const jaTranslations = {
       reviewDueSoon: "まもなく復習",
       goalsTitle: "学習目標",
       goalsEmpty: "まだ目標が推定されていません — 会話を続けると表示されます。"
+      learningPathFoundationTitle: "{domain} の基盤を固める",
+      learningPathExpandTitle: "{domains} をつなぐ",
+      learningPathApplyTitle: "未解決の問いに取り組む",
+      learningPathSynthesizeTitle: "知識マップを統合する",
+      learningPathFoundationDesc: "会話によく出てくる核心概念を定着させます。",
+      learningPathExpandDesc: "核心トピックと隣接領域を橋渡しし、より豊かなマップを作ります。",
+      learningPathApplyDesc: "学んだことを使って、会話に残った未解決の糸口に取り組みます。",
+      learningPathSynthesizeDesc: "一歩引いて、領域や用語を横断して点を線で結びます。",\n      learningGoalDeepen: "{domain} を深める",
     },
     roundtable: {
       title: "AI 円卓会議",

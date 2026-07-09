@@ -33,24 +33,78 @@ function clamp(v, lo = 0, hi = 100) {
   return Math.min(hi, Math.max(lo, v));
 }
 
-// ---- Shared heuristics (mirrored) ----
+function normalizeText(text) {
+  return (text || "").toLowerCase().trim();
+}
+
+function collapseWhitespace(text) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+const DEPTH_CUES = {
+  superficial: ["what is", "who is", "when", "where", "简单", "是什么", "谁", "什么时候"],
+  moderate: ["how", "why", "compare", "difference", "怎么", "为什么", "区别", "对比"],
+  deep: [
+    "implications", "implication", "trade-offs", "tradeoff", "consequences", "consequence",
+    "assumptions", "assumption", "underlying", "systemic", "底层", "假设", "权衡", "影响", "后果",
+  ],
+};
+
+const SPIRITED_KW = [
+  "excit", "curious", "enthusi", "passion", "frustrat", "anx", "eager", "worried",
+  "兴奋", "好奇", "热情", "沮丧", "焦虑", "着急", "激动", "感兴趣",
+];
+
+const COOL_KW = [
+  "calm", "neutral", "analy", "method", "object", "ration", "measured",
+  "冷静", "中性", "理性", "客观", "平和", "沉稳",
+];
+
+const QUESTION_MARKERS = ["how", "what", "why", "能否", "怎么", "如何", "为什么"];
+
+const BUILD_ACTION_KW = [
+  "implement", "deploy", "build", "code", "integrate", "prototype", "ship", "test", "debug",
+  "launch", "release", "实现", "部署", "搭建", "编码", "集成", "原型", "上线", "发布", "测试", "调试",
+];
+
+const THEORIST_KW = [
+  "theory", "framework", "model", "concept", "principle", "pattern", "structure",
+  "理论", "框架", "模型", "原理", "概念", "模式", "结构",
+];
+
+const TECH_STACK_KW = [
+  "react", "vue", "angular", "svelte", "next.js", "nuxt", "node.js", "python", "typescript",
+  "javascript", "rust", "go", "java", "c++", "sql", "docker", "kubernetes", "aws", "gcp", "azure",
+  "vercel", "tailwind", "css", "html", "api", "llm", "openai", "claude", "kimi", "qwen", "deepseek",
+];
+
+const STOP_WORDS = new Set([
+  "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+  "do", "does", "did", "will", "would", "could", "should", "may", "might", "can", "this", "that",
+  "these", "those", "i", "you", "he", "she", "it", "we", "they", "my", "your", "his", "her", "its",
+  "our", "their", "and", "or", "but", "for", "with", "from", "to", "of", "in", "on", "at", "by",
+  "about", "as", "into", "through", "during", "before", "after", "above", "below", "up", "down",
+  "out", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when",
+  "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some",
+  "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "just",
+]);
+
+function isQuestionText(text) {
+  const t = text.trim();
+  if (!t) return false;
+  if (t.endsWith("?") || t.endsWith("？")) return true;
+  const firstWord = t.split(/\s+/)[0].toLowerCase();
+  return QUESTION_MARKERS.includes(firstWord);
+}
 
 function estimateDepthFromMessages(messages) {
-  const userTexts = messages.filter((m) => m.role === "user").map((m) => (m.content_text || "").toLowerCase());
+  const userTexts = messages.filter((m) => m.role === "user").map((m) => normalizeText(m.content_text));
   if (userTexts.length === 0) return null;
-  const cues = {
-    superficial: ["what is", "who is", "when", "where", "简单", "是什么", "谁", "什么时候"],
-    moderate: ["how", "why", "compare", "difference", "怎么", "为什么", "区别", "对比"],
-    deep: [
-      "implications", "trade-offs", "consequences", "assumptions", "underlying", "systemic",
-      "底层", "假设", "权衡",
-    ],
-  };
   let deep = 0, moderate = 0, superficial = 0;
   for (const text of userTexts) {
-    for (const kw of cues.deep) if (text.includes(kw)) deep += 1;
-    for (const kw of cues.moderate) if (text.includes(kw)) moderate += 1;
-    for (const kw of cues.superficial) if (text.includes(kw)) superficial += 1;
+    if (DEPTH_CUES.deep.some((kw) => text.includes(kw))) deep += 1;
+    if (DEPTH_CUES.moderate.some((kw) => text.includes(kw))) moderate += 1;
+    if (DEPTH_CUES.superficial.some((kw) => text.includes(kw))) superficial += 1;
   }
   const total = deep + moderate + superficial;
   if (total === 0) return null;
@@ -60,54 +114,96 @@ function estimateDepthFromMessages(messages) {
 }
 
 function estimateAffectFromMessages(messages) {
-  const userTexts = messages.filter((m) => m.role === "user").map((m) => (m.content_text || "").toLowerCase());
+  const userTexts = messages.filter((m) => m.role === "user").map((m) => normalizeText(m.content_text));
   if (userTexts.length === 0) return null;
-  const spirited = ["excit", "curious", "enthusi", "passion", "frustrat", "anx", "eager", "worried", "兴奋", "好奇", "热", "焦", "沮", "急", "激动", "兴趣"];
-  const cool = ["calm", "neutral", "analy", "method", "object", "ration", "measured", "冷静", "中性", "理性", "客观", "平和", "沉稳"];
-  let s = 0, c = 0;
+  let spirited = 0, cool = 0;
   for (const text of userTexts) {
-    if (spirited.some((k) => text.includes(k))) s += 1;
-    else if (cool.some((k) => text.includes(k))) c += 1;
+    if (SPIRITED_KW.some((k) => text.includes(k))) spirited += 1;
+    if (COOL_KW.some((k) => text.includes(k))) cool += 1;
   }
-  if (s === 0 && c === 0) return null;
-  return s >= c ? 1 : -1;
+  if (spirited === 0 && cool === 0) return null;
+  return spirited >= cool ? 1 : -1;
 }
 
 function estimateMakerTheoristFromMessages(messages) {
-  const userTexts = messages.filter((m) => m.role === "user").map((m) => (m.content_text || "").toLowerCase());
-  const aiTexts = messages.filter((m) => m.role === "ai").map((m) => (m.content_text || "").toLowerCase());
-  const hasActionCue = userTexts.some((t) =>
-    ["implement", "deploy", "build", "write", "create", "实现", "部署", "搭建", "编写"].some((kw) => t.includes(kw)),
-  );
-  const techStack = ["react", "vue", "python", "typescript", "javascript", "rust", "go", "java", "docker", "kubernetes", "aws", "api", "llm", "openai", "claude", "kimi", "qwen", "deepseek"];
-  const hasTech = [...userTexts, ...aiTexts].some((t) => techStack.some((kw) => t.includes(kw)));
-  const hasMultipleQuestions = userTexts.filter((t) => /\?|？|how|what|why|能否|怎么|如何/.test(t)).length >= 2;
-  return { maker: hasActionCue || hasTech, theorist: hasMultipleQuestions || userTexts.some((t) => t.length > 80) };
+  const userTexts = messages.filter((m) => m.role === "user").map((m) => normalizeText(m.content_text));
+  if (userTexts.length === 0) return { maker: false, theorist: false };
+  const hasActionCue = userTexts.some((t) => BUILD_ACTION_KW.some((kw) => t.includes(kw)));
+  const hasTech = userTexts.some((t) => TECH_STACK_KW.some((kw) => t.includes(kw)));
+  const questionTexts = userTexts.filter((t) => isQuestionText(t));
+  const hasMultipleQuestions = questionTexts.length >= 2;
+  const hasTheoristCue = userTexts.some((t) => THEORIST_KW.some((kw) => t.includes(kw)));
+  return { maker: hasActionCue || hasTech, theorist: hasMultipleQuestions || hasTheoristCue };
 }
 
 function estimateCuriosityFromMessages(messages) {
   const userMsgs = messages.filter((m) => m.role === "user");
-  if (userMsgs.length === 0) return 50;
-  const questionCount = userMsgs.filter((m) => /\?|？|how|what|why|能否|怎么|如何/.test(m.content_text.toLowerCase())).length;
+  if (userMsgs.length === 0) return null;
+  const questionCount = userMsgs.filter((m) => isQuestionText(normalizeText(m.content_text))).length;
   let followUps = 0;
   for (let i = 1; i < messages.length; i += 1) {
     if (messages[i].role === "user" && messages[i - 1].role === "ai") followUps += 1;
   }
-  const score = 30 + (questionCount / userMsgs.length) * 50 + (followUps / Math.max(1, userMsgs.length)) * 30;
+  const score = 30 + (questionCount / userMsgs.length) * 50 + (followUps / Math.max(1, messages.length)) * 30;
   return Math.min(100, Math.round(score));
 }
 
 function estimateInterdisciplinaryFromConversations(conversations) {
-  if (conversations.length === 0) return 50;
-  const distinctTopics = new Set(conversations.map((c) => c.topic_id ?? `platform:${c.platform}`));
-  const distinctPlatforms = new Set(conversations.map((c) => c.platform));
-  const bucketCount = distinctTopics.size + distinctPlatforms.size * 0.5;
-  return Math.min(100, Math.round(20 + Math.min(80, Math.max(0, (bucketCount - 1) * 12))));
+  if (conversations.length === 0) return 0;
+  const buckets = new Set();
+  const platforms = new Set();
+  for (const c of conversations) {
+    platforms.add(c.platform);
+    if (typeof c.topic_id === "number") buckets.add(`topic:${c.topic_id}`);
+    else buckets.add("uncategorized");
+  }
+  const bucketCount = buckets.size + platforms.size * 0.5;
+  const score = 20 + Math.min(80, Math.max(0, (bucketCount - 1) * 16));
+  return Math.min(100, Math.round(score));
+}
+
+function estimateOpenLoopsFromMessages(messages) {
+  const loops = [];
+  for (const m of messages) {
+    if (m.role !== "user") continue;
+    const text = collapseWhitespace(normalizeText(m.content_text));
+    if (text.length < 8) continue;
+    if (!isQuestionText(text)) continue;
+    const firstSentence = text.split(/[.!?。？！]|\n/)[0].trim();
+    const kept = firstSentence.length > 0 && firstSentence.length <= 160
+      ? firstSentence
+      : text.length <= 160
+        ? text
+        : text.slice(0, 160).trim();
+    if (kept.length >= 8) loops.push(kept);
+  }
+  return loops;
+}
+
+function extractTermsFromText(text) {
+  const raw = (text || "").trim();
+  if (!raw) return [];
+  const normalized = raw
+    .replace(/[，。！？、；：""''（）【】\[\]{}]/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim();
+  if (!normalized) return [];
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const terms = [];
+  for (const w of words) {
+    if (w.length < 2 || w.length > 40) continue;
+    if (/^\d+$/.test(w)) continue;
+    const key = w.toLowerCase();
+    if (STOP_WORDS.has(key)) continue;
+    terms.push(w);
+  }
+  return terms;
 }
 
 function computeConfidence(sampleSize, hasSummaries) {
-  if (sampleSize <= 1 || !hasSummaries) return "low";
-  if (sampleSize <= 4) return "medium";
+  const n = Math.max(0, sampleSize);
+  if (n <= 1 || !hasSummaries) return "low";
+  if (n <= 4) return "medium";
   return "high";
 }
 
@@ -130,6 +226,7 @@ function computeAitiFixture(summaries, conversations, messages) {
     const { maker, theorist } = estimateMakerTheoristFromMessages(msgs);
     const affect = estimateAffectFromMessages(msgs);
     const curiosity = estimateCuriosityFromMessages(msgs);
+    const unresolved = estimateOpenLoopsFromMessages(msgs).length;
     feats.push({
       conversationId: conv.id,
       depth,
@@ -137,12 +234,18 @@ function computeAitiFixture(summaries, conversations, messages) {
       theorist,
       affect,
       curiosity,
-      unresolved: msgs.filter((m) => m.role === "user" && /\?|？/.test(m.content_text)).length,
+      unresolved,
     });
   }
 
   if (feats.length < 2) {
-    return { available: false, sampleSize: feats.length, confidence: computeConfidence(feats.length, false), axes: [], obsessions: [] };
+    return {
+      available: false,
+      sampleSize: feats.length,
+      confidence: computeConfidence(feats.length, summaries.length > 0),
+      axes: [],
+      obsessions: [],
+    };
   }
 
   const sampleSize = feats.length;
@@ -151,14 +254,17 @@ function computeAitiFixture(summaries, conversations, messages) {
   const makerScore = clamp(50 + 50 * (feats.filter((f) => f.maker).length / sampleSize - feats.filter((f) => f.theorist).length / sampleSize));
   const focusScore = clamp(20 + (feats.reduce((a, f) => a + f.unresolved, 0) / sampleSize) * 22);
   const affectFeats = feats.filter((f) => f.affect !== null);
-  const affectScore = affectFeats.length ? clamp(50 + 50 * (affectFeats.filter((f) => f.affect === 1).length / affectFeats.length - affectFeats.filter((f) => f.affect === -1).length / affectFeats.length)) : 50;
-  const curiosityScore = clamp(feats.reduce((a, f) => a + f.curiosity, 0) / sampleSize);
+  const affectScore = affectFeats.length
+    ? clamp(50 + 50 * (affectFeats.filter((f) => f.affect === 1).length / affectFeats.length - affectFeats.filter((f) => f.affect === -1).length / affectFeats.length))
+    : 50;
+  const curiosityVals = feats.map((f) => f.curiosity).filter((c) => c !== null);
+  const curiosityScore = curiosityVals.length ? clamp(curiosityVals.reduce((a, b) => a + b, 0) / curiosityVals.length) : 50;
   const interdisciplinaryScore = estimateInterdisciplinaryFromConversations(conversations);
 
   return {
     available: true,
     sampleSize,
-    confidence: computeConfidence(sampleSize, false),
+    confidence: computeConfidence(sampleSize, summaries.length > 0),
     axes: [
       { key: "depth", score: Math.round(depthScore) },
       { key: "maker", score: Math.round(makerScore) },
@@ -172,9 +278,39 @@ function computeAitiFixture(summaries, conversations, messages) {
 
 // ---- Learn ----
 
+function buildTermIndex(liveConvs, messagesByConv) {
+  const index = new Map();
+  for (const conv of liveConvs) {
+    const msgs = messagesByConv.get(conv.id) || [];
+    const recencyAt = msgs.reduce((max, m) => Math.max(max, m.created_at || 0), conv.updated_at || 0);
+    const seenInConv = new Set();
+    const sources = [conv.title, conv.snippet, ...msgs.map((m) => m.content_text)];
+    for (const source of sources) {
+      for (const term of extractTermsFromText(source || "")) {
+        const key = term.toLowerCase();
+        if (seenInConv.has(key)) continue;
+        seenInConv.add(key);
+        const existing = index.get(key);
+        if (existing) {
+          existing.count += 1;
+          if (recencyAt > existing.recencyAt) {
+            existing.recencyAt = recencyAt;
+            existing.conversationId = conv.id;
+          }
+          if (term.length > existing.display.length) existing.display = term;
+        } else {
+          index.set(key, { display: term, count: 1, recencyAt, conversationId: conv.id });
+        }
+      }
+    }
+  }
+  return index;
+}
+
 function computeLearnFixture(conversations, messages, topics) {
   const liveConvs = conversations.filter((c) => !c.is_archived && !c.is_trash);
   const topicName = new Map(topics.map((t) => [t.id, t.name]));
+
   const domainsAgg = new Map();
   for (const conv of liveConvs) {
     const key = conv.topic_id ?? "null";
@@ -184,48 +320,37 @@ function computeLearnFixture(conversations, messages, topics) {
   }
   const domains = Array.from(domainsAgg.values()).sort((a, b) => b.count - a.count);
 
-  // Simple glossary from message words.
   const messagesByConv = new Map();
   for (const m of messages) {
     const list = messagesByConv.get(m.conversation_id) || [];
     list.push(m);
     messagesByConv.set(m.conversation_id, list);
   }
-  const termCounts = new Map();
-  for (const conv of liveConvs) {
-    const msgs = messagesByConv.get(conv.id) || [];
-    const seen = new Set();
-    for (const m of msgs) {
-      const words = (m.content_text || "").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length >= 3 && w.length <= 40);
-      for (const w of words) {
-        const key = w.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const e = termCounts.get(key) || { display: w, count: 0 };
-        e.count += 1;
-        termCounts.set(key, e);
-      }
-    }
-  }
-  const glossary = Array.from(termCounts.values())
+
+  const termIndex = buildTermIndex(liveConvs, messagesByConv);
+  const glossary = Array.from(termIndex.values())
     .filter((e) => e.count >= 2)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
+    .sort((a, b) => b.count - a.count || b.recencyAt - a.recencyAt)
+    .slice(0, 24)
     .map((e) => e.display);
 
   const openLoops = [];
   for (const conv of liveConvs) {
     const msgs = messagesByConv.get(conv.id) || [];
-    for (const m of msgs) {
-      if (m.role === "user" && /\?|？/.test(m.content_text)) {
-        openLoops.push(m.content_text.trim());
-        if (openLoops.length >= 10) break;
-      }
+    for (const text of estimateOpenLoopsFromMessages(msgs)) {
+      openLoops.push(text);
+      if (openLoops.length >= 14) break;
     }
-    if (openLoops.length >= 10) break;
+    if (openLoops.length >= 14) break;
   }
 
-  return { available: liveConvs.length >= 1, sampleSize: liveConvs.length, domains, glossary, openLoops };
+  return {
+    available: liveConvs.length >= 1 && (domains.length > 0 || glossary.length > 0),
+    sampleSize: liveConvs.length,
+    domains,
+    glossary,
+    openLoops,
+  };
 }
 
 // ---- Run ----
@@ -233,6 +358,7 @@ function computeLearnFixture(conversations, messages, topics) {
 const data = loadFixture();
 const allConversations = data.conversations;
 const allMessages = data.messages;
+const summaries = data.summaries || [];
 const topics = data.topics || [];
 
 console.log("\n=== AITI sanity checks ===");
@@ -240,7 +366,7 @@ for (const n of [1, 2, 5, 10, allConversations.length]) {
   const subset = allConversations.slice(0, n);
   const ids = new Set(subset.map((c) => c.id));
   const msgs = allMessages.filter((m) => ids.has(m.conversation_id));
-  const profile = computeAitiFixture([], subset, msgs);
+  const profile = computeAitiFixture(summaries, subset, msgs);
   console.log(
     `first ${String(n).padStart(2)} convs → available=${profile.available}, ` +
       `confidence=${profile.confidence}, axes=[${profile.axes.map((a) => `${a.key}:${a.score}`).join(", ")}]`,

@@ -239,7 +239,7 @@ function VestiDashboardInner() {
     const recompute = () => {
       void Promise.all([getAllSummaries(), getTopics(), getConversations(), getMessages()])
         .then(([summaries, topics, conversations, messages]) => {
-          if (!cancelled) setLearn(computeLearn(summaries, topics, conversations, { messages }));
+          if (!cancelled) setLearn(computeLearn(summaries, topics, conversations, { messages, labels: t.dashboard.learn }));
         })
         .catch(() => {
           if (!cancelled) {
