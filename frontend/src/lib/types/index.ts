@@ -707,12 +707,13 @@ export type UiSemanticLayer = "app_shell" | "artifact_content"
 export type TypographySemantic = "ui_sans" | "reading_serif"
 export type VisualDensityMode = "guardrail_v1_1" | "target_v1_2"
 
-export type LlmProvider = "modelscope"
+export type LlmProvider = "modelscope" | "openai_compatible"
 export type LlmAccessMode = "demo_proxy" | "custom_byok"
 export type StreamMode = "off" | "on"
 export type ReasoningPolicy = "off" | "auto" | "force"
 export type CapabilitySource = "model_id_heuristic" | "provider_catalog"
 export type ThinkHandlingPolicy = "strip" | "keep_debug" | "keep_raw"
+export type LlmGatewayLock = "modelscope" | "openai_compatible"
 
 export interface LlmConfig {
   provider: LlmProvider
@@ -726,7 +727,7 @@ export interface LlmConfig {
   proxyBaseUrl?: string
   proxyUrl?: string
   proxyServiceToken?: string
-  gatewayLock?: "modelscope"
+  gatewayLock?: LlmGatewayLock
   customModelId?: string
   streamMode?: StreamMode
   reasoningPolicy?: ReasoningPolicy

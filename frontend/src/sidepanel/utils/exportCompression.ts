@@ -1,4 +1,4 @@
-﻿import { getPrompt } from "~lib/prompts";
+import { getPrompt } from "~lib/prompts";
 import type { ExportCompressionPromptPayload } from "~lib/prompts";
 import {
   CONDITIONAL_HANDOFF_OVERVIEW_HEADING,
@@ -196,6 +196,10 @@ const PROMPT_BUDGETS: Record<
   step_flash_concise: {
     primary: 12000,
     fallback: 9000,
+  },
+  bailian_balanced: {
+    primary: 14000,
+    fallback: 11000,
   },
 };
 const EXPERIMENTAL_COMPACT_PROMPT_BUDGET = {

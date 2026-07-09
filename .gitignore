@@ -22,6 +22,12 @@ yarn-error.log*
 **/.env
 **/.env*.local
 
+# Vercel local / deploy artifacts
+**/.vercel/
+
+# Proxy deployment (managed in separate repo)
+proxy-vercel/
+
 # Misc
 .DS_Store
 
@@ -42,9 +48,15 @@ eval/reports/diff-vs-baseline.md
 agent.local.md
 agent.private.md
 documents/_local/
+documents/investment_materials/
 archive/_local/
 vesti-release/_local/
 /skills
 .playwright-auth/
 # Local bug-report screenshots (not for version control)
 frontend/bug/
+
+# Local-only / agent / scratch content
+/CLAUDE.md
+benchmark/
+test_data/
