@@ -1222,6 +1222,8 @@ export interface DashboardLabels {
     sendToNotionSummary?: string;
     sendToObsidianConversation?: string;
     sendToObsidianSummary?: string;
+    sendToNotion?: string;
+    sendToObsidian?: string;
     sendToExporting?: string;
     sendToDone?: string;
     sendToFailed?: string;
@@ -1361,7 +1363,12 @@ export interface DashboardLabels {
     title: string;
     subtitle: string;
     insufficient: string;
+    insufficientHint: string;
     sample: string;
+    confidenceLabel: string;
+    confidenceLow: string;
+    confidenceMedium: string;
+    confidenceHigh: string;
     typeSeparator: string;
     strengthsTitle: string;
     empoweringIntro: string;
@@ -1388,19 +1395,56 @@ export interface DashboardLabels {
     axisAffectRight: string;
     axisAffectLeftStrength: string;
     axisAffectRightStrength: string;
+    axisCuriosityLabel: string;
+    axisCuriosityLeft: string;
+    axisCuriosityRight: string;
+    axisCuriosityLeftStrength: string;
+    axisCuriosityRightStrength: string;
+    axisInterdisciplinaryLabel: string;
+    axisInterdisciplinaryLeft: string;
+    axisInterdisciplinaryRight: string;
+    axisInterdisciplinaryLeftStrength: string;
+    axisInterdisciplinaryRightStrength: string;
+    trendsTitle: string;
+    trendRising: string;
+    trendFalling: string;
+    trendStable: string;
   };
   learn: {
     modeLearn: string;
     title: string;
     subtitle: string;
     insufficient: string;
+    insufficientHint: string;
     sample: string;
+    confidenceLabel: string;
+    confidenceLow: string;
+    confidenceMedium: string;
+    confidenceHigh: string;
     domainsTitle: string;
     uncategorized: string;
     domainConversations: string;
     glossaryTitle: string;
     openLoopsTitle: string;
     openLoopsEmpty: string;
+    learningPathTitle: string;
+    learningPathStage: string;
+    learningPathEstimatedMinutes: string;
+    reviewQueueTitle: string;
+    reviewQueueEmpty: string;
+    reviewDueNow: string;
+    reviewDueSoon: string;
+    goalsTitle: string;
+    goalsEmpty: string;
+    learningPathFoundationTitle: string;
+    learningPathExpandTitle: string;
+    learningPathApplyTitle: string;
+    learningPathSynthesizeTitle: string;
+    learningPathFoundationDesc: string;
+    learningPathExpandDesc: string;
+    learningPathApplyDesc: string;
+    learningPathSynthesizeDesc: string;
+    learningGoalDeepen: string;
   };
   roundtable: {
     title: string;
@@ -1443,10 +1487,22 @@ export interface PlazaCategory {
   prompts: PlazaPrompt[];
 }
 
+/** Reflective-module confidence level. Mirrors sample size + signal quality. */
+export type ReflectiveConfidence = "low" | "medium" | "high";
+
+/** Known AITI axes. Consumers can render any string key, but these are canonical. */
+export type AitiAxisKey =
+  | "depth"
+  | "maker"
+  | "focus"
+  | "affect"
+  | "curiosity"
+  | "interdisciplinary";
+
 /** AITI (个人内向探索) — a locally-computed "thinking fingerprint". */
 export interface AitiAxisScore {
-  /** stable axis key: "depth" | "maker" | "focus" | "affect" */
-  key: string;
+  /** stable axis key */
+  key: AitiAxisKey | (string & {});
   /** 0..100, toward the axis's RIGHT pole */
   score: number;
   /** up to a few source conversations that contributed most (evidence) */
@@ -1461,12 +1517,31 @@ export interface AitiObsession {
   count: number;
 }
 
+export interface AitiTrend {
+  /** same key as the axis */
+  key: string;
+  /** direction of change across the time window */
+  direction: "rising" | "falling" | "stable";
+  /** absolute score change (0..100 scale) */
+  delta: number;
+  /** human-readable window label, e.g. "Last 30 days" */
+  windowLabel: string;
+}
+
 export interface AitiProfile {
-  /** false → not enough summaries to be meaningful (show the gated state) */
+  /** false → not enough signal to be meaningful (show the gated state) */
   available: boolean;
   sampleSize: number;
+  /** confidence driven by sample size and evidence coverage */
+  confidence: ReflectiveConfidence;
   axes: AitiAxisScore[];
   obsessions: AitiObsession[];
+  /** per-axis trend over a recent time window (optional) */
+  trends?: AitiTrend[];
+  /** LLM-generated narrative portrait (optional, user-triggered) */
+  narrative?: string;
+  /** generation timestamp */
+  generatedAt?: number;
 }
 
 /** "学习 Learn" — the captured KB reframed as a personal curriculum. */
@@ -1487,12 +1562,50 @@ export interface LearnOpenLoop {
   text: string;
   conversationId: number;
 }
+
+export interface LearnPathStage {
+  /** 1-based stage index */
+  stage: number;
+  title: string;
+  description: string;
+  /** concept terms covered in this stage */
+  concepts: string[];
+  /** rough study time estimate in minutes */
+  estimatedMinutes?: number;
+}
+
+export interface LearnReviewItem {
+  term: string;
+  conversationId?: number;
+  /** next review due timestamp */
+  dueAt: number;
+  /** current spaced-repetition interval in days */
+  intervalDays: number;
+}
+
+export interface LearnGoal {
+  id: string;
+  text: string;
+  /** 0..100 completion estimate */
+  progress: number;
+  /** glossary terms / domains that support this goal */
+  matchedTerms: string[];
+}
+
 export interface LearnProfile {
   available: boolean;
   sampleSize: number;
+  confidence: ReflectiveConfidence;
   domains: LearnDomain[];
   glossary: LearnGlossaryEntry[];
   openLoops: LearnOpenLoop[];
+  /** suggested learning sequence (optional) */
+  learningPath?: LearnPathStage[];
+  /** spaced-repetition queue (optional) */
+  reviewQueue?: LearnReviewItem[];
+  /** inferred or user-set learning goals (optional) */
+  goals?: LearnGoal[];
+  generatedAt?: number;
 }
 
 // ---- AI 圆桌 (Roundtable) ----

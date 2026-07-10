@@ -9,6 +9,8 @@ import {
   useMemo,
   useRef,
   type ReactNode,
+  type FocusEvent,
+  type KeyboardEvent,
 } from "react";
 import {
   BookOpen,
@@ -304,7 +306,7 @@ function DetailSectionCard({
   );
 }
 
-function MetaChip({ children }: { children: string }) {
+function MetaChip({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex items-center rounded-full bg-bg-secondary px-3 py-1 text-[12px] font-sans text-text-secondary">
       {children}
@@ -1697,7 +1699,7 @@ export function LibraryTab({
     await openNotesView(note.id);
   }
 
-  async function handleCreateConversationNote() {
+  async function handleCreateConversationNote(): Promise<void> {
     if (!selectedConversationId) return;
     const note = await ensureConversationNote(selectedConversationId, {
       createIfMissing: true,
@@ -4638,7 +4640,7 @@ export function LibraryTab({
                   }
                   onTitleChange={setNoteTitle}
                   onContentChange={setNoteContent}
-                  onSaveRequest={flushPendingNoteSave}
+                  onSaveRequest={() => void flushPendingNoteSave()}
                   onAppendExcerpt={appendExcerptToDraft}
                   onCreateConversationNote={handleCreateConversationNote}
                   onDeleteCurrentNote={handleDeleteCurrentSplitNote}
@@ -4721,7 +4723,7 @@ export function LibraryTab({
                     <MarkdownNoteEditor
                       value={noteContent}
                       onChange={setNoteContent}
-                      onSaveRequest={flushPendingNoteSave}
+                      onSaveRequest={() => void flushPendingNoteSave()}
                       placeholderText={labels.startWritingPlaceholder ?? "Start writing..."}
                       minHeight={STANDARD_NOTE_EDITOR_MIN_HEIGHT}
                       className="w-full overflow-hidden rounded-2xl border border-border-subtle bg-bg-primary"

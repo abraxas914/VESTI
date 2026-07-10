@@ -91,23 +91,32 @@ function buildExportMarkdown(note: Note): string {
   return `---\n${serialized}\n---${body}`
 }
 
+interface FileSystemHandleWithPermission {
+  queryPermission?: (descriptor: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+  requestPermission?: (descriptor: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+}
+
 async function queryVaultPermission(
-  handle: FileSystemDirectoryHandle
+  handle: FileSystemDirectoryHandle,
 ): Promise<PermissionState | null> {
   try {
-    return await handle.queryPermission({ mode: "readwrite" })
+    const h = handle as FileSystemDirectoryHandle & FileSystemHandleWithPermission;
+    if (!h.queryPermission) return null;
+    return await h.queryPermission({ mode: "readwrite" });
   } catch {
-    return null
+    return null;
   }
 }
 
 async function requestVaultPermission(
-  handle: FileSystemDirectoryHandle
+  handle: FileSystemDirectoryHandle,
 ): Promise<PermissionState | null> {
   try {
-    return await handle.requestPermission({ mode: "readwrite" })
+    const h = handle as FileSystemDirectoryHandle & FileSystemHandleWithPermission;
+    if (!h.requestPermission) return null;
+    return await h.requestPermission({ mode: "readwrite" });
   } catch {
-    return null
+    return null;
   }
 }
 

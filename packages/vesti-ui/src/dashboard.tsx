@@ -262,6 +262,32 @@ const DEFAULT_LABELS: DashboardLabels = {
     noPreviewAvailable: "No preview available",
     closeSidebar: "Close sidebar",
     openSidebar: "Open sidebar",
+    emptyDetailTitle: "No conversation selected",
+    emptyDetailHint: "Pick a conversation from the left to read it here.",
+    summaryCard: {
+      coreQuestion: "Core question",
+      thinkingJourney: "Thinking journey",
+      step: "Step",
+      example: "Example:",
+      keyInsights: "Key insights",
+      unresolvedThreads: "Unresolved threads",
+      metaObservations: "Meta observations",
+      thinkingStyle: "Thinking style:",
+      emotionalTone: "Emotional tone:",
+      depth: "Depth:",
+      nextSteps: "Next steps",
+      fallback: "Plain text fallback",
+    },
+    sendToButton: "Send to…",
+    sendToNotionConversation: "Notion — conversation",
+    sendToNotionSummary: "Notion — summary",
+    sendToObsidianConversation: "Obsidian — conversation",
+    sendToObsidianSummary: "Obsidian — summary",
+    sendToNotion: "Notion",
+    sendToObsidian: "Obsidian",
+    sendToExporting: "Exporting…",
+    sendToDone: "Sent ✓",
+    sendToFailed: "Export failed",
   },
   explore: {
     chooseConversationsTitle: "Choose Conversations",
@@ -695,7 +721,12 @@ const DEFAULT_LABELS: DashboardLabels = {
     title: "Your AITI — your thinking strengths",
     subtitle: "Computed locally from your own conversations. A reflection of your strengths, not a verdict.",
     insufficient: "Not enough conversations analyzed yet — keep chatting and your portrait will take shape.",
+    insufficientHint: "Once you have 2 or more conversations, AITI will show a preliminary portrait.",
     sample: "Drawn from {n} of your conversations",
+    confidenceLabel: "Confidence",
+    confidenceLow: "Preliminary",
+    confidenceMedium: "Growing",
+    confidenceHigh: "Solid",
     typeSeparator: " · ",
     strengthsTitle: "Your thinking strengths",
     empoweringIntro: "Across your AI conversations, these strengths shine through:",
@@ -722,19 +753,56 @@ const DEFAULT_LABELS: DashboardLabels = {
     axisAffectRight: "Spirited",
     axisAffectLeftStrength: "You stay calm and keep clear judgment under complexity.",
     axisAffectRightStrength: "You bring strong emotional engagement to what you explore.",
+    axisCuriosityLabel: "Settled ↔ Curious",
+    axisCuriosityLeft: "Settled",
+    axisCuriosityRight: "Curious",
+    axisCuriosityLeftStrength: "You move efficiently to answers and prefer concise resolution.",
+    axisCuriosityRightStrength: "You ask freely and follow threads wherever they lead.",
+    axisInterdisciplinaryLabel: "Focused ↔ Interdisciplinary",
+    axisInterdisciplinaryLeft: "Focused",
+    axisInterdisciplinaryRight: "Interdisciplinary",
+    axisInterdisciplinaryLeftStrength: "You go deep in focused domains and build specialized expertise.",
+    axisInterdisciplinaryRightStrength: "You connect ideas across domains and weave distant fields together.",
+    trendsTitle: "Recent direction",
+    trendRising: "Rising",
+    trendFalling: "Falling",
+    trendStable: "Stable",
   },
   learn: {
     modeLearn: "Learn",
     title: "What you've been learning",
     subtitle: "Your conversations, organized as a personal curriculum. Computed locally.",
     insufficient: "Not enough conversations yet — keep chatting and your learning map will fill in.",
+    insufficientHint: "Start 1–2 conversations and Learn will surface domains, terms, and open questions.",
     sample: "From {n} analyzed conversations",
+    confidenceLabel: "Confidence",
+    confidenceLow: "Preliminary",
+    confidenceMedium: "Growing",
+    confidenceHigh: "Solid",
     domainsTitle: "Knowledge domains",
     uncategorized: "Uncategorized",
     domainConversations: "{n} conversations",
     glossaryTitle: "Things you've learned",
     openLoopsTitle: "Open loops",
     openLoopsEmpty: "No unresolved threads — nicely closed out.",
+    learningPathTitle: "Suggested learning path",
+    learningPathStage: "Stage {n}",
+    learningPathEstimatedMinutes: "~{n} min",
+    reviewQueueTitle: "Due for review",
+    reviewQueueEmpty: "Nothing due for review right now.",
+    reviewDueNow: "Due now",
+    reviewDueSoon: "Due soon",
+    goalsTitle: "Learning goals",
+    goalsEmpty: "No goals inferred yet — keep chatting and goals will appear.",
+    learningPathFoundationTitle: "Establish {domain}",
+    learningPathExpandTitle: "Connect {domains}",
+    learningPathApplyTitle: "Tackle open questions",
+    learningPathSynthesizeTitle: "Synthesize your map",
+    learningPathFoundationDesc: "Lock in the key concepts that appear most often in your conversations.",
+    learningPathExpandDesc: "Bridge your core topic with neighboring domains to build a richer map.",
+    learningPathApplyDesc: "Use what you've learned to address the unresolved threads in your conversations.",
+    learningPathSynthesizeDesc: "Step back and connect the dots across domains and terms.",
+    learningGoalDeepen: "Deepen {domain}",
   },
   roundtable: {
     title: "AI Roundtable",
@@ -772,6 +840,7 @@ type DashboardProps = {
   labels?: DashboardLabels;
   plaza?: PlazaData;
   onPlazaAdoptToggle?: (id: string, adopt: boolean) => void;
+  onPlazaAdoptToggleMany?: (ids: string[], adopt: boolean) => void;
   aiti?: AitiProfile;
   learn?: LearnProfile;
 };
@@ -788,6 +857,7 @@ export function VestiDashboard({
   labels: providedLabels,
   plaza,
   onPlazaAdoptToggle,
+  onPlazaAdoptToggleMany,
   aiti,
   learn,
 }: DashboardProps) {
@@ -1322,6 +1392,7 @@ export function VestiDashboard({
                 labels={labels.prompts}
                 plaza={plaza}
                 onPlazaAdoptToggle={onPlazaAdoptToggle}
+                onPlazaAdoptToggleMany={onPlazaAdoptToggleMany}
               />
             </div>
           )}

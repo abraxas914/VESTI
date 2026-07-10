@@ -22,11 +22,20 @@ export function buildAitiMarkdown(
     maker: [labels.axisMakerLeftStrength, labels.axisMakerRightStrength],
     focus: [labels.axisFocusLeftStrength, labels.axisFocusRightStrength],
     affect: [labels.axisAffectLeftStrength, labels.axisAffectRightStrength],
+    curiosity: [labels.axisCuriosityLeftStrength, labels.axisCuriosityRightStrength],
+    interdisciplinary: [labels.axisInterdisciplinaryLeftStrength, labels.axisInterdisciplinaryRightStrength],
   };
   for (const axis of profile.axes) {
     const pair = axisStrength[axis.key];
     if (!pair) continue;
     lines.push(`- ${axis.score >= 50 ? pair[1] : pair[0]}`);
+  }
+  if (profile.trends && profile.trends.length > 0) {
+    lines.push("", `## ${labels.trendsTitle}`, "");
+    for (const t of profile.trends) {
+      const dir = t.direction === "rising" ? labels.trendRising : t.direction === "falling" ? labels.trendFalling : labels.trendStable;
+      lines.push(`- ${axisStrength[t.key] ? t.key : t.key}: ${dir}${t.delta ? ` (+${t.delta})` : ""}`);
+    }
   }
   if (profile.obsessions.length > 0) {
     lines.push("", `## ${labels.obsessionsTitle}`, "");
@@ -60,6 +69,33 @@ export function buildLearnMarkdown(
   if (profile.openLoops.length > 0) {
     lines.push(`## ${labels.openLoopsTitle}`, "");
     for (const loop of profile.openLoops) lines.push(`- ${loop.text}`);
+    lines.push("");
+  }
+  if (profile.learningPath && profile.learningPath.length > 0) {
+    lines.push(`## ${labels.learningPathTitle}`, "");
+    for (const stage of profile.learningPath) {
+      lines.push(
+        `### ${labels.learningPathStage.replace("{n}", String(stage.stage))}: ${stage.title}`,
+      );
+      lines.push(stage.description);
+      if (stage.concepts.length > 0) {
+        lines.push("Concepts: " + stage.concepts.join(", "));
+      }
+      lines.push("");
+    }
+  }
+  if (profile.reviewQueue && profile.reviewQueue.length > 0) {
+    lines.push(`## ${labels.reviewQueueTitle}`, "");
+    for (const item of profile.reviewQueue) {
+      lines.push(`- **${item.term}**`);
+    }
+    lines.push("");
+  }
+  if (profile.goals && profile.goals.length > 0) {
+    lines.push(`## ${labels.goalsTitle}`, "");
+    for (const goal of profile.goals) {
+      lines.push(`- **${goal.text}** — ${goal.progress}%`);
+    }
     lines.push("");
   }
   lines.push(`_${labels.sample.replace("{n}", String(profile.sampleSize))}_`);

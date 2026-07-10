@@ -2,9 +2,9 @@ import type { AitiAxisScore, AitiProfile, DashboardLabels, StorageApi } from "..
 import { SendToMenu } from "./SendToMenu";
 import { buildAitiMarkdown } from "../lib/exploreMarkdown";
 
-// Lightweight, dependency-free SVG radar of the four AITI axes — a consistent
-// accent-styled overview to complement the per-axis sliders. Degrades to null if
-// the axis set isn't the expected four.
+// Lightweight, dependency-free SVG radar of the AITI axes — a consistent
+// accent-styled overview to complement the per-axis sliders. Supports any
+// number of axes (3+) by computing vertex angles dynamically.
 function AitiRadar({
   axes,
   axisMeta,
@@ -12,16 +12,27 @@ function AitiRadar({
   axes: AitiAxisScore[];
   axisMeta: Record<string, { label: string; left: string; right: string }>;
 }) {
-  if (axes.length !== 4) return null;
+  if (axes.length < 3) return null;
   const cx = 100;
   const cy = 100;
   const maxR = 60;
-  const deg = [-90, 0, 90, 180]; // top, right, bottom, left
-  const rad = (d: number) => (d * Math.PI) / 180;
-  const at = (frac: number, i: number) => ({
-    x: cx + frac * maxR * Math.cos(rad(deg[i])),
-    y: cy + frac * maxR * Math.sin(rad(deg[i])),
-  });
+  const labelR = maxR * 1.22;
+  const count = axes.length;
+  const angleFor = (i: number) => -Math.PI / 2 + (2 * Math.PI * i) / count;
+  const at = (frac: number, i: number) => {
+    const a = angleFor(i);
+    return {
+      x: cx + frac * maxR * Math.cos(a),
+      y: cy + frac * maxR * Math.sin(a),
+    };
+  };
+  const labelAt = (i: number) => {
+    const a = angleFor(i);
+    return {
+      x: cx + labelR * Math.cos(a),
+      y: cy + labelR * Math.sin(a),
+    };
+  };
   const ring = (frac: number) =>
     axes.map((_, i) => { const p = at(frac, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
   const clampFrac = (score: number) => Math.max(0.04, Math.min(1, (score ?? 0) / 100));
@@ -34,11 +45,15 @@ function AitiRadar({
   const dots = axes.map((a, i) => at(fracFor(a), i));
   const labelsArr = axes.map((a, i) => {
     const meta = axisMeta[a.key];
-    const p = at(1.22, i);
-    const anchor = i === 1 ? "start" : i === 3 ? "end" : "middle";
+    const p = labelAt(i);
+    const dx = p.x - cx;
+    const eps = 0.5;
+    const anchor = dx > eps ? "start" : dx < -eps ? "end" : "middle";
+    const dy = p.y - cy;
+    const yOffset = dy < -eps ? -2 : dy > eps ? 7 : 3;
     return {
       x: p.x,
-      y: p.y + (i === 0 ? -2 : i === 2 ? 7 : 3),
+      y: p.y + yOffset,
       text: meta && a.hasSignal !== false ? (a.score >= 50 ? meta.right : meta.left) : "",
       anchor,
     };
@@ -57,16 +72,18 @@ function AitiRadar({
         <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="currentColor" className="text-accent-primary" />
       ))}
       {labelsArr.map((l, i) => (
-        <text key={i} x={l.x} y={l.y} fontSize={8.5} textAnchor={l.anchor} fill="currentColor" className="text-text-secondary">
-          {l.text}
-        </text>
+        l.text ? (
+          <text key={i} x={l.x} y={l.y} fontSize={8.5} textAnchor={l.anchor} fill="currentColor" className="text-text-secondary">
+            {l.text}
+          </text>
+        ) : null
       ))}
     </svg>
   );
 }
 
 // AITI (个人内向探索): renders the locally-computed "thinking fingerprint" — a
-// type code, four evidence-backed axis sliders, and the user's top obsessions.
+// type code, evidence-backed axis sliders, and the user's top obsessions.
 // Presentational: the host computes the profile + passes localized labels.
 
 interface AitiCardProps {
@@ -113,6 +130,26 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
       leftStrength: labels.axisAffectLeftStrength,
       rightStrength: labels.axisAffectRightStrength,
     },
+    curiosity: {
+      label: labels.axisCuriosityLabel,
+      left: labels.axisCuriosityLeft,
+      right: labels.axisCuriosityRight,
+      leftStrength: labels.axisCuriosityLeftStrength,
+      rightStrength: labels.axisCuriosityRightStrength,
+    },
+    interdisciplinary: {
+      label: labels.axisInterdisciplinaryLabel,
+      left: labels.axisInterdisciplinaryLeft,
+      right: labels.axisInterdisciplinaryRight,
+      leftStrength: labels.axisInterdisciplinaryLeftStrength,
+      rightStrength: labels.axisInterdisciplinaryRightStrength,
+    },
+  };
+
+  const confidenceLabel: Record<string, string> = {
+    low: labels.confidenceLow,
+    medium: labels.confidenceMedium,
+    high: labels.confidenceHigh,
   };
 
   if (!profile || !profile.available) {
@@ -120,6 +157,9 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
       <div className="flex h-full flex-col items-center justify-center p-10 text-center">
         <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
         <p className="mt-2 max-w-md text-[13px] text-text-tertiary">{labels.insufficient}</p>
+        {labels.insufficientHint ? (
+          <p className="mt-3 max-w-sm text-[12px] text-text-tertiary/70">{labels.insufficientHint}</p>
+        ) : null}
       </div>
     );
   }
@@ -140,7 +180,23 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+          <div>
+            <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-text-tertiary">
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 ${
+                  profile.confidence === "low"
+                    ? "bg-bg-tertiary text-text-tertiary"
+                    : profile.confidence === "medium"
+                      ? "bg-accent-primary-light text-accent-primary"
+                      : "bg-green-500/10 text-green-600"
+                }`}
+              >
+                {labels.confidenceLabel}: {confidenceLabel[profile.confidence] || profile.confidence}
+              </span>
+              <span>{labels.sample.replace("{n}", String(profile.sampleSize))}</span>
+            </div>
+          </div>
           {storage && sendToLabels ? (
             <SendToMenu
               storage={storage}
@@ -149,16 +205,19 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
             />
           ) : null}
         </div>
+
         <p className="mt-1 text-[12px] text-text-tertiary">{labels.subtitle}</p>
 
         {/* Type code */}
         <div className="mt-5 rounded-2xl border border-border-subtle bg-bg-surface-card p-5">
           <div className="text-[20px] font-semibold leading-snug tracking-tight text-text-primary">
-            {typeCode}
+            {typeCode || labels.axisNeedsSignal}
           </div>
-          <div className="mt-1 text-[11.5px] text-text-tertiary">
-            {labels.sample.replace("{n}", String(profile.sampleSize))}
-          </div>
+          {profile.confidence === "low" ? (
+            <div className="mt-2 text-[11.5px] text-text-tertiary">
+              {labels.insufficientHint}
+            </div>
+          ) : null}
         </div>
 
         {/* Radar overview of the four axes */}
@@ -231,6 +290,38 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
             );
           })}
         </div>
+
+        {/* Trends */}
+        {profile.trends && profile.trends.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-2 text-[12px] font-medium text-text-secondary">{labels.trendsTitle}</div>
+            <div className="flex flex-wrap gap-2">
+              {profile.trends.map((t) => {
+                const isRising = t.direction === "rising";
+                const isFalling = t.direction === "falling";
+                const label = isRising ? labels.trendRising : isFalling ? labels.trendFalling : labels.trendStable;
+                return (
+                  <span
+                    key={t.key}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] ${
+                      isRising
+                        ? "border-green-500/20 bg-green-500/10 text-green-600"
+                        : isFalling
+                          ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                          : "border-border-subtle bg-bg-surface-card text-text-secondary"
+                    }`}
+                  >
+                    <span className={isRising ? "rotate-0" : isFalling ? "rotate-180" : ""}>
+                      {isRising || isFalling ? "↑" : "→"}
+                    </span>
+                    {axisMeta[t.key]?.label || t.key}: {label}
+                    {t.delta > 0 ? ` +${t.delta}` : null}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Obsessions */}
         {profile.obsessions.length > 0 && (
