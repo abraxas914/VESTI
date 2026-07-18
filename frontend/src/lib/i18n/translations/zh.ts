@@ -507,6 +507,7 @@ export const zhTranslations = {
     },
     latestRegenerationFailed: "上次重新生成失败。",
     failedToGenerateWeekly: "生成周报失败。",
+    weeklyGenerationTimeout: "生成超时，请重试。",
     failedToGenerateSummary: "生成摘要失败。",
     notEnoughData: "数据不足，无法生成本周周报。",
     sub3Hint: "该时间范围内的有效结构化摘要少于 3 个。当积累到足够的结构化证据后，周报会自动继续生成。",

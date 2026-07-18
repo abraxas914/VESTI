@@ -511,6 +511,7 @@ export const jaTranslations = {
     },
     latestRegenerationFailed: "直近の再生成に失敗しました。",
     failedToGenerateWeekly: "週次ダイジェストの生成に失敗しました。",
+    weeklyGenerationTimeout: "生成がタイムアウトしました。もう一度お試しください。",
     failedToGenerateSummary: "サマリーの生成に失敗しました。",
     notEnoughData: "今週のダイジェストを生成するにはデータが不足しています。",
     sub3Hint: "この範囲には十分なサマリーが 3 件未満です。構造化された証拠が十分に揃うと、週次ダイジェストは自動的に再開されます。",

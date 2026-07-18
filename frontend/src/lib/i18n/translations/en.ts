@@ -508,6 +508,7 @@ export const enTranslations = {
     },
     latestRegenerationFailed: "Latest regeneration failed.",
     failedToGenerateWeekly: "Failed to generate weekly digest.",
+    weeklyGenerationTimeout: "Generation timed out. Please try again.",
     failedToGenerateSummary: "Failed to generate summary.",
     notEnoughData: "Not enough data to generate this week's digest.",
     sub3Hint: "This range has fewer than 3 substantial summaries. Weekly Digest will resume automatically when enough structured evidence is available.",

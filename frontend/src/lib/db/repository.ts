@@ -69,7 +69,7 @@ import {
   prepareObsidianDirectoryImport,
   prepareObsidianZipImport
 } from "../notes/obsidianImport"
-import { db } from "./schema"
+import { db, resolveConversationRecordOriginAt } from "./schema"
 import type {
   AnnotationRecord,
   ConversationRecord,
@@ -743,6 +743,14 @@ function normalizeImportedConversation(
     optional: true,
     fallback: updatedAt
   })
+  const sourceCreatedAt = readImportNullableNumber(
+    record,
+    "source_created_at",
+    path,
+    {
+      optional: true
+    }
+  )
 
   return {
     id,
@@ -757,18 +765,16 @@ function normalizeImportedConversation(
       optional: true,
       fallback: ""
     }),
-    source_created_at: readImportNullableNumber(
-      record,
-      "source_created_at",
-      path,
-      {
-        optional: true
-      }
-    ),
+    source_created_at: sourceCreatedAt,
     first_captured_at: firstCapturedAt,
     last_captured_at: lastCapturedAt,
     created_at: createdAt,
     updated_at: updatedAt,
+    origin_at: resolveConversationRecordOriginAt({
+      source_created_at: sourceCreatedAt,
+      first_captured_at: firstCapturedAt,
+      created_at: createdAt
+    }),
     message_count: normalizeImportNonNegativeInt(
       readImportNumber(record, "message_count", path, {
         optional: true,
@@ -1387,13 +1393,23 @@ export async function listConversationsByRange(
   rangeStart: number,
   rangeEnd: number
 ): Promise<Conversation[]> {
-  const records = await db.conversations.toArray()
+  if (
+    !Number.isFinite(rangeStart) ||
+    !Number.isFinite(rangeEnd) ||
+    rangeEnd < rangeStart
+  ) {
+    return []
+  }
+
+  const records = await db.transaction("r", db.conversations, () =>
+    db.conversations
+      .where("origin_at")
+      .between(rangeStart, rangeEnd, true, true)
+      .toArray()
+  )
+
   return records
     .map(toConversation)
-    .filter((conversation) => {
-      const originAt = getConversationOriginAt(conversation)
-      return originAt >= rangeStart && originAt <= rangeEnd
-    })
     .sort((a, b) => getConversationOriginAt(b) - getConversationOriginAt(a))
 }
 
@@ -2028,23 +2044,48 @@ export async function getWeeklyReport(
 }
 
 export async function saveWeeklyReport(
-  record: Omit<WeeklyReportRecord, "id">
+  record: Omit<WeeklyReportRecord, "id">,
+  control: { signal?: AbortSignal } = {}
 ): Promise<WeeklyReportRecord> {
   await enforceStorageWriteGuard()
 
-  const existing = await db.weekly_reports
-    .where("rangeStart")
-    .equals(record.rangeStart)
-    .and((item) => item.rangeEnd === record.rangeEnd)
-    .first()
-
-  if (existing?.id !== undefined) {
-    await db.weekly_reports.update(existing.id, record)
-    return toWeeklyReport({ ...existing, ...record, id: existing.id })
+  const throwIfAborted = () => {
+    if (!control.signal?.aborted) return
+    if (control.signal.reason instanceof Error) {
+      throw control.signal.reason
+    }
+    throw new DOMException("Weekly report persistence aborted", "AbortError")
   }
 
-  const id = await db.weekly_reports.add(record)
-  return toWeeklyReport({ ...record, id })
+  throwIfAborted()
+  return db.transaction("rw", db.weekly_reports, async (transaction) => {
+    const abortTransaction = () => transaction.abort()
+    control.signal?.addEventListener("abort", abortTransaction, { once: true })
+
+    try {
+      throwIfAborted()
+      const existing = await db.weekly_reports
+        .where("rangeStart")
+        .equals(record.rangeStart)
+        .and((item) => item.rangeEnd === record.rangeEnd)
+        .first()
+
+      throwIfAborted()
+      if (existing?.id !== undefined) {
+        await db.weekly_reports.update(existing.id, record)
+        // Aborting before the transaction resolves rolls back the update.
+        throwIfAborted()
+        return toWeeklyReport({ ...existing, ...record, id: existing.id })
+      }
+
+      const id = await db.weekly_reports.add(record)
+      // Aborting before the transaction resolves rolls back the insert.
+      throwIfAborted()
+      return toWeeklyReport({ ...record, id })
+    } finally {
+      control.signal?.removeEventListener("abort", abortTransaction)
+    }
+  })
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

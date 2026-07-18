@@ -23,6 +23,7 @@ import type {
   InsightPipelineStage,
   InsightPipelineStatus,
 } from "~lib/messaging/protocol";
+import { RequestTimeoutError } from "~lib/messaging/runtime";
 import {
   generateConversationSummary,
   generateWeeklyRecap,
@@ -187,6 +188,13 @@ function getErrorMessage(
   if (error instanceof Error) {
     if (error.message.includes("STORAGE_HARD_LIMIT_REACHED")) {
       return t.insights.storageLimitError;
+    }
+    if (
+      error instanceof RequestTimeoutError ||
+      error.name === "AbortError" ||
+      /timed out|timeout|aborted/i.test(error.message)
+    ) {
+      return t.insights.weeklyGenerationTimeout;
     }
     return error.message;
   }

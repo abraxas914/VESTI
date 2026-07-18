@@ -546,6 +546,13 @@ export type RequestMessage =
       payload: { rangeStart: number; rangeEnd: number }
     }
   | {
+      type: "CANCEL_WEEKLY_RECAP"
+      target?: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { generationRequestId: string }
+    }
+  | {
       type: "GET_ACTIVE_CAPTURE_STATUS"
       target?: "background"
       requestId?: string
@@ -723,6 +730,7 @@ export type ResponseDataMap = {
   GET_WEEKLY_REPORT: WeeklyReportRecord | null
   GENERATE_WEEKLY_REPORT: WeeklyReportRecord
   GENERATE_WEEKLY_RECAP: WeeklyReportRecord
+  CANCEL_WEEKLY_RECAP: { aborted: boolean }
   GET_ACTIVE_CAPTURE_STATUS: ActiveCaptureStatus
   FORCE_ARCHIVE_TRANSIENT: ForceArchiveTransientResult
   RUN_VECTORIZATION: { queued: boolean }

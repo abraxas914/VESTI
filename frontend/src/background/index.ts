@@ -99,6 +99,8 @@ import { logger } from "../lib/utils/logger"
 
 let isVectorizing = false
 let rerunVectorizationRequested = false
+const WEEKLY_RECAP_TIMEOUT_MS = 120000
+const weeklyRecapControllers = new Map<string, AbortController>()
 
 async function runVectorizationTask(reason: string): Promise<boolean> {
   if (isVectorizing) {
@@ -767,13 +769,48 @@ async function handleOffscreenRequest(
         return { ok: true, type: messageType, data: record }
       }
       case "GENERATE_WEEKLY_RECAP": {
-        const settings = requireSettings(await getLlmSettings())
-        const record = await generateWeeklyRecap(
-          settings,
-          message.payload.rangeStart,
-          message.payload.rangeEnd
+        const generationRequestId = message.requestId ?? crypto.randomUUID()
+        const controller = new AbortController()
+        weeklyRecapControllers.set(generationRequestId, controller)
+
+        // Independent watchdog: abort even if the sidepanel closes before it
+        // can send CANCEL_WEEKLY_RECAP.
+        const watchdog = setTimeout(() => {
+          controller.abort()
+        }, WEEKLY_RECAP_TIMEOUT_MS)
+
+        try {
+          const settings = requireSettings(await getLlmSettings())
+          const record = await generateWeeklyRecap(
+            settings,
+            message.payload.rangeStart,
+            message.payload.rangeEnd,
+            { signal: controller.signal }
+          )
+          return { ok: true, type: messageType, data: record }
+        } finally {
+          clearTimeout(watchdog)
+          weeklyRecapControllers.delete(generationRequestId)
+        }
+      }
+      case "CANCEL_WEEKLY_RECAP": {
+        const controller = weeklyRecapControllers.get(
+          message.payload.generationRequestId
         )
-        return { ok: true, type: messageType, data: record }
+        if (!controller) {
+          return {
+            ok: true,
+            type: messageType,
+            data: { aborted: false }
+          }
+        }
+
+        controller.abort()
+        return {
+          ok: true,
+          type: messageType,
+          data: { aborted: true }
+        }
       }
       case "CREATE_EXPLORE_SESSION": {
         const sessionId = await createExploreSession(message.payload.title)

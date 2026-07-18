@@ -17,13 +17,47 @@ import {
   shouldPreferAstCanonicalText,
 } from "../utils/astText";
 
-export type ConversationRecord = Omit<Conversation, "id"> & { id?: number };
+export type ConversationRecord = Omit<Conversation, "id"> & {
+  id?: number;
+  /**
+   * Indexed equivalent of source_created_at ?? first_captured_at ?? created_at.
+   * Kept internal so the public Conversation contract remains unchanged.
+   */
+  origin_at?: number;
+};
 export type MessageRecord = Omit<Message, "id" | "content_ast"> & {
   id?: number;
   content_ast?: unknown | null;
 };
 export type SummaryRecordRecord = Omit<SummaryRecord, "id"> & { id?: number };
 export type WeeklyReportRecordRecord = Omit<WeeklyReportRecord, "id"> & { id?: number };
+
+export function resolveConversationRecordOriginAt(
+  record: Partial<ConversationRecord>,
+): number {
+  const sourceCreatedAt = record.source_created_at;
+  if (
+    typeof sourceCreatedAt === "number" &&
+    Number.isFinite(sourceCreatedAt) &&
+    sourceCreatedAt > 0
+  ) {
+    return sourceCreatedAt;
+  }
+
+  const firstCapturedAt = record.first_captured_at;
+  if (
+    typeof firstCapturedAt === "number" &&
+    Number.isFinite(firstCapturedAt) &&
+    firstCapturedAt > 0
+  ) {
+    return firstCapturedAt;
+  }
+
+  const createdAt = record.created_at;
+  return typeof createdAt === "number" && Number.isFinite(createdAt)
+    ? createdAt
+    : 0;
+}
 export interface TopicRecord {
   id?: number;
   parent_id: number | null;
@@ -685,6 +719,37 @@ export class MemoryHubDB extends Dexie {
           "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
       })
       .upgrade(() => undefined);
+    this.version(18)
+      .stores({
+        conversations:
+          "++id, platform, title, created_at, updated_at, origin_at, uuid, source_created_at, turn_count, topic_id, is_starred, [platform+created_at], [platform+uuid], [topic_id+updated_at]",
+        messages:
+          "++id, conversation_id, role, created_at, [conversation_id+created_at]",
+        summaries: "++id, conversationId, createdAt",
+        weekly_reports: "++id, rangeStart, rangeEnd, createdAt",
+        topics:
+          "++id, parent_id, name, created_at, updated_at, [parent_id+name]",
+        vectors: "++id, conversation_id, text_hash",
+        notes:
+          "++id, created_at, updated_at, source_type, source_path, [source_type+updated_at], [source_type+source_path]",
+        note_sources: "id, kind, updated_at, created_at",
+        note_assets:
+          "id, vault_id, relative_path, hash, updated_at, [vault_id+relative_path]",
+        annotations:
+          "++id, conversation_id, message_id, created_at, days_after, [conversation_id+message_id], [conversation_id+created_at]",
+        explore_sessions: "id, updatedAt, createdAt",
+        explore_messages: "id, sessionId, timestamp, [sessionId+timestamp]",
+        prompts:
+          "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
+      })
+      .upgrade((tx) =>
+        tx
+          .table("conversations")
+          .toCollection()
+          .modify((record: Partial<ConversationRecord>) => {
+            record.origin_at = resolveConversationRecordOriginAt(record);
+          }),
+      );
   }
 }
 

@@ -813,13 +813,29 @@ export async function generateWeeklyRecap(
   rangeStart: number,
   rangeEnd: number
 ): Promise<WeeklyReportRecord> {
+  const generationRequestId = crypto.randomUUID()
+
   return sendRequest(
     {
       type: "GENERATE_WEEKLY_RECAP",
       target: "offscreen",
+      requestId: generationRequestId,
       payload: { rangeStart, rangeEnd }
     },
-    LONG_RUNNING_TIMEOUT_MS
+    LONG_RUNNING_TIMEOUT_MS,
+    () => {
+      void sendRequest(
+        {
+          type: "CANCEL_WEEKLY_RECAP",
+          target: "offscreen",
+          payload: { generationRequestId }
+        },
+        READ_TIMEOUT_MS
+      ).catch(() => {
+        // The UI is already in a timeout state. Cancellation is best-effort;
+        // the background watchdog remains the final safety net.
+      })
+    }
   ) as Promise<WeeklyReportRecord>
 }
 
