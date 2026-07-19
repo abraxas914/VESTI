@@ -41,6 +41,7 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyGrowthTimeMachineData,
   WeeklyKnowledgeNoteSaveResult,
   WeeklyKnowledgeNoteStatus,
   WeeklyPushSettings,
@@ -410,6 +411,13 @@ export type RequestMessage =
       payload: { reportId: number; locale: string }
     }
   | {
+      type: "GET_WEEKLY_GROWTH_TIME_MACHINE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number }
+    }
+  | {
       type: "IMPORT_OBSIDIAN_DIRECTORY"
       target: "offscreen"
       via?: "background"
@@ -730,6 +738,7 @@ export type ResponseDataMap = {
   DELETE_NOTE: { deleted: boolean }
   GET_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteStatus
   SAVE_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteSaveResult
+  GET_WEEKLY_GROWTH_TIME_MACHINE: WeeklyGrowthTimeMachineData
   IMPORT_OBSIDIAN_DIRECTORY: ObsidianImportSummary
   IMPORT_OBSIDIAN_ZIP: ObsidianImportSummary
   GET_NOTE_ASSET: NoteAssetRecord | null

@@ -32,6 +32,7 @@ import {
   generateWeeklySharePNG,
 } from "../../utils/weeklyShareService";
 import { WeeklyContributionGrid } from "./WeeklyContributionGrid";
+import { WeeklyGrowthTimeMachine } from "./WeeklyGrowthTimeMachine";
 import { WeeklyPushCenter } from "./WeeklyPushCenter";
 import { WeeklyTagCloud } from "./WeeklyTagCloud";
 
@@ -697,6 +698,8 @@ export function WeeklyGrowthReport({
             </div>
             <GrowthCurve points={report.growth?.series} />
           </section>
+
+          <WeeklyGrowthTimeMachine reportId={reportId} />
 
           {(report.highlights ?? []).length > 0 ? (
             <section data-weekly-export-private>

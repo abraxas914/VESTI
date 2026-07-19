@@ -92,6 +92,7 @@ import {
   getWeeklyKnowledgeNoteStatus,
   saveWeeklyKnowledgeNote
 } from "../lib/services/weeklyKnowledgeNoteService"
+import { getWeeklyGrowthTimeMachine } from "../lib/services/weeklyGrowthTimeMachineService"
 import {
   askKnowledgeBase,
   findAllEdges,
@@ -819,6 +820,12 @@ async function handleOffscreenRequest(
         const data = await saveWeeklyKnowledgeNote(
           message.payload.reportId,
           resolveLocale(message.payload.locale)
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "GET_WEEKLY_GROWTH_TIME_MACHINE": {
+        const data = await getWeeklyGrowthTimeMachine(
+          message.payload.reportId
         )
         return { ok: true, type: messageType, data }
       }

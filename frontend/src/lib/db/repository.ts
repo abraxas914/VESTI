@@ -2153,6 +2153,34 @@ export async function getWeeklyReportById(
     : null
 }
 
+export async function listWeeklyReportsBefore(
+  rangeStart: number,
+  limit = 48
+): Promise<WeeklyReportRecord[]> {
+  if (!Number.isFinite(rangeStart) || rangeStart < 0) return []
+  const boundedLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(48, Math.floor(limit)))
+    : 48
+  const records = await db.weekly_reports
+    .where("[periodType+rangeStart]")
+    .between(
+      ["week", Dexie.minKey],
+      ["week", rangeStart],
+      true,
+      false
+    )
+    .reverse()
+    .limit(boundedLimit)
+    .toArray()
+
+  return records
+    .filter(
+      (record): record is WeeklyReportRecordRecord & { id: number } =>
+        record.id !== undefined
+    )
+    .map(toWeeklyReport)
+}
+
 export async function saveWeeklyReport(
   record: Omit<WeeklyReportRecord, "id">,
   control: { signal?: AbortSignal } = {}

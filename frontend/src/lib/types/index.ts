@@ -928,6 +928,62 @@ export interface WeeklyGrowthSeriesPoint extends WeeklyMetricSnapshot {
   label?: string
 }
 
+export interface WeeklyGrowthTimeMachineMetrics {
+  conversationCount: number
+  activeDays: number
+  focusDepthScore: number
+  rhythmScore: number
+  topicBreadthScore: number
+}
+
+export interface WeeklyGrowthTimeMachinePoint {
+  key: string
+  rangeStart: number
+  rangeEnd: number
+  storedEvidence: boolean
+  metrics: WeeklyGrowthTimeMachineMetrics
+  identityLabel: string | null
+  /** null means the source had no topic evidence; [] means evidence was present but empty. */
+  topics: string[] | null
+}
+
+export interface WeeklyGrowthTimeMachineData {
+  current: WeeklyGrowthTimeMachinePoint
+  history: WeeklyGrowthTimeMachinePoint[]
+  enrichedHistoryCount: number
+}
+
+export type WeeklyGrowthTimeMachineMetricKey =
+  | "focusDepthScore"
+  | "rhythmScore"
+  | "topicBreadthScore"
+
+export interface WeeklyGrowthTimeMachineMetricComparison {
+  key: WeeklyGrowthTimeMachineMetricKey
+  current: number
+  baseline: number
+  delta: number
+  personalBest: boolean
+}
+
+export interface WeeklyGrowthTimeMachineTopicMovement {
+  emerging: string[]
+  returning: string[]
+  cooled: string[]
+}
+
+export interface WeeklyGrowthTimeMachineComparison {
+  baseline: WeeklyGrowthTimeMachinePoint
+  metrics: WeeklyGrowthTimeMachineMetricComparison[]
+  conversationDelta: number
+  activeDaysDelta: number
+  momentumScore: number
+  momentum: "rising" | "steady" | "rebalancing"
+  strongestMetric: WeeklyGrowthTimeMachineMetricKey | null
+  topicMovement: WeeklyGrowthTimeMachineTopicMovement | null
+  identityTrail: string[]
+}
+
 export interface WeeklyEmotionKeyword {
   label?: string
   score?: number

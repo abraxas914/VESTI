@@ -39,6 +39,7 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyGrowthTimeMachineData,
   WeeklyKnowledgeNoteSaveResult,
   WeeklyKnowledgeNoteStatus,
   WeeklyPushSettings,
@@ -437,6 +438,16 @@ export async function saveWeeklyKnowledgeNote(
     target: "offscreen",
     payload: { reportId, locale }
   }) as Promise<WeeklyKnowledgeNoteSaveResult>
+}
+
+export async function getWeeklyGrowthTimeMachine(
+  reportId: number
+): Promise<WeeklyGrowthTimeMachineData> {
+  return sendRequest({
+    type: "GET_WEEKLY_GROWTH_TIME_MACHINE",
+    target: "offscreen",
+    payload: { reportId }
+  }) as Promise<WeeklyGrowthTimeMachineData>
 }
 
 export async function importObsidianDirectory(
