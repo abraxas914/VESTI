@@ -407,6 +407,7 @@ export function WeeklyGrowthReport({
   const styleVariant = report.pushCenter?.styleVariants?.[style];
   const greeting = styleVariant?.greeting ?? report.greeting;
   const narrative = styleVariant?.narrative ?? report.narrative ?? [];
+  const canSaveKnowledgeNote = !report.blankWeek?.isBlank;
 
   useEffect(() => {
     let active = true;
@@ -424,6 +425,11 @@ export function WeeklyGrowthReport({
     setKnowledgeNoteCurrent(false);
     setKnowledgeNoteProtected(false);
     setKnowledgeNoteStatus("");
+    if (!canSaveKnowledgeNote) {
+      return () => {
+        active = false;
+      };
+    }
     void getWeeklyKnowledgeNoteStatus(reportId)
       .then((status) => {
         if (!active) return;
@@ -436,7 +442,7 @@ export function WeeklyGrowthReport({
     return () => {
       active = false;
     };
-  }, [reportId]);
+  }, [canSaveKnowledgeNote, reportId]);
 
   const handleStyleChange = (nextStyle: WeeklyRecapStyle) => {
     setStyle(nextStyle);
@@ -482,6 +488,7 @@ export function WeeklyGrowthReport({
   };
 
   const handleKnowledgeNote = async () => {
+    if (!canSaveKnowledgeNote) return;
     if (
       knowledgeNoteId &&
       (knowledgeNoteCurrent || knowledgeNoteProtected)
@@ -533,28 +540,30 @@ export function WeeklyGrowthReport({
             data-weekly-export-exclude
             className="flex shrink-0 items-center gap-1"
           >
-            <button
-              type="button"
-              disabled={isSavingKnowledgeNote}
-              onClick={() => {
-                void handleKnowledgeNote();
-              }}
-              aria-label={knowledgeNoteActionLabel}
-              title={knowledgeNoteActionLabel}
-              className="inline-flex items-center justify-center gap-1 rounded-md border border-border-subtle bg-bg-primary px-2 py-1.5 text-[11px] text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary disabled:cursor-wait disabled:opacity-60"
-            >
-              {isSavingKnowledgeNote ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              ) : knowledgeNoteId &&
-                (knowledgeNoteCurrent || knowledgeNoteProtected) ? (
-                <BookOpen className="h-3.5 w-3.5" />
-              ) : (
-                <FilePlus2 className="h-3.5 w-3.5" />
-              )}
-              <span className="weekly-report-action-label">
-                {knowledgeNoteActionLabel}
-              </span>
-            </button>
+            {canSaveKnowledgeNote ? (
+              <button
+                type="button"
+                disabled={isSavingKnowledgeNote}
+                onClick={() => {
+                  void handleKnowledgeNote();
+                }}
+                aria-label={knowledgeNoteActionLabel}
+                title={knowledgeNoteActionLabel}
+                className="inline-flex items-center justify-center gap-1 rounded-md border border-border-subtle bg-bg-primary px-2 py-1.5 text-[11px] text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary disabled:cursor-wait disabled:opacity-60"
+              >
+                {isSavingKnowledgeNote ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                ) : knowledgeNoteId &&
+                  (knowledgeNoteCurrent || knowledgeNoteProtected) ? (
+                  <BookOpen className="h-3.5 w-3.5" />
+                ) : (
+                  <FilePlus2 className="h-3.5 w-3.5" />
+                )}
+                <span className="weekly-report-action-label">
+                  {knowledgeNoteActionLabel}
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={isExporting}
