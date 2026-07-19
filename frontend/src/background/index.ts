@@ -67,6 +67,7 @@ import {
 import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import { getCaptureSettings } from "../lib/services/captureSettingsService"
 import { getLanguageSettings } from "../lib/services/languageSettingsService"
+import { resolveLocale } from "../lib/i18n/locales"
 import { runGardener } from "../lib/services/gardenerService"
 import {
   generateConversationSummary,
@@ -87,6 +88,10 @@ import {
   getWeeklyPushSettings,
   setWeeklyPushSettings
 } from "../lib/services/weeklyPushSettingsService"
+import {
+  getWeeklyKnowledgeNoteStatus,
+  saveWeeklyKnowledgeNote
+} from "../lib/services/weeklyKnowledgeNoteService"
 import {
   askKnowledgeBase,
   findAllEdges,
@@ -803,6 +808,19 @@ async function handleOffscreenRequest(
       case "DELETE_NOTE": {
         await deleteNote(message.payload.id)
         return { ok: true, type: messageType, data: { deleted: true } }
+      }
+      case "GET_WEEKLY_KNOWLEDGE_NOTE": {
+        const data = await getWeeklyKnowledgeNoteStatus(
+          message.payload.reportId
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "SAVE_WEEKLY_KNOWLEDGE_NOTE": {
+        const data = await saveWeeklyKnowledgeNote(
+          message.payload.reportId,
+          resolveLocale(message.payload.locale)
+        )
+        return { ok: true, type: messageType, data }
       }
       case "IMPORT_OBSIDIAN_DIRECTORY": {
         const data = await importObsidianDirectory(

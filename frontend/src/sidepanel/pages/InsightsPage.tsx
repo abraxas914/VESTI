@@ -1743,6 +1743,7 @@ export function InsightsPage({
 
           <WeeklyGrowthReport
             data={weeklyGrowthData}
+            reportId={weeklyReport.id}
             onOpenHighlight={(conversationId, messageId) => {
               const target = weeklyConversations.find(
                 (item) => item.id === conversationId

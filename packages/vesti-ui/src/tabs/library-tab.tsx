@@ -88,10 +88,16 @@ type LibraryTabProps = {
   themeMode?: UiThemeMode;
   openConversationId?: number | null;
   onConversationOpened?: () => void;
+  openNoteId?: number | null;
+  onNoteOpened?: () => void;
   returnToSourceLabel?: string | null;
   onReturnToSource?: () => void;
   labels?: Record<string, any>;
 };
+
+function isUserNote(note: Note): boolean {
+  return (note.kind ?? "user") === "user";
+}
 
 type LibrarySplitContextValue = {
   isSplitActive: boolean;
@@ -506,6 +512,8 @@ export function LibraryTab({
   themeMode = "light",
   openConversationId,
   onConversationOpened,
+  openNoteId,
+  onNoteOpened,
   returnToSourceLabel = null,
   onReturnToSource,
   labels: providedLabels,
@@ -598,6 +606,7 @@ export function LibraryTab({
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(!storage.getNotes);
   const [hasLinkedNote, setHasLinkedNote] = useState(false);
   const [renameNoteTarget, setRenameNoteTarget] = useState<Note | null>(null);
   const [renameNoteTitle, setRenameNoteTitle] = useState("");
@@ -694,7 +703,25 @@ export function LibraryTab({
     debounceMs: 750,
   });
   const localNotes = useMemo(
-    () => notes.filter((note) => note.source_type !== "obsidian"),
+    () =>
+      notes.filter(
+        (note) =>
+          note.source_type !== "obsidian" &&
+          (note.kind ?? "user") === "user",
+      ),
+    [notes],
+  );
+  const weeklyKnowledgeNotes = useMemo(
+    () =>
+      notes.filter(
+        (note) =>
+          note.source_type !== "obsidian" &&
+          note.kind === "weekly_report",
+      ).sort(
+        (left, right) =>
+          Number(Boolean(right.is_starred)) - Number(Boolean(left.is_starred)) ||
+          right.updated_at - left.updated_at,
+      ),
     [notes],
   );
   const importedVaults = useMemo(() => buildImportedVaults(notes), [notes]);
@@ -920,13 +947,20 @@ export function LibraryTab({
   }
 
   useEffect(() => {
-    if (!storage.getNotes) return;
+    if (!storage.getNotes) {
+      setNotesLoaded(true);
+      return;
+    }
     setNotesLoading(true);
+    setNotesLoaded(false);
     storage
       .getNotes()
       .then((data) => setNotes(data))
       .catch(() => setNotes([]))
-      .finally(() => setNotesLoading(false));
+      .finally(() => {
+        setNotesLoading(false);
+        setNotesLoaded(true);
+      });
   }, [storage]);
 
   useEffect(() => {
@@ -1085,6 +1119,7 @@ export function LibraryTab({
       notes.some(
         (note) =>
           note.source_type === "native" &&
+          isUserNote(note) &&
           note.linked_conversation_ids.includes(selectedConversationId),
       ),
     );
@@ -1503,11 +1538,35 @@ export function LibraryTab({
     selectedConversationId,
   ]);
 
+  useEffect(() => {
+    if (
+      typeof openNoteId !== "number" ||
+      notesLoading ||
+      !notesLoaded
+    ) {
+      return;
+    }
+    const target = notes.find((note) => note.id === openNoteId);
+    if (!target) {
+      onNoteOpened?.();
+      return;
+    }
+
+    let active = true;
+    void openNotesView(target.id).finally(() => {
+      if (active) onNoteOpened?.();
+    });
+    return () => {
+      active = false;
+    };
+  }, [notes, notesLoaded, notesLoading, onNoteOpened, openNoteId]);
+
   function getConversationLinkedNotes(conversationId: number): Note[] {
     return notes
       .filter(
         (note) =>
           note.source_type === "native" &&
+          isUserNote(note) &&
           note.linked_conversation_ids.includes(conversationId),
       )
       .sort((a, b) => b.updated_at - a.updated_at);
@@ -1516,6 +1575,8 @@ export function LibraryTab({
   function resolveConversationSplitNote(conversationId: number): Note | null {
     if (
       selectedNote &&
+      selectedNote.source_type === "native" &&
+      isUserNote(selectedNote) &&
       selectedNote.linked_conversation_ids.includes(conversationId)
     ) {
       return selectedNote;
@@ -2089,6 +2150,26 @@ export function LibraryTab({
     }
   };
 
+  const handleNoteStar = async (note: Note) => {
+    if (!storage.updateNote) {
+      window.alert("Starring is not available yet.");
+      return;
+    }
+    try {
+      const updated = await storage.updateNote(note.id, {
+        is_starred: !note.is_starred,
+      });
+      setNotes((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (error) {
+      window.alert(
+        (error as Error)?.message ??
+          (labels.updateStarFailed ?? "Failed to update star."),
+      );
+    }
+  };
+
   const openNoteRenameDialog = (note: Note) => {
     setRenameNoteTarget(note);
     setRenameNoteTitle(note.title);
@@ -2327,11 +2408,14 @@ export function LibraryTab({
 
   const renderNoteListRow = (note: Note, depth = 0) => {
     const isSelected = note.id === selectedNoteId;
+    const isWeeklyKnowledge = note.kind === "weekly_report";
     const hasLinkedConversations = note.linked_conversation_ids.length > 0;
     const isExporting = obsidianActionBusy === note.id;
     const noteSourceLabel =
       note.source_type === "obsidian"
         ? note.import_meta?.relative_path ?? note.source_path ?? "Imported"
+        : isWeeklyKnowledge
+          ? (labels.generatedFromWeeklyReport ?? "Generated from a weekly report")
         : note.obsidian_export?.relative_path
           ? note.obsidian_export.relative_path
           : "Local note";
@@ -2370,7 +2454,11 @@ export function LibraryTab({
               </p>
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-sans text-text-secondary">
-                  {note.source_type === "obsidian" ? "Obsidian" : "Local"}
+                  {note.source_type === "obsidian"
+                    ? "Obsidian"
+                    : isWeeklyKnowledge
+                      ? (labels.weeklyKnowledgeNote ?? "Weekly knowledge")
+                      : "Local"}
                 </span>
                 {hasLinkedConversations ? (
                   <span
@@ -2406,9 +2494,26 @@ export function LibraryTab({
         </button>
         <div
           className={`absolute right-2 bottom-2 flex items-center gap-1 transition-opacity ${
-            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            isSelected || note.is_starred
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100"
           }`}
         >
+          <button
+            type="button"
+            onClick={() => {
+              void handleNoteStar(note);
+            }}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-bg-surface-card hover:text-text-primary"
+            aria-label={`${note.is_starred ? (labels.unstar ?? "Unstar") : (labels.star ?? "Star")} ${note.title}`}
+            title={note.is_starred ? (labels.unstar ?? "Unstar") : (labels.star ?? "Star")}
+          >
+            <Star
+              strokeWidth={1.5}
+              className="h-4 w-4"
+              fill={note.is_starred ? "currentColor" : "none"}
+            />
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -3610,6 +3715,29 @@ export function LibraryTab({
                         <div className="px-1 pt-1">
                           <div className="mb-2 flex items-center justify-between px-2">
                             <span className="text-[11px] font-sans uppercase tracking-[0.16em] text-text-tertiary">
+                              {labels.weeklyKnowledge ?? "Weekly Knowledge"}
+                            </span>
+                            <span className="text-[11px] font-sans text-text-tertiary">
+                              {weeklyKnowledgeNotes.length}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {weeklyKnowledgeNotes.length > 0 ? (
+                              weeklyKnowledgeNotes.map((note) =>
+                                renderNoteListRow(note),
+                              )
+                            ) : (
+                              <div className="rounded-lg bg-bg-surface-card px-3 py-3 text-[13px] font-sans text-text-tertiary">
+                                {labels.noWeeklyKnowledgeYet ??
+                                  "Save a growth report to build your weekly knowledge archive."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="px-1 pt-1">
+                          <div className="mb-2 flex items-center justify-between px-2">
+                            <span className="text-[11px] font-sans uppercase tracking-[0.16em] text-text-tertiary">
                               {labels.localNotes ?? "Local Notes"}
                             </span>
                             <div className="flex items-center gap-3">
@@ -3634,7 +3762,9 @@ export function LibraryTab({
                               localNotes.map((note) => renderNoteListRow(note))
                             ) : (
                               <div className="rounded-lg bg-bg-surface-card px-3 py-3 text-[13px] font-sans text-text-tertiary">
-                                <div>No local notes yet.</div>
+                                <div>
+                                  {labels.noLocalNotesYet ?? "No local notes yet."}
+                                </div>
                                 {storage.saveNote ? (
                                   <button
                                     type="button"
@@ -4680,14 +4810,45 @@ export function LibraryTab({
                         </h1>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleNoteStar(selectedNote);
+                      }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-bg-secondary hover:text-text-primary"
+                      aria-label={
+                        selectedNote.is_starred
+                          ? (labels.unstar ?? "Unstar")
+                          : (labels.star ?? "Star")
+                      }
+                      title={
+                        selectedNote.is_starred
+                          ? (labels.unstar ?? "Unstar")
+                          : (labels.star ?? "Star")
+                      }
+                    >
+                      <Star
+                        strokeWidth={1.5}
+                        className="h-4 w-4"
+                        fill={selectedNote.is_starred ? "currentColor" : "none"}
+                      />
+                    </button>
                   </div>
 
                   <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-border-subtle pb-6 text-[13px] font-sans text-text-secondary">
                     <span className="rounded-full bg-bg-secondary px-3 py-1 text-[12px] text-text-secondary">
                       {selectedNote.source_type === "obsidian"
                         ? "Obsidian"
-                        : "Local"}
+                        : selectedNote.kind === "weekly_report"
+                          ? (labels.weeklyKnowledgeNote ?? "Weekly knowledge")
+                          : "Local"}
                     </span>
+                    {selectedNote.kind === "weekly_report" ? (
+                      <span className="text-[12px] text-text-tertiary">
+                        {labels.generatedFromWeeklyReport ??
+                          "Generated from a weekly report"}
+                      </span>
+                    ) : null}
                     {selectedNote.import_meta?.vault_name ? (
                       <span className="rounded-full bg-bg-secondary px-3 py-1 text-[12px] text-text-secondary">
                         {selectedNote.import_meta.vault_name}

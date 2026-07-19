@@ -523,6 +523,18 @@ export interface UpdateNoteChanges {
   is_starred?: boolean
 }
 
+export interface WeeklyKnowledgeNoteStatus {
+  note: Note | null
+  sourceCurrent: boolean
+}
+
+export interface WeeklyKnowledgeNoteSaveResult {
+  note: Note
+  created: boolean
+  refreshed: boolean
+  preservedUserContent: boolean
+}
+
 export interface NoteSourceRecord {
   id: string
   name: string

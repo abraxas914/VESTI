@@ -1,4 +1,5 @@
 ﻿import type { ConversationUpdateChanges } from "../messaging/protocol"
+import type { SupportedLocale } from "../i18n/locales"
 import { sendRequest } from "../messaging/runtime"
 import type {
   ActiveCaptureStatus,
@@ -38,6 +39,8 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyKnowledgeNoteSaveResult,
+  WeeklyKnowledgeNoteStatus,
   WeeklyPushSettings,
   WeeklyReportRecord
 } from "../types"
@@ -413,6 +416,27 @@ export async function deleteNote(id: number): Promise<void> {
     target: "offscreen",
     payload: { id }
   })
+}
+
+export async function getWeeklyKnowledgeNoteStatus(
+  reportId: number
+): Promise<WeeklyKnowledgeNoteStatus> {
+  return sendRequest({
+    type: "GET_WEEKLY_KNOWLEDGE_NOTE",
+    target: "offscreen",
+    payload: { reportId }
+  }) as Promise<WeeklyKnowledgeNoteStatus>
+}
+
+export async function saveWeeklyKnowledgeNote(
+  reportId: number,
+  locale: SupportedLocale
+): Promise<WeeklyKnowledgeNoteSaveResult> {
+  return sendRequest({
+    type: "SAVE_WEEKLY_KNOWLEDGE_NOTE",
+    target: "offscreen",
+    payload: { reportId, locale }
+  }) as Promise<WeeklyKnowledgeNoteSaveResult>
 }
 
 export async function importObsidianDirectory(

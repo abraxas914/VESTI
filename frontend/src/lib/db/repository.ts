@@ -41,6 +41,7 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyKnowledgeNoteSaveResult,
   WeeklyLiteReportV1,
   WeeklyReportRecord
 } from "../types"
@@ -65,10 +66,16 @@ import {
   parseNoteFrontmatter,
   updateFrontmatterTitle
 } from "../notes/markdown"
+import Dexie from "dexie"
+
 import {
   prepareObsidianDirectoryImport,
   prepareObsidianZipImport
 } from "../notes/obsidianImport"
+import {
+  mergeWeeklyKnowledgeNoteContent,
+  type WeeklyKnowledgeNoteDraft
+} from "../notes/weeklyKnowledgeNote"
 import { db, resolveConversationRecordOriginAt } from "./schema"
 import type {
   AnnotationRecord,
@@ -2137,6 +2144,15 @@ export async function getWeeklyReport(
   return record ? toWeeklyReport(record) : null
 }
 
+export async function getWeeklyReportById(
+  id: number
+): Promise<WeeklyReportRecord | null> {
+  const record = await db.weekly_reports.get(id)
+  return record?.id !== undefined
+    ? toWeeklyReport(record as WeeklyReportRecordRecord & { id: number })
+    : null
+}
+
 export async function saveWeeklyReport(
   record: Omit<WeeklyReportRecord, "id">,
   control: { signal?: AbortSignal } = {}
@@ -2510,6 +2526,125 @@ export async function updateNote(
     throw new Error("Note not found")
   }
   return toNote(record as NoteRecord & { id: number })
+}
+
+export async function getWeeklyKnowledgeNote(
+  reportId: number
+): Promise<Note | null> {
+  const record = await db.notes
+    .where("source_report_id")
+    .equals(reportId)
+    .and((candidate) => candidate.kind === "weekly_report")
+    .first()
+
+  return record?.id !== undefined
+    ? toNote(record as NoteRecord & { id: number })
+    : null
+}
+
+function sameNumberArray(left: number[], right: number[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  )
+}
+
+export async function upsertWeeklyKnowledgeNote(
+  draft: WeeklyKnowledgeNoteDraft
+): Promise<WeeklyKnowledgeNoteSaveResult> {
+  await enforceStorageWriteGuard()
+
+  return db.transaction("rw", db.notes, async () => {
+    const existing = await db.notes
+      .where("source_report_id")
+      .equals(draft.reportId)
+      .and((candidate) => candidate.kind === "weekly_report")
+      .first()
+
+    if (!existing || existing.id === undefined) {
+      const now = Date.now()
+      const resolved = await Dexie.waitFor(
+        resolveStoredNoteFields({
+          title: draft.title,
+          content: draft.initialContent,
+          linked_conversation_ids: draft.linkedConversationIds,
+          source_type: "native",
+          kind: "weekly_report",
+          source_report_id: draft.reportId,
+          is_starred: false
+        })
+      )
+      const id = await db.notes.add({
+        ...resolved,
+        created_at: now,
+        updated_at: now
+      })
+      const created = await db.notes.get(id)
+      if (!created || created.id === undefined) {
+        throw new Error("Failed to create weekly knowledge note")
+      }
+      return {
+        note: toNote(created as NoteRecord & { id: number }),
+        created: true,
+        refreshed: false,
+        preservedUserContent: false
+      }
+    }
+
+    const stored = existing as NoteRecord & { id: number }
+    const merged = mergeWeeklyKnowledgeNoteContent(
+      stored.content,
+      draft.managedContent
+    )
+    if (merged.preservedUserContent) {
+      return {
+        note: toNote(stored),
+        created: false,
+        refreshed: false,
+        preservedUserContent: true
+      }
+    }
+
+    const existingLinkedIds = normalizeLinkedConversationIds(
+      stored.linked_conversation_ids
+    )
+    const linkedIdsChanged = !sameNumberArray(
+      existingLinkedIds,
+      draft.linkedConversationIds
+    )
+    if (!merged.changed && !linkedIdsChanged) {
+      return {
+        note: toNote(stored),
+        created: false,
+        refreshed: false,
+        preservedUserContent: false
+      }
+    }
+
+    const resolved = await Dexie.waitFor(
+      resolveStoredNoteFields(
+        {
+          content: merged.content,
+          linked_conversation_ids: draft.linkedConversationIds
+        },
+        stored
+      )
+    )
+    await db.notes.update(stored.id, {
+      ...resolved,
+      updated_at: Date.now()
+    })
+    const updated = await db.notes.get(stored.id)
+    if (!updated || updated.id === undefined) {
+      throw new Error("Weekly knowledge note not found after update")
+    }
+    return {
+      note: toNote(updated as NoteRecord & { id: number }),
+      created: false,
+      refreshed: merged.changed,
+      preservedUserContent: false
+    }
+  })
 }
 
 export async function deleteNote(id: number): Promise<void> {

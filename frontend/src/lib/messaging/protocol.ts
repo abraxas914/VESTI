@@ -41,6 +41,8 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyKnowledgeNoteSaveResult,
+  WeeklyKnowledgeNoteStatus,
   WeeklyPushSettings,
   WeeklyReportRecord
 } from "../types"
@@ -394,6 +396,20 @@ export type RequestMessage =
       payload: { id: number }
     }
   | {
+      type: "GET_WEEKLY_KNOWLEDGE_NOTE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number }
+    }
+  | {
+      type: "SAVE_WEEKLY_KNOWLEDGE_NOTE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number; locale: string }
+    }
+  | {
       type: "IMPORT_OBSIDIAN_DIRECTORY"
       target: "offscreen"
       via?: "background"
@@ -712,6 +728,8 @@ export type ResponseDataMap = {
   CREATE_NOTE: { note: Note }
   UPDATE_NOTE: { note: Note }
   DELETE_NOTE: { deleted: boolean }
+  GET_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteStatus
+  SAVE_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteSaveResult
   IMPORT_OBSIDIAN_DIRECTORY: ObsidianImportSummary
   IMPORT_OBSIDIAN_ZIP: ObsidianImportSummary
   GET_NOTE_ASSET: NoteAssetRecord | null

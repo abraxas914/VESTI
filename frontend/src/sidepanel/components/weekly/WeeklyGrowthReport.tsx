@@ -1,7 +1,10 @@
 import {
   ArrowUpRight,
+  BookOpen,
+  FilePlus2,
   ImageDown,
   Link2,
+  RefreshCw,
   Sparkles,
   X,
 } from "lucide-react";
@@ -12,6 +15,10 @@ import {
   getWeeklyPushSettings,
   setWeeklyPushSettings,
 } from "~lib/services/weeklyPushSettingsService";
+import {
+  getWeeklyKnowledgeNoteStatus,
+  saveWeeklyKnowledgeNote,
+} from "~lib/services/storageService";
 import type {
   WeeklyGrowthSeriesPoint,
   WeeklyGrowthTag,
@@ -30,6 +37,7 @@ import { WeeklyTagCloud } from "./WeeklyTagCloud";
 
 interface WeeklyGrowthReportProps {
   data: WeeklyGrowthData;
+  reportId: number;
   onOpenHighlight?: (conversationId: number, messageId: number) => void;
   onSelectTag?: (tag: WeeklyGrowthTag) => void;
 }
@@ -137,6 +145,14 @@ const ACTION_COPY = {
     copied: "Weekly text copied",
     close: "Close",
     exportFailed: "Could not generate the image. Please try again later.",
+    saveNote: "Save note",
+    refreshNote: "Refresh note",
+    openNote: "Open note",
+    savingNote: "Saving…",
+    noteSaved: "Saved to knowledge notes",
+    noteRefreshed: "Knowledge note refreshed",
+    noteProtected: "Your edited note was kept unchanged",
+    noteFailed: "Could not save the knowledge note",
   },
   zh: {
     exportImage: "导出图片",
@@ -146,6 +162,14 @@ const ACTION_COPY = {
     copied: "周报文本已复制",
     close: "关闭",
     exportFailed: "生成图片失败，请稍后重试",
+    saveNote: "沉淀为笔记",
+    refreshNote: "更新笔记",
+    openNote: "打开笔记",
+    savingNote: "保存中…",
+    noteSaved: "已沉淀到知识笔记",
+    noteRefreshed: "知识笔记已更新",
+    noteProtected: "检测到自主改写，已保留原笔记",
+    noteFailed: "知识笔记保存失败",
   },
   ja: {
     exportImage: "画像を書き出す",
@@ -155,6 +179,14 @@ const ACTION_COPY = {
     copied: "週間テキストをコピーしました",
     close: "閉じる",
     exportFailed: "画像を生成できませんでした。しばらくしてから再試行してください。",
+    saveNote: "ノートに保存",
+    refreshNote: "ノートを更新",
+    openNote: "ノートを開く",
+    savingNote: "保存中…",
+    noteSaved: "ナレッジノートに保存しました",
+    noteRefreshed: "ナレッジノートを更新しました",
+    noteProtected: "編集済みのノートを変更せず保持しました",
+    noteFailed: "ナレッジノートを保存できませんでした",
   },
   ko: {
     exportImage: "이미지 내보내기",
@@ -164,6 +196,14 @@ const ACTION_COPY = {
     copied: "주간 텍스트를 복사했습니다",
     close: "닫기",
     exportFailed: "이미지를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    saveNote: "노트로 저장",
+    refreshNote: "노트 새로고침",
+    openNote: "노트 열기",
+    savingNote: "저장 중…",
+    noteSaved: "지식 노트에 저장했습니다",
+    noteRefreshed: "지식 노트를 새로고침했습니다",
+    noteProtected: "직접 편집한 노트를 변경하지 않았습니다",
+    noteFailed: "지식 노트를 저장하지 못했습니다",
   },
 } as const;
 
@@ -303,8 +343,45 @@ async function copyTextToClipboard(value: string): Promise<void> {
   if (!copied) throw new Error("WEEKLY_COPY_FAILED");
 }
 
+const DASHBOARD_NAV_REQUEST_KEY = "vesti_dashboard_open_tab";
+
+function openKnowledgeNote(noteId: number): void {
+  const fallbackUrl = chrome.runtime.getURL(
+    `options.html?tab=library&view=notes&noteId=${noteId}`
+  );
+  const openDashboard = () => {
+    if (chrome.runtime?.openOptionsPage) {
+      chrome.runtime.openOptionsPage(() => {
+        if (chrome.runtime.lastError) {
+          chrome.tabs.create({ url: fallbackUrl });
+        }
+      });
+      return;
+    }
+    chrome.tabs.create({ url: fallbackUrl });
+  };
+
+  if (chrome.storage?.local) {
+    chrome.storage.local.set(
+      {
+        [DASHBOARD_NAV_REQUEST_KEY]: {
+          tab: "library",
+          view: "notes",
+          noteId,
+          requestedAt: Date.now(),
+        },
+      },
+      openDashboard
+    );
+    return;
+  }
+
+  openDashboard();
+}
+
 export function WeeklyGrowthReport({
   data,
+  reportId,
   onOpenHighlight,
   onSelectTag,
 }: WeeklyGrowthReportProps) {
@@ -322,6 +399,11 @@ export function WeeklyGrowthReport({
   const [isExporting, setIsExporting] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareDialogStatus, setShareDialogStatus] = useState("");
+  const [knowledgeNoteId, setKnowledgeNoteId] = useState<number | null>(null);
+  const [knowledgeNoteCurrent, setKnowledgeNoteCurrent] = useState(false);
+  const [knowledgeNoteProtected, setKnowledgeNoteProtected] = useState(false);
+  const [knowledgeNoteStatus, setKnowledgeNoteStatus] = useState("");
+  const [isSavingKnowledgeNote, setIsSavingKnowledgeNote] = useState(false);
   const styleVariant = report.pushCenter?.styleVariants?.[style];
   const greeting = styleVariant?.greeting ?? report.greeting;
   const narrative = styleVariant?.narrative ?? report.narrative ?? [];
@@ -335,6 +417,26 @@ export function WeeklyGrowthReport({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setKnowledgeNoteId(null);
+    setKnowledgeNoteCurrent(false);
+    setKnowledgeNoteProtected(false);
+    setKnowledgeNoteStatus("");
+    void getWeeklyKnowledgeNoteStatus(reportId)
+      .then((status) => {
+        if (!active) return;
+        setKnowledgeNoteId(status.note?.id ?? null);
+        setKnowledgeNoteCurrent(status.sourceCurrent);
+      })
+      .catch(() => {
+        // Saving remains available when the optional status read fails.
+      });
+    return () => {
+      active = false;
+    };
+  }, [reportId]);
 
   const handleStyleChange = (nextStyle: WeeklyRecapStyle) => {
     setStyle(nextStyle);
@@ -379,6 +481,47 @@ export function WeeklyGrowthReport({
     }
   };
 
+  const handleKnowledgeNote = async () => {
+    if (
+      knowledgeNoteId &&
+      (knowledgeNoteCurrent || knowledgeNoteProtected)
+    ) {
+      openKnowledgeNote(knowledgeNoteId);
+      return;
+    }
+    if (isSavingKnowledgeNote) return;
+
+    setIsSavingKnowledgeNote(true);
+    setKnowledgeNoteStatus("");
+    try {
+      const result = await saveWeeklyKnowledgeNote(reportId, locale);
+      setKnowledgeNoteId(result.note.id);
+      setKnowledgeNoteCurrent(!result.preservedUserContent);
+      setKnowledgeNoteProtected(result.preservedUserContent);
+      setKnowledgeNoteStatus(
+        result.preservedUserContent
+          ? ACTION_COPY[locale].noteProtected
+          : result.created
+            ? ACTION_COPY[locale].noteSaved
+            : result.refreshed
+              ? ACTION_COPY[locale].noteRefreshed
+              : ACTION_COPY[locale].noteSaved
+      );
+    } catch {
+      setKnowledgeNoteStatus(ACTION_COPY[locale].noteFailed);
+    } finally {
+      setIsSavingKnowledgeNote(false);
+    }
+  };
+
+  const knowledgeNoteActionLabel = isSavingKnowledgeNote
+    ? ACTION_COPY[locale].savingNote
+    : knowledgeNoteId && (knowledgeNoteCurrent || knowledgeNoteProtected)
+      ? ACTION_COPY[locale].openNote
+      : knowledgeNoteId
+        ? ACTION_COPY[locale].refreshNote
+        : ACTION_COPY[locale].saveNote;
+
   return (
     <div ref={reportElementRef} className="ins-week-ready-shell">
       <section className="rounded-xl border border-border-subtle bg-surface-card p-4">
@@ -390,6 +533,28 @@ export function WeeklyGrowthReport({
             data-weekly-export-exclude
             className="flex shrink-0 items-center gap-1"
           >
+            <button
+              type="button"
+              disabled={isSavingKnowledgeNote}
+              onClick={() => {
+                void handleKnowledgeNote();
+              }}
+              aria-label={knowledgeNoteActionLabel}
+              title={knowledgeNoteActionLabel}
+              className="inline-flex items-center justify-center gap-1 rounded-md border border-border-subtle bg-bg-primary px-2 py-1.5 text-[11px] text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSavingKnowledgeNote ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : knowledgeNoteId &&
+                (knowledgeNoteCurrent || knowledgeNoteProtected) ? (
+                <BookOpen className="h-3.5 w-3.5" />
+              ) : (
+                <FilePlus2 className="h-3.5 w-3.5" />
+              )}
+              <span className="weekly-report-action-label">
+                {knowledgeNoteActionLabel}
+              </span>
+            </button>
             <button
               type="button"
               disabled={isExporting}
@@ -423,6 +588,15 @@ export function WeeklyGrowthReport({
             </button>
           </div>
         </div>
+        {knowledgeNoteStatus ? (
+          <p
+            data-weekly-export-exclude
+            role="status"
+            className="mt-2 text-right text-[11px] text-text-tertiary"
+          >
+            {knowledgeNoteStatus}
+          </p>
+        ) : null}
         <div
           data-weekly-export-private
           className="mt-2 flex items-start gap-3"
