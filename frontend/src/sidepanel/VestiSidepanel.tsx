@@ -18,7 +18,11 @@ import {
 const DASHBOARD_NAV_REQUEST_KEY = "vesti_dashboard_open_tab";
 
 export function VestiSidepanel() {
-  const [currentPage, setCurrentPage] = useState<PageId>("timeline");
+  const [currentPage, setCurrentPage] = useState<PageId>(() =>
+    typeof window !== "undefined" && window.location.hash === "#weekly"
+      ? "insights"
+      : "timeline"
+  );
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [threadsState, dispatch] = useReducer(

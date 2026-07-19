@@ -1,13 +1,31 @@
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  ImageDown,
+  Link2,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { useI18n } from "~lib/i18n";
+import {
+  getWeeklyPushSettings,
+  setWeeklyPushSettings,
+} from "~lib/services/weeklyPushSettingsService";
 import type {
   WeeklyGrowthSeriesPoint,
   WeeklyGrowthTag,
   WeeklyMetricComparison,
   WeeklyMostInsight,
+  WeeklyRecapStyle,
 } from "~lib/types";
 import type { WeeklyGrowthData } from "~lib/types/insightsPresentation";
+import {
+  buildPrivacySafeWeeklyText,
+  generateWeeklySharePNG,
+} from "../../utils/weeklyShareService";
 import { WeeklyContributionGrid } from "./WeeklyContributionGrid";
+import { WeeklyPushCenter } from "./WeeklyPushCenter";
 import { WeeklyTagCloud } from "./WeeklyTagCloud";
 
 interface WeeklyGrowthReportProps {
@@ -88,6 +106,64 @@ const COPY = {
     mosts: "이번 주의 최고",
     noData: "아직 데이터가 없습니다",
     open: "원본 대화 열기",
+  },
+} as const;
+
+const SHARE_STATUS = {
+  en: {
+    done: "Ready to share",
+    failed: "Could not create the share item",
+  },
+  zh: {
+    done: "已准备好分享",
+    failed: "生成分享内容失败",
+  },
+  ja: {
+    done: "共有の準備ができました",
+    failed: "共有内容を作成できませんでした",
+  },
+  ko: {
+    done: "공유할 준비가 되었습니다",
+    failed: "공유 콘텐츠를 만들 수 없습니다",
+  },
+} as const;
+
+const ACTION_COPY = {
+  en: {
+    exportImage: "Export image",
+    shareLink: "Share link",
+    comingSoon: "Share links are coming soon. Stay tuned!",
+    copyFallback: "Copy weekly text",
+    copied: "Weekly text copied",
+    close: "Close",
+    exportFailed: "Could not generate the image. Please try again later.",
+  },
+  zh: {
+    exportImage: "导出图片",
+    shareLink: "分享链接",
+    comingSoon: "分享链接功能即将上线，敬请期待！",
+    copyFallback: "复制周报文本",
+    copied: "周报文本已复制",
+    close: "关闭",
+    exportFailed: "生成图片失败，请稍后重试",
+  },
+  ja: {
+    exportImage: "画像を書き出す",
+    shareLink: "リンクを共有",
+    comingSoon: "共有リンク機能は近日公開予定です。",
+    copyFallback: "週間テキストをコピー",
+    copied: "週間テキストをコピーしました",
+    close: "閉じる",
+    exportFailed: "画像を生成できませんでした。しばらくしてから再試行してください。",
+  },
+  ko: {
+    exportImage: "이미지 내보내기",
+    shareLink: "링크 공유",
+    comingSoon: "공유 링크 기능이 곧 제공될 예정입니다.",
+    copyFallback: "주간 텍스트 복사",
+    copied: "주간 텍스트를 복사했습니다",
+    close: "닫기",
+    exportFailed: "이미지를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   },
 } as const;
 
@@ -211,6 +287,22 @@ function MostItem({ value }: { value?: WeeklyMostInsight | null }) {
   );
 }
 
+async function copyTextToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-100000px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("WEEKLY_COPY_FAILED");
+}
+
 export function WeeklyGrowthReport({
   data,
   onOpenHighlight,
@@ -224,20 +316,123 @@ export function WeeklyGrowthReport({
   const breadth = report.energy?.topicBreadth;
   const identity = report.identity;
   const mosts = report.mosts;
+  const reportElementRef = useRef<HTMLDivElement | null>(null);
+  const [style, setStyle] = useState<WeeklyRecapStyle>("professional");
+  const [shareStatus, setShareStatus] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareDialogStatus, setShareDialogStatus] = useState("");
+  const styleVariant = report.pushCenter?.styleVariants?.[style];
+  const greeting = styleVariant?.greeting ?? report.greeting;
+  const narrative = styleVariant?.narrative ?? report.narrative ?? [];
+
+  useEffect(() => {
+    let active = true;
+    void getWeeklyPushSettings().then((settings) => {
+      if (active) setStyle(settings.style);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleStyleChange = (nextStyle: WeeklyRecapStyle) => {
+    setStyle(nextStyle);
+    setShareStatus("");
+    void setWeeklyPushSettings({ style: nextStyle });
+  };
+
+  const handleDownloadCard = async () => {
+    if (!reportElementRef.current || isExporting) return;
+    setIsExporting(true);
+    setShareStatus("");
+    try {
+      const generatedAt = Date.parse(data.meta.generated_at);
+      const reportDate = Number.isFinite(report.period?.end)
+        ? (report.period?.end as number)
+        : Number.isFinite(generatedAt)
+          ? generatedAt
+          : Date.now();
+      await generateWeeklySharePNG(reportElementRef.current, reportDate);
+      setShareStatus(SHARE_STATUS[locale].done);
+    } catch {
+      setShareStatus(SHARE_STATUS[locale].failed);
+      window.alert(ACTION_COPY[locale].exportFailed);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShareLink = () => {
+    setShareDialogStatus("");
+    setShareDialogOpen(true);
+  };
+
+  const handleCopyText = async () => {
+    try {
+      await copyTextToClipboard(buildPrivacySafeWeeklyText(data));
+      setShareStatus(SHARE_STATUS[locale].done);
+      setShareDialogStatus(ACTION_COPY[locale].copied);
+    } catch {
+      setShareStatus(SHARE_STATUS[locale].failed);
+      setShareDialogStatus(SHARE_STATUS[locale].failed);
+    }
+  };
 
   return (
-    <div className="ins-week-ready-shell">
+    <div ref={reportElementRef} className="ins-week-ready-shell">
       <section className="rounded-xl border border-border-subtle bg-surface-card p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
-          {copy.title}
-        </p>
-        <div className="mt-2 flex items-start gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+            {copy.title}
+          </p>
+          <div
+            data-weekly-export-exclude
+            className="flex shrink-0 items-center gap-1"
+          >
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => {
+                void handleDownloadCard();
+              }}
+              aria-label={ACTION_COPY[locale].exportImage}
+              title={ACTION_COPY[locale].exportImage}
+              className="inline-flex items-center justify-center gap-1 rounded-md border border-border-subtle bg-bg-primary px-2 py-1.5 text-[11px] text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary disabled:cursor-wait disabled:opacity-60"
+            >
+              <ImageDown
+                className={`h-3.5 w-3.5 ${
+                  isExporting ? "animate-pulse" : ""
+                }`}
+              />
+              <span className="weekly-report-action-label">
+                {ACTION_COPY[locale].exportImage}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleShareLink}
+              aria-label={ACTION_COPY[locale].shareLink}
+              title={ACTION_COPY[locale].shareLink}
+              className="inline-flex items-center justify-center gap-1 rounded-md border border-border-subtle bg-bg-primary px-2 py-1.5 text-[11px] text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              <span className="weekly-report-action-label">
+                {ACTION_COPY[locale].shareLink}
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          data-weekly-export-private
+          className="mt-2 flex items-start gap-3"
+        >
           <span className="text-xl" aria-hidden="true">
             {identity?.moodEmoji ?? "✨"}
           </span>
           <div className="min-w-0">
             <h3 className="text-vesti-base font-semibold text-text-primary">
-              {report.greeting}
+              {greeting}
             </h3>
             {identity?.label ? (
               <span className="mt-2 inline-flex rounded-full bg-accent-primary-light px-2.5 py-1 text-vesti-xs text-text-primary">
@@ -251,14 +446,23 @@ export function WeeklyGrowthReport({
             ) : null}
           </div>
         </div>
-        {(report.narrative ?? []).map((paragraph, index) => (
+        {narrative.map((paragraph, index) => (
           <p
             key={`growth-narrative-${index}`}
+            data-weekly-export-private
             className="mt-3 text-vesti-sm leading-relaxed text-text-secondary"
           >
             {paragraph}
           </p>
         ))}
+        {styleVariant?.callToAction ? (
+          <p
+            data-weekly-export-private
+            className="mt-3 rounded-md bg-accent-primary-light px-3 py-2 text-vesti-xs font-medium text-text-primary"
+          >
+            {styleVariant.callToAction}
+          </p>
+        ) : null}
       </section>
 
       {report.blankWeek?.isBlank ? (
@@ -312,7 +516,7 @@ export function WeeklyGrowthReport({
           </section>
 
           {(report.highlights ?? []).length > 0 ? (
-            <section>
+            <section data-weekly-export-private>
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-accent-primary" />
                 <p className="text-vesti-xs font-semibold text-text-primary">
@@ -409,7 +613,7 @@ export function WeeklyGrowthReport({
           </section>
 
           {mosts ? (
-            <section>
+            <section data-weekly-export-private>
               <p className="mb-2 text-vesti-xs font-semibold text-text-primary">
                 {copy.mosts}
               </p>
@@ -422,9 +626,77 @@ export function WeeklyGrowthReport({
               </div>
             </section>
           ) : null}
+
+          <WeeklyPushCenter
+            report={report}
+            style={style}
+            shareStatus={shareStatus}
+            onStyleChange={handleStyleChange}
+            onDownloadCard={() => {
+              void handleDownloadCard();
+            }}
+            onShareLink={handleShareLink}
+            onCopyText={() => {
+              void handleCopyText();
+            }}
+          />
         </>
       )}
+
+      {shareDialogOpen ? (
+        <div
+          data-weekly-export-exclude
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShareDialogOpen(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="weekly-share-dialog-title"
+            className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface-card p-4 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p
+                id="weekly-share-dialog-title"
+                className="text-vesti-sm font-semibold text-text-primary"
+              >
+                {ACTION_COPY[locale].comingSoon}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShareDialogOpen(false)}
+                aria-label={ACTION_COPY[locale].close}
+                className="rounded-md p-1 text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleCopyText();
+              }}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent-primary px-3 py-2.5 text-vesti-xs font-medium text-white hover:opacity-90"
+            >
+              <Link2 className="h-4 w-4" />
+              {ACTION_COPY[locale].copyFallback}
+            </button>
+            {shareDialogStatus ? (
+              <p
+                role="status"
+                className="mt-2 text-center text-[11px] text-text-tertiary"
+              >
+                {shareDialogStatus}
+              </p>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
-

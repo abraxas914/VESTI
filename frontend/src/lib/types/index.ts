@@ -922,6 +922,53 @@ export interface WeeklyEmotionKeyword {
   conversationIds?: number[]
 }
 
+export type WeeklyRecapStyle = "humorous" | "professional" | "motivational"
+
+export interface WeeklyStyleVariant {
+  greeting?: string
+  narrative?: string[]
+  callToAction?: string
+}
+
+export interface WeeklyOpenQuestion {
+  question?: string
+  whyItMatters?: string
+  conversationIds?: number[]
+  messageIds?: number[]
+}
+
+export interface WeeklyResourceRecommendation {
+  title?: string
+  reason?: string
+  searchQuery?: string
+  conversationIds?: number[]
+  messageIds?: number[]
+}
+
+export interface WeeklyPushCenter {
+  spiritualFood?: {
+    title?: string
+    summary?: string
+    takeaway?: string
+  }
+  styleVariants?: {
+    humorous?: WeeklyStyleVariant
+    professional?: WeeklyStyleVariant
+    motivational?: WeeklyStyleVariant
+  }
+  unclearQuestions?: WeeklyOpenQuestion[]
+  resourceRecommendations?: WeeklyResourceRecommendation[]
+}
+
+export interface WeeklyPushSettings {
+  enabled: boolean
+  weekday: number
+  hour: number
+  minute: number
+  style: WeeklyRecapStyle
+  updatedAt: number
+}
+
 export interface WeeklyGrowthHighlight {
   id?: string
   conversationId?: number
@@ -981,6 +1028,7 @@ export interface WeeklyGrowthReportV2 {
     moodEmoji?: string
     emotionKeywords?: WeeklyEmotionKeyword[]
   }
+  pushCenter?: WeeklyPushCenter
   highlights?: WeeklyGrowthHighlight[]
   contributionGrid?: WeeklyContributionDay[]
   tags?: {

@@ -18,7 +18,11 @@ Hard constraints:
    similarly short in the requested language. It is not a diagnosis.
 6) emotionKeywords describe textual tone only. Each score is between 0 and 1.
 7) narrative contains 2-3 short second-person paragraphs.
-8) All user-facing values use the requested language. JSON keys stay English.
+8) pushCenter.styleVariants preserves the same facts in humorous,
+   professional, and motivational tones.
+9) Every unclear question and resource recommendation must cite messageIds
+   from the supplied candidates. Never emit a URL; provide a searchQuery only.
+10) All user-facing values use the requested language. JSON keys stay English.
 
 Output schema:
 {
@@ -31,6 +35,47 @@ Output schema:
     "moodEmoji": "single emoji",
     "emotionKeywords": [
       { "label": "string", "score": 0.0, "conversationIds": [1] }
+    ]
+  },
+  "pushCenter": {
+    "spiritualFood": {
+      "title": "string",
+      "summary": "string",
+      "takeaway": "string"
+    },
+    "styleVariants": {
+      "humorous": {
+        "greeting": "string",
+        "narrative": ["string"],
+        "callToAction": "string"
+      },
+      "professional": {
+        "greeting": "string",
+        "narrative": ["string"],
+        "callToAction": "string"
+      },
+      "motivational": {
+        "greeting": "string",
+        "narrative": ["string"],
+        "callToAction": "string"
+      }
+    },
+    "unclearQuestions": [
+      {
+        "question": "string",
+        "whyItMatters": "string",
+        "conversationIds": [1],
+        "messageIds": [2]
+      }
+    ],
+    "resourceRecommendations": [
+      {
+        "title": "string",
+        "reason": "string",
+        "searchQuery": "string",
+        "conversationIds": [1],
+        "messageIds": [2]
+      }
     ]
   },
   "highlights": [
@@ -75,6 +120,7 @@ function buildWeeklyRecapPrompt(payload: WeeklyRecapPromptPayload): string {
     energy: payload.energy ?? {},
     growthSeries: payload.growthSeries ?? [],
     tags: payload.tags ?? [],
+    openQuestions: payload.openQuestions ?? [],
     mosts: payload.mosts ?? {},
   };
   const candidates = (payload.highlightCandidates ?? []).slice(0, 8);
@@ -97,7 +143,10 @@ Requirements:
 4) If the candidate list is empty, return highlights: [].
 5) unexpectedConversation and mentionedEntity must cite allowed candidate IDs;
    return null when evidence is insufficient.
-6) Keep the response concise and write all display text in ${getLlmLanguageName(
+6) unclearQuestions and resourceRecommendations must cite allowed candidate
+   messageIds. Use searchQuery, never an invented URL.
+7) All three styleVariants must preserve the same facts and differ only in tone.
+8) Keep the response concise and write all display text in ${getLlmLanguageName(
     payload.locale
   )}.`;
 }
@@ -111,10 +160,10 @@ Do not invent quotes, people, or resources.`;
 }
 
 export const CURRENT_WEEKLY_RECAP_PROMPT: PromptVersion<WeeklyRecapPromptPayload> = {
-  version: "v2.0.0",
+  version: "v2.1.0",
   createdAt: "2026-07-19",
   description:
-    "Weekly growth V2 narrative layer with deterministic metrics and evidence-bound highlights.",
+    "Weekly push center with three tone variants, evidence-bound open questions, and safe resource search queries.",
   system: WEEKLY_RECAP_SYSTEM,
   fallbackSystem: WEEKLY_RECAP_FALLBACK_SYSTEM,
   userTemplate: buildWeeklyRecapPrompt,

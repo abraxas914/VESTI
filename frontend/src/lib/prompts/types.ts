@@ -6,6 +6,7 @@ import type {
   WeeklyGrowthSeriesPoint,
   WeeklyGrowthTag,
   WeeklyMostInsight,
+  WeeklyOpenQuestion,
   WeeklyRhythmMetric,
   WeeklyTopicBreadthMetric,
 } from "../types";
@@ -83,6 +84,7 @@ export interface WeeklyRecapPromptPayload {
     weightScore: number;
   }>;
   tags?: WeeklyGrowthTag[];
+  openQuestions?: WeeklyOpenQuestion[];
   mosts?: {
     latestConversation?: WeeklyMostInsight | null;
     topTopic?: WeeklyMostInsight | null;

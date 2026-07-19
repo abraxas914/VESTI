@@ -38,6 +38,7 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyPushSettings,
   WeeklyReportRecord
 } from "../types"
 import type { ChatSummaryData } from "../types/insightsPresentation"
@@ -837,6 +838,43 @@ export async function generateWeeklyRecap(
       })
     }
   ) as Promise<WeeklyReportRecord>
+}
+
+export async function getWeeklyPushSettings(): Promise<{
+  settings: WeeklyPushSettings
+  nextAt: number | null
+}> {
+  return sendRequest({
+    type: "GET_WEEKLY_PUSH_SETTINGS",
+    target: "background"
+  }) as Promise<{
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }>
+}
+
+export async function setWeeklyPushSettings(
+  changes: Partial<WeeklyPushSettings>
+): Promise<{
+  settings: WeeklyPushSettings
+  nextAt: number | null
+}> {
+  return sendRequest({
+    type: "SET_WEEKLY_PUSH_SETTINGS",
+    target: "background",
+    payload: { changes }
+  }) as Promise<{
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }>
+}
+
+export async function testWeeklyPushNotification(): Promise<string> {
+  const result = (await sendRequest({
+    type: "TEST_WEEKLY_PUSH_NOTIFICATION",
+    target: "background"
+  })) as { notificationId: string }
+  return result.notificationId
 }
 
 export async function getActiveCaptureStatus(): Promise<ActiveCaptureStatus> {

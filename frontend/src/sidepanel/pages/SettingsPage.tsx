@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
+import { WeeklyPushSettingsCard } from "../components/weekly/WeeklyPushSettingsCard"
 
 import {
   DEFAULT_CAPTURE_SETTINGS,
@@ -1097,6 +1098,8 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
         <LanguageSelector locale={locale} onChange={setLocale} />
 
         <RealtimeAssistToggle />
+
+        <WeeklyPushSettingsCard />
 
         <SettingsGroupLabel label={t.settings.groups.system} />
 

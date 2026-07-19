@@ -19,6 +19,9 @@ import type {
   WeeklyMetricComparison,
   WeeklyMetricSnapshot,
   WeeklyMostInsight,
+  WeeklyOpenQuestion,
+  WeeklyPushCenter,
+  WeeklyResourceRecommendation,
   WeeklyReportRecord,
 } from "../types";
 import { getEffectiveModelId } from "./llmConfig";
@@ -27,10 +30,12 @@ import { getLanguageSettings } from "./languageSettingsService";
 import { parseJsonObjectFromText } from "./insightSchemas";
 import {
   buildContributionGrid,
+  buildEmotionMap,
   buildGrowthSeries,
   buildWeeklyMosts,
   buildWeeklyTags,
   detectBlankWeek,
+  detectOpenQuestions,
 } from "./weeklyGrowthAnalytics";
 import {
   computeFocusDepth,
@@ -71,6 +76,7 @@ interface WeeklyGrowthAiResponse {
   identity?: unknown;
   highlights?: unknown;
   mosts?: unknown;
+  pushCenter?: unknown;
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -302,6 +308,302 @@ function validateMostInsight(
   };
 }
 
+function validateEvidence(
+  value: Record<string, unknown>,
+  candidatesByMessageId: ReadonlyMap<number, InternalHighlightCandidate>
+): { conversationIds: number[]; messageIds: number[] } | null {
+  const requestedMessageIds = Array.isArray(value.messageIds)
+    ? value.messageIds
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item))
+    : [];
+  const evidence = requestedMessageIds
+    .map((messageId) => candidatesByMessageId.get(messageId))
+    .filter(
+      (candidate): candidate is InternalHighlightCandidate =>
+        candidate !== undefined
+    );
+  if (evidence.length === 0) return null;
+  return {
+    conversationIds: [
+      ...new Set(evidence.map((candidate) => candidate.conversationId)),
+    ],
+    messageIds: [...new Set(evidence.map((candidate) => candidate.messageId))],
+  };
+}
+
+function validateOpenQuestions(
+  value: unknown,
+  candidatesByMessageId: ReadonlyMap<number, InternalHighlightCandidate>
+): WeeklyOpenQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      const evidence = validateEvidence(row, candidatesByMessageId);
+      const question = toBoundedText(row.question, 220);
+      if (!evidence || !question) return [];
+      return [
+        {
+          question,
+          whyItMatters: toBoundedText(row.whyItMatters, 260),
+          ...evidence,
+        } satisfies WeeklyOpenQuestion,
+      ];
+    })
+    .slice(0, 3);
+}
+
+function validateResourceRecommendations(
+  value: unknown,
+  candidatesByMessageId: ReadonlyMap<number, InternalHighlightCandidate>
+): WeeklyResourceRecommendation[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      const evidence = validateEvidence(row, candidatesByMessageId);
+      const title = toBoundedText(row.title, 120);
+      const searchQuery = toBoundedText(row.searchQuery, 160);
+      if (!evidence || !title || !searchQuery) return [];
+      return [
+        {
+          title,
+          reason: toBoundedText(row.reason, 260),
+          searchQuery,
+          ...evidence,
+        } satisfies WeeklyResourceRecommendation,
+      ];
+    })
+    .slice(0, 3);
+}
+
+function validateStyleVariant(value: unknown): {
+  greeting?: string;
+  narrative?: string[];
+  callToAction?: string;
+} | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const greeting = toBoundedText(row.greeting, 160);
+  const narrative = Array.isArray(row.narrative)
+    ? row.narrative
+        .map((item) => toBoundedText(item, 420))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+  const callToAction = toBoundedText(row.callToAction, 180);
+  if (!greeting && narrative.length === 0 && !callToAction) return null;
+  return { greeting, narrative, callToAction };
+}
+
+function validatePushCenter(
+  value: unknown,
+  base: WeeklyPushCenter | undefined,
+  candidatesByMessageId: ReadonlyMap<number, InternalHighlightCandidate>
+): WeeklyPushCenter | undefined {
+  if (!value || typeof value !== "object") return base;
+  const row = value as Record<string, unknown>;
+  const spiritualFoodRow =
+    row.spiritualFood && typeof row.spiritualFood === "object"
+      ? (row.spiritualFood as Record<string, unknown>)
+      : null;
+  const stylesRow =
+    row.styleVariants && typeof row.styleVariants === "object"
+      ? (row.styleVariants as Record<string, unknown>)
+      : {};
+  const humorous = validateStyleVariant(stylesRow.humorous);
+  const professional = validateStyleVariant(stylesRow.professional);
+  const motivational = validateStyleVariant(stylesRow.motivational);
+  const unclearQuestions = validateOpenQuestions(
+    row.unclearQuestions,
+    candidatesByMessageId
+  );
+  const resourceRecommendations = validateResourceRecommendations(
+    row.resourceRecommendations,
+    candidatesByMessageId
+  );
+
+  return {
+    spiritualFood: spiritualFoodRow
+      ? {
+          title:
+            toBoundedText(spiritualFoodRow.title, 120) ||
+            base?.spiritualFood?.title,
+          summary:
+            toBoundedText(spiritualFoodRow.summary, 320) ||
+            base?.spiritualFood?.summary,
+          takeaway:
+            toBoundedText(spiritualFoodRow.takeaway, 220) ||
+            base?.spiritualFood?.takeaway,
+        }
+      : base?.spiritualFood,
+    styleVariants: {
+      humorous: humorous ?? base?.styleVariants?.humorous,
+      professional: professional ?? base?.styleVariants?.professional,
+      motivational: motivational ?? base?.styleVariants?.motivational,
+    },
+    unclearQuestions:
+      unclearQuestions.length > 0
+        ? unclearQuestions
+        : base?.unclearQuestions ?? [],
+    resourceRecommendations:
+      resourceRecommendations.length > 0
+        ? resourceRecommendations
+        : base?.resourceRecommendations ?? [],
+  };
+}
+
+function buildLocalPushCenter(
+  locale: SupportedLocale,
+  candidates: InternalHighlightCandidate[],
+  tags: NonNullable<WeeklyGrowthReportV2["tags"]>,
+  unclearQuestions: WeeklyOpenQuestion[]
+): WeeklyPushCenter {
+  const topic =
+    tags.current?.[0]?.name ??
+    candidates[0]?.topic ??
+    candidates[0]?.title ??
+    (locale === "zh"
+      ? "本周思考"
+      : locale === "ja"
+        ? "今週の思考"
+        : locale === "ko"
+          ? "이번 주의 생각"
+          : "this week's thinking");
+  const resourceReason =
+    locale === "zh"
+      ? "围绕本周反复出现的主题补充一份基础材料。"
+      : locale === "ja"
+        ? "今週繰り返し現れたテーマの基礎資料を補います。"
+        : locale === "ko"
+          ? "이번 주 반복된 주제의 기초 자료를 보완합니다."
+          : "Add a grounded primer around a theme that recurred this week.";
+  const resources = (tags.current ?? []).slice(0, 3).flatMap((tag) => {
+    const name = tag.name?.trim();
+    const conversationId = tag.conversationIds?.[0];
+    const candidate = candidates.find(
+      (item) => item.conversationId === conversationId
+    );
+    if (!name || !candidate) return [];
+    return [
+      {
+        title:
+          locale === "zh"
+            ? `${name} 入门与实践`
+            : locale === "ja"
+              ? `${name}の入門と実践`
+              : locale === "ko"
+                ? `${name} 입문과 실천`
+            : `${name}: primer and practice`,
+        reason: resourceReason,
+        searchQuery: `${name} guide best practices`,
+        conversationIds: [candidate.conversationId],
+        messageIds: [candidate.messageId],
+      } satisfies WeeklyResourceRecommendation,
+    ];
+  });
+
+  const copy =
+    locale === "zh"
+      ? {
+          spiritualTitle: `本周精神食粮：${topic}`,
+          spiritualSummary: `你本周围绕“${topic}”留下了持续的思考痕迹。`,
+          takeaway: "挑一个仍有余味的问题，下周继续追一层。",
+          humorousGreeting: "这周的大脑也没闲着",
+          professionalGreeting: "本周思考脉络已整理",
+          motivationalGreeting: "你正在把好奇心变成进展",
+          humorousNarrative: "有些问题被你追着问，有些答案还在路上。",
+          professionalNarrative: "本周的重点主题、情绪信号与待澄清问题已完成归纳。",
+          motivationalNarrative: "每一次认真追问，都在为下一步积累清晰度。",
+          humorousAction: "下周再抓住一个问题不放。",
+          professionalAction: "选择一个未闭环问题继续验证。",
+          motivationalAction: "把今天的一点清晰，变成下周的一步行动。",
+        }
+      : locale === "ja"
+        ? {
+            spiritualTitle: `今週の心の栄養：${topic}`,
+            spiritualSummary: `今週は「${topic}」について繰り返し考えました。`,
+            takeaway: "まだ気になる問いを一つ選び、来週もう一段掘り下げましょう。",
+            humorousGreeting: "今週も頭はほどよく大忙しでした",
+            professionalGreeting: "今週の思考マップを整理しました",
+            motivationalGreeting: "好奇心が着実な前進に変わっています",
+            humorousNarrative:
+              "追いかけた問いもあれば、うまく逃げ切った答えも少しありました。",
+            professionalNarrative:
+              "主要テーマ、感情の兆し、未解決の問いを簡潔に整理しました。",
+            motivationalNarrative:
+              "丁寧な問いかけの一つひとつが、次の一歩を明確にしています。",
+            humorousAction: "来週は一つの疑問を逃さず追いかけましょう。",
+            professionalAction: "未解決の問いを一つ選び、重点的に検証しましょう。",
+            motivationalAction: "一つの気づきを、小さな行動に変えましょう。",
+          }
+        : locale === "ko"
+          ? {
+              spiritualTitle: `이번 주 마음의 양식: ${topic}`,
+              spiritualSummary: `이번 주에는 “${topic}”에 대한 생각이 반복해서 이어졌습니다.`,
+              takeaway: "여운이 남은 질문 하나를 골라 다음 주에 한 단계 더 파고들어 보세요.",
+              humorousGreeting: "이번 주에도 머릿속은 기분 좋게 바빴어요",
+              professionalGreeting: "이번 주 생각 지도를 정리했습니다",
+              motivationalGreeting: "호기심을 꾸준한 진전으로 바꾸고 있어요",
+              humorousNarrative:
+                "끝까지 쫓아간 질문도 있고, 슬쩍 달아난 답도 조금 있었습니다.",
+              professionalNarrative:
+                "핵심 주제, 감정 신호, 아직 풀리지 않은 질문을 간결하게 정리했습니다.",
+              motivationalNarrative:
+                "신중하게 던진 질문 하나하나가 다음 걸음을 더 선명하게 만듭니다.",
+              humorousAction: "다음 주에는 질문 하나를 끝까지 붙잡아 보세요.",
+              professionalAction: "열린 질문 하나를 골라 집중적으로 검증하세요.",
+              motivationalAction: "유용한 통찰 하나를 작은 행동으로 바꿔 보세요.",
+            }
+          : {
+          spiritualTitle: `Food for thought: ${topic}`,
+          spiritualSummary: `Your week kept returning to ${topic}.`,
+          takeaway: "Choose one open question and follow it one layer deeper.",
+          humorousGreeting: "Your brain stayed pleasantly busy",
+          professionalGreeting: "Your weekly thinking map is ready",
+          motivationalGreeting: "You are turning curiosity into momentum",
+          humorousNarrative:
+            "Some questions got chased down; a few clever loose ends escaped.",
+          professionalNarrative:
+            "Key themes, emotional signals, and unresolved questions are summarized.",
+          motivationalNarrative:
+            "Every careful question is building clarity for the next move.",
+          humorousAction: "Pick one loose end and politely refuse to let it escape.",
+          professionalAction: "Select one open question for focused validation.",
+          motivationalAction: "Turn one useful insight into one small action.",
+            };
+
+  return {
+    spiritualFood: {
+      title: copy.spiritualTitle,
+      summary: copy.spiritualSummary,
+      takeaway: copy.takeaway,
+    },
+    styleVariants: {
+      humorous: {
+        greeting: copy.humorousGreeting,
+        narrative: [copy.humorousNarrative],
+        callToAction: copy.humorousAction,
+      },
+      professional: {
+        greeting: copy.professionalGreeting,
+        narrative: [copy.professionalNarrative],
+        callToAction: copy.professionalAction,
+      },
+      motivational: {
+        greeting: copy.motivationalGreeting,
+        narrative: [copy.motivationalNarrative],
+        callToAction: copy.motivationalAction,
+      },
+    },
+    unclearQuestions,
+    resourceRecommendations: resources,
+  };
+}
+
 function applyAiLayer(
   base: WeeklyGrowthReportV2,
   raw: WeeklyGrowthAiResponse,
@@ -407,8 +709,16 @@ function applyAiLayer(
         toBoundedText(identityRow.moodEmoji, 8) ||
         base.identity?.moodEmoji ||
         "✨",
-      emotionKeywords,
+      emotionKeywords:
+        emotionKeywords.length > 0
+          ? emotionKeywords
+          : base.identity?.emotionKeywords,
     },
+    pushCenter: validatePushCenter(
+      raw.pushCenter,
+      base.pushCenter,
+      candidatesByMessageId
+    ),
     highlights: acceptedHighlights.slice(0, HIGHLIGHT_OUTPUT_LIMIT),
     mosts: {
       ...base.mosts,
@@ -680,6 +990,27 @@ export async function generateWeeklyGrowthReportV2(
     messagesByConversation,
     topics
   );
+  const emotionMap = buildEmotionMap(
+    currentConversations,
+    messagesByConversation,
+    languageSettings.locale
+  );
+  const unclearQuestions = detectOpenQuestions(
+    currentConversations,
+    messagesByConversation,
+    languageSettings.locale
+  );
+  const localPushCenter = buildLocalPushCenter(
+    languageSettings.locale,
+    candidates,
+    tags,
+    unclearQuestions
+  );
+  const localIdentity = buildLocalIdentity(
+    languageSettings.locale,
+    currentConversations.length
+  );
+  localIdentity.emotionKeywords = emotionMap;
 
   let structured: WeeklyGrowthReportV2 = {
     schema: "weekly_growth_report.v2",
@@ -713,10 +1044,8 @@ export async function generateWeeklyGrowthReportV2(
       ),
       series: growthSeries,
     },
-    identity: buildLocalIdentity(
-      languageSettings.locale,
-      currentConversations.length
-    ),
+    identity: localIdentity,
+    pushCenter: localPushCenter,
     highlights: candidates.slice(0, 3).map(fallbackHighlight),
     contributionGrid: buildContributionGrid(
       currentConversations,
@@ -748,6 +1077,7 @@ export async function generateWeeklyGrowthReportV2(
         weightScore: candidate.weightScore,
       })),
       tags: tags.current,
+      openQuestions: unclearQuestions,
       mosts: {
         latestConversation: mosts.latestConversation,
         topTopic: mosts.topTopic,
