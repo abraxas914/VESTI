@@ -147,6 +147,20 @@ export function ReaderView({
     };
   }, [isReady, currentIndex, occurrenceCount]);
 
+  useEffect(() => {
+    if (!isReady || hasQuery || firstMatchedMessageId === null) return;
+    const target = scrollRef.current?.querySelector(
+      `[data-message-id="${firstMatchedMessageId}"]`
+    );
+    if (!(target instanceof HTMLElement)) return;
+    const frame = window.requestAnimationFrame(() => {
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isReady, hasQuery, firstMatchedMessageId, messages.length]);
+
   const navDisabled = !isReady || occurrenceCount === 0;
   const navLabel = isLoading
     ? "Loading..."
@@ -252,6 +266,11 @@ export function ReaderView({
                 occurrenceIndexMap={occurrenceIndexMap}
                 sidecarTargetMap={sidecarTargetMap}
                 currentIndex={isReady ? currentIndex : null}
+                isTarget={
+                  !hasQuery &&
+                  firstMatchedMessageId !== null &&
+                  msg.id === firstMatchedMessageId
+                }
               />
             ))}
           </div>

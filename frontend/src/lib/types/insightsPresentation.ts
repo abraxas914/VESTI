@@ -1,3 +1,5 @@
+import type { WeeklyGrowthReportV2 } from "./index";
+
 export interface ArtifactMetaData {
   title: string;
   generated_at: string;
@@ -63,5 +65,11 @@ export interface WeeklyRecapData {
   };
   highlight: { title: string; detail: string } | null;
   narrative: string[];
+  plain_text?: string;
+}
+
+export interface WeeklyGrowthData {
+  meta: ArtifactMetaData;
+  report: WeeklyGrowthReportV2;
   plain_text?: string;
 }

@@ -69,6 +69,19 @@ export function VestiSidepanel() {
     setSelectedConversation(conversation);
   };
 
+  const handleOpenWeeklyHighlight = (
+    conversation: Conversation,
+    messageId: number
+  ) => {
+    dispatch({
+      type: "OPEN_READER",
+      conversationId: conversation.id,
+      firstMatchedMessageId: messageId,
+    });
+    setSelectedConversation(conversation);
+    setCurrentPage("timeline");
+  };
+
   const handleBack = () => {
     dispatch({ type: "BACK_TO_LIST" });
     setSelectedConversation(null);
@@ -152,6 +165,7 @@ export function VestiSidepanel() {
               conversation={selectedConversation}
               refreshToken={refreshToken}
               pipelineProgressEvent={pipelineProgressEvent}
+              onOpenWeeklyHighlight={handleOpenWeeklyHighlight}
             />
           ) : currentPage === "settings" ? (
             <SettingsPage onNavigateToData={handleNavigateToData} />

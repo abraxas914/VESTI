@@ -1,4 +1,14 @@
-import type { Conversation, ConversationSummaryV2, Message } from "../types";
+import type {
+  Conversation,
+  ConversationSummaryV2,
+  Message,
+  WeeklyFocusDepthMetric,
+  WeeklyGrowthSeriesPoint,
+  WeeklyGrowthTag,
+  WeeklyMostInsight,
+  WeeklyRhythmMetric,
+  WeeklyTopicBreadthMetric,
+} from "../types";
 import type { SupportedLocale } from "../i18n/locales";
 import type { ExportPromptProfile } from "../services/llmModelProfile";
 import type { WeeklyStats } from "../services/weeklyStats";
@@ -48,7 +58,7 @@ export interface WeeklyDigestPromptPayload {
 
 export interface WeeklyRecapPromptPayload {
   stats: WeeklyStats;
-  highlightContext: {
+  highlightContext?: {
     title: string;
     topic: string | null;
     messageCount: number;
@@ -56,6 +66,28 @@ export interface WeeklyRecapPromptPayload {
     isStarred: boolean;
     summaryGist?: string;
   } | null;
+  energy?: {
+    focusDepth?: WeeklyFocusDepthMetric;
+    rhythmHealth?: WeeklyRhythmMetric;
+    topicBreadth?: WeeklyTopicBreadthMetric;
+  };
+  growthSeries?: WeeklyGrowthSeriesPoint[];
+  highlightCandidates?: Array<{
+    conversationId: number;
+    messageId: number;
+    title: string;
+    topic: string | null;
+    role: "user" | "ai";
+    excerpt: string;
+    turnCount: number;
+    weightScore: number;
+  }>;
+  tags?: WeeklyGrowthTag[];
+  mosts?: {
+    latestConversation?: WeeklyMostInsight | null;
+    topTopic?: WeeklyMostInsight | null;
+    longestConversation?: WeeklyMostInsight | null;
+  };
   rangeStart: number;
   rangeEnd: number;
   locale: SupportedLocale;

@@ -23,10 +23,10 @@ import type {
 import {
   getConversationById,
   getSummary,
-  getTopics,
   getWeeklyReport,
   listConversationsByRange,
   listMessages,
+  listTopicDefinitions,
   saveSummary,
   saveWeeklyReport,
 } from "../db/repository";
@@ -69,6 +69,7 @@ import {
   createPromptReadyConversationContext,
   type PromptReadyMessage,
 } from "../prompts/promptIngestionAdapter";
+import { generateWeeklyGrowthReportV2 } from "./weeklyGrowthGenerationService";
 
 const SUMMARY_MAX_CHARS = 12000;
 const WEEKLY_MAX_CHARS = 12000;
@@ -2948,7 +2949,7 @@ function buildPriorWeekRanges(
 
 function buildRecapHighlightContext(
   conversations: Conversation[],
-  topics: Awaited<ReturnType<typeof getTopics>>,
+  topics: Awaited<ReturnType<typeof listTopicDefinitions>>,
   summaryGist?: string
 ): WeeklyRecapPromptPayload["highlightContext"] {
   const ranked = rankHighlightCandidates(conversations, { topics });
@@ -3238,7 +3239,7 @@ function isReusableWeeklyRecap(
   );
 }
 
-export async function generateWeeklyRecap(
+async function generateWeeklyRecapV1(
   settings: LlmConfig,
   rangeStart: number,
   rangeEnd: number,
@@ -3311,7 +3312,7 @@ export async function generateWeeklyRecap(
       return count;
     });
 
-    const topics = await getTopics();
+    const topics = await listTopicDefinitions();
     throwIfGenerationAborted(control.signal);
 
     const stats = computeWeeklyStats(conversations, {
@@ -3499,6 +3500,20 @@ export async function generateWeeklyRecap(
     pipelineEmitter.emit("degraded_fallback", "degraded_fallback");
     throw error;
   }
+}
+
+export async function generateWeeklyRecap(
+  settings: LlmConfig,
+  rangeStart: number,
+  rangeEnd: number,
+  control: InsightGenerationControl = {}
+): Promise<WeeklyReportRecord> {
+  return generateWeeklyGrowthReportV2(
+    settings,
+    rangeStart,
+    rangeEnd,
+    control
+  );
 }
 
 

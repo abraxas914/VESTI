@@ -492,6 +492,9 @@ export interface Note {
   source_path: string | null
   import_meta: NoteImportMeta | null
   obsidian_export: NoteObsidianExportMeta | null
+  kind?: "user" | "weekly_report"
+  source_report_id?: number | null
+  is_starred?: boolean
 }
 
 export interface CreateNoteInput {
@@ -502,6 +505,9 @@ export interface CreateNoteInput {
   source_path?: string | null
   import_meta?: NoteImportMeta | null
   obsidian_export?: NoteObsidianExportMeta | null
+  kind?: "user" | "weekly_report"
+  source_report_id?: number | null
+  is_starred?: boolean
 }
 
 export interface UpdateNoteChanges {
@@ -512,6 +518,9 @@ export interface UpdateNoteChanges {
   source_path?: string | null
   import_meta?: NoteImportMeta | null
   obsidian_export?: NoteObsidianExportMeta | null
+  kind?: "user" | "weekly_report"
+  source_report_id?: number | null
+  is_starred?: boolean
 }
 
 export interface NoteSourceRecord {
@@ -851,15 +860,169 @@ export interface WeeklyRecapV1 {
   }
 }
 
+export type WeeklyReportPeriodType = "week" | "quarter" | "year"
+export type WeeklyMetricConfidence = "estimated" | "reliable"
+
+export interface WeeklyFocusDepthMetric {
+  score?: number
+  averageTurns?: number
+  longestTurns?: number
+  averageMessageLength?: number
+  deepConversationCount?: number
+  deepConversationRate?: number
+  confidence?: WeeklyMetricConfidence
+}
+
+export interface WeeklyRhythmMetric {
+  score?: number
+  activeHours?: number[]
+  activeDays?: number
+  peakHour?: number | null
+  lateNightRatio?: number
+  activityConcentration?: number
+  confidence?: WeeklyMetricConfidence
+}
+
+export interface WeeklyTopicBreadthMetric {
+  score?: number
+  uniqueTopicCount?: number
+  entropy?: number
+  topTopics?: Array<{
+    name?: string
+    count?: number
+    share?: number
+  }>
+  confidence?: WeeklyMetricConfidence
+}
+
+export interface WeeklyMetricSnapshot {
+  conversationCount?: number
+  activeDays?: number
+  focusDepthScore?: number
+  rhythmScore?: number
+  topicBreadthScore?: number
+}
+
+export interface WeeklyMetricComparison {
+  baselineLabel?: string
+  current?: WeeklyMetricSnapshot
+  baseline?: WeeklyMetricSnapshot
+  deltas?: WeeklyMetricSnapshot
+}
+
+export interface WeeklyGrowthSeriesPoint extends WeeklyMetricSnapshot {
+  rangeStart?: number
+  rangeEnd?: number
+  label?: string
+}
+
+export interface WeeklyEmotionKeyword {
+  label?: string
+  score?: number
+  conversationIds?: number[]
+}
+
+export interface WeeklyGrowthHighlight {
+  id?: string
+  conversationId?: number
+  messageId?: number
+  title?: string
+  excerpt?: string
+  insight?: string
+  score?: number
+  originAt?: number
+}
+
+export interface WeeklyContributionDay {
+  date?: string
+  count?: number
+  intensity?: number
+  depthScore?: number
+  conversationIds?: number[]
+}
+
+export interface WeeklyGrowthTag {
+  name?: string
+  count?: number
+  weight?: number
+  conversationIds?: number[]
+}
+
+export interface WeeklyMostInsight {
+  label?: string
+  detail?: string
+  conversationId?: number | null
+  messageIds?: number[]
+}
+
+export interface WeeklyGrowthReportV2 {
+  schema?: "weekly_growth_report.v2"
+  period?: {
+    type?: WeeklyReportPeriodType
+    start?: number
+    end?: number
+    timezone?: string
+  }
+  greeting?: string
+  narrative?: string[]
+  energy?: {
+    focusDepth?: WeeklyFocusDepthMetric
+    rhythmHealth?: WeeklyRhythmMetric
+    topicBreadth?: WeeklyTopicBreadthMetric
+  }
+  growth?: {
+    previousWeek?: WeeklyMetricComparison
+    previousMonth?: WeeklyMetricComparison
+    series?: WeeklyGrowthSeriesPoint[]
+  }
+  identity?: {
+    label?: string
+    rationale?: string
+    moodEmoji?: string
+    emotionKeywords?: WeeklyEmotionKeyword[]
+  }
+  highlights?: WeeklyGrowthHighlight[]
+  contributionGrid?: WeeklyContributionDay[]
+  tags?: {
+    current?: WeeklyGrowthTag[]
+    new?: WeeklyGrowthTag[]
+    hot?: WeeklyGrowthTag[]
+  }
+  mosts?: {
+    latestConversation?: WeeklyMostInsight | null
+    topTopic?: WeeklyMostInsight | null
+    longestConversation?: WeeklyMostInsight | null
+    unexpectedConversation?: WeeklyMostInsight | null
+    mentionedEntity?: WeeklyMostInsight | null
+  }
+  blankWeek?: {
+    isBlank?: boolean
+    reason?: "no_data" | "low_activity" | "capture_uncertain" | "none"
+    gentleMessage?: string
+    conversationCount?: number
+    baselineMedian?: number | null
+  }
+}
+
 export interface WeeklyReportRecord {
   id: number
   rangeStart: number
   rangeEnd: number
   content: string
-  structured?: WeeklyReportV1 | WeeklyLiteReportV1 | WeeklyRecapV1 | null
+  structured?:
+    | WeeklyReportV1
+    | WeeklyLiteReportV1
+    | WeeklyRecapV1
+    | WeeklyGrowthReportV2
+    | null
   format?: InsightFormat
   status?: InsightStatus
-  schemaVersion?: "weekly_report.v1" | "weekly_lite.v1" | "weekly_recap.v1"
+  schemaVersion?:
+    | "weekly_report.v1"
+    | "weekly_lite.v1"
+    | "weekly_recap.v1"
+    | "weekly_growth_report.v2"
+  periodType?: WeeklyReportPeriodType
   modelId: string
   createdAt: number
   sourceHash: string

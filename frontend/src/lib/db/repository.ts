@@ -491,6 +491,7 @@ function toWeeklyReport(record: WeeklyReportRecordRecord): WeeklyReportRecord {
 
   return {
     ...weekly,
+    periodType: weekly.periodType ?? "week",
     structured: weekly.structured ?? null,
     format,
     status,
@@ -498,6 +499,10 @@ function toWeeklyReport(record: WeeklyReportRecordRecord): WeeklyReportRecord {
       weekly.schemaVersion ??
       (isWeeklyLiteStructured(weekly.structured)
         ? "weekly_lite.v1"
+        : weekly.structured &&
+            "schema" in weekly.structured &&
+            weekly.structured.schema === "weekly_growth_report.v2"
+          ? "weekly_growth_report.v2"
         : weekly.structured
           ? "weekly_report.v1"
           : undefined)
@@ -535,7 +540,12 @@ const IMPORT_SUMMARY_SCHEMA_VERSIONS = new Set<
 >(["conversation_summary.v1", "conversation_summary.v2"])
 const IMPORT_WEEKLY_SCHEMA_VERSIONS = new Set<
   NonNullable<WeeklyReportRecord["schemaVersion"]>
->(["weekly_report.v1", "weekly_lite.v1", "weekly_recap.v1"])
+>([
+  "weekly_report.v1",
+  "weekly_lite.v1",
+  "weekly_recap.v1",
+  "weekly_growth_report.v2"
+])
 
 function invalidImport(path: string, message: string): never {
   throw new Error(`Invalid Vesti import JSON: ${path} ${message}`)
@@ -930,7 +940,11 @@ function normalizeImportedWeeklyReport(
     schemaVersion,
     modelId: readImportString(record, "modelId", path),
     createdAt: readImportNumber(record, "createdAt", path),
-    sourceHash: readImportString(record, "sourceHash", path)
+    sourceHash: readImportString(record, "sourceHash", path),
+    periodType:
+      record.periodType === "quarter" || record.periodType === "year"
+        ? record.periodType
+        : "week"
   }
 }
 
@@ -1096,6 +1110,44 @@ export async function getTopics(): Promise<Topic[]> {
   sortByName(roots)
   roots.forEach((root) => aggregateCounts(root))
 
+  return roots
+}
+
+/**
+ * Return only the topic tree. Unlike getTopics(), this does not derive counts
+ * from every conversation and therefore remains a single lightweight read.
+ */
+export async function listTopicDefinitions(): Promise<Topic[]> {
+  const topicRecords = await db.transaction("r", db.topics, () =>
+    db.topics.toArray()
+  )
+  const nodeById = new Map<number, Topic>()
+
+  for (const record of topicRecords) {
+    if (record.id === undefined) continue
+    nodeById.set(record.id, {
+      ...toTopic(record),
+      children: []
+    })
+  }
+
+  const roots: Topic[] = []
+  for (const node of nodeById.values()) {
+    const parentId = node.parent_id
+    if (parentId !== null && nodeById.has(parentId)) {
+      nodeById.get(parentId)!.children!.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+
+  const sortTree = (nodes: Topic[]) => {
+    nodes.sort((left, right) => left.name.localeCompare(right.name))
+    for (const node of nodes) {
+      sortTree(node.children ?? [])
+    }
+  }
+  sortTree(roots)
   return roots
 }
 
@@ -1420,6 +1472,48 @@ export async function listMessages(conversationId: number): Promise<Message[]> {
     .sortBy("created_at")
 
   return records.map(toMessage)
+}
+
+/**
+ * Read messages with one created_at index query, then group the result by
+ * conversation in memory. This is the weekly-report alternative to N+1 reads.
+ */
+export async function listMessagesByRange(
+  rangeStart: number,
+  rangeEnd: number,
+  conversationIds?: readonly number[]
+): Promise<Map<number, Message[]>> {
+  if (
+    !Number.isFinite(rangeStart) ||
+    !Number.isFinite(rangeEnd) ||
+    rangeEnd < rangeStart
+  ) {
+    return new Map()
+  }
+
+  const allowedIds =
+    conversationIds && conversationIds.length > 0
+      ? new Set(conversationIds)
+      : null
+  const records = await db.transaction("r", db.messages, () =>
+    db.messages
+      .where("created_at")
+      .between(rangeStart, rangeEnd, true, true)
+      .toArray()
+  )
+  const grouped = new Map<number, Message[]>()
+
+  for (const record of records) {
+    if (allowedIds && !allowedIds.has(record.conversation_id)) continue
+    const message = toMessage(record)
+    const messages = grouped.get(message.conversation_id) ?? []
+    messages.push(message)
+    grouped.set(message.conversation_id, messages)
+  }
+  for (const messages of grouped.values()) {
+    messages.sort((left, right) => left.created_at - right.created_at)
+  }
+  return grouped
 }
 
 export async function listAnnotations(
@@ -2036,8 +2130,8 @@ export async function getWeeklyReport(
   rangeEnd: number
 ): Promise<WeeklyReportRecord | null> {
   const record = await db.weekly_reports
-    .where("rangeStart")
-    .equals(rangeStart)
+    .where("[periodType+rangeStart]")
+    .equals(["week", rangeStart])
     .and((item) => item.rangeEnd === rangeEnd)
     .first()
   return record ? toWeeklyReport(record) : null
@@ -2064,24 +2158,26 @@ export async function saveWeeklyReport(
 
     try {
       throwIfAborted()
+      const periodType = record.periodType ?? "week"
+      const storedRecord = { ...record, periodType }
       const existing = await db.weekly_reports
-        .where("rangeStart")
-        .equals(record.rangeStart)
+        .where("[periodType+rangeStart]")
+        .equals([periodType, record.rangeStart])
         .and((item) => item.rangeEnd === record.rangeEnd)
         .first()
 
       throwIfAborted()
       if (existing?.id !== undefined) {
-        await db.weekly_reports.update(existing.id, record)
+        await db.weekly_reports.update(existing.id, storedRecord)
         // Aborting before the transaction resolves rolls back the update.
         throwIfAborted()
-        return toWeeklyReport({ ...existing, ...record, id: existing.id })
+        return toWeeklyReport({ ...existing, ...storedRecord, id: existing.id })
       }
 
-      const id = await db.weekly_reports.add(record)
+      const id = await db.weekly_reports.add(storedRecord)
       // Aborting before the transaction resolves rolls back the insert.
       throwIfAborted()
-      return toWeeklyReport({ ...record, id })
+      return toWeeklyReport({ ...storedRecord, id })
     } finally {
       control.signal?.removeEventListener("abort", abortTransaction)
     }
@@ -2144,7 +2240,10 @@ function toNote(record: NoteRecord & { id: number }): Note {
     source_type: record.source_type ?? "native",
     source_path: record.source_path ?? null,
     import_meta: record.import_meta ?? null,
-    obsidian_export: record.obsidian_export ?? null
+    obsidian_export: record.obsidian_export ?? null,
+    kind: record.kind ?? "user",
+    source_report_id: record.source_report_id ?? null,
+    is_starred: Boolean(record.is_starred)
   }
 }
 
@@ -2334,7 +2433,13 @@ async function resolveStoredNoteFields(
     source_type: sourceType,
     source_path: typeof sourcePath === "string" && sourcePath.trim() ? sourcePath : null,
     import_meta: importMeta,
-    obsidian_export: obsidianExport
+    obsidian_export: obsidianExport,
+    kind: input.kind ?? existing?.kind ?? "user",
+    source_report_id:
+      input.source_report_id !== undefined
+        ? input.source_report_id
+        : existing?.source_report_id ?? null,
+    is_starred: input.is_starred ?? existing?.is_starred ?? false
   }
 }
 
