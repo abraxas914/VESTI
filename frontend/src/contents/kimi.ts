@@ -4,12 +4,16 @@ import { ConversationObserver } from "../lib/core/observer/ConversationObserver"
 import { KimiParser } from "../lib/core/parser/kimi/KimiParser";
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline";
 import { sendRequest } from "../lib/messaging/runtime";
+import { registerRelayInjection } from "../lib/relay/registerContentRelay";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://www.kimi.com/*", "https://kimi.com/*", "https://kimi.moonshot.cn/*"],
   run_at: "document_idle",
 };
+
+// Relay handoff injection works even on pages where capture detects no chat.
+registerRelayInjection("kimi");
 
 const parser = new KimiParser();
 if (!parser.detect()) {

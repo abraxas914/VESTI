@@ -4,12 +4,16 @@ import { ClaudeParser } from "../lib/core/parser/claude/ClaudeParser";
 import { ConversationObserver } from "../lib/core/observer/ConversationObserver";
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline";
 import { sendRequest } from "../lib/messaging/runtime";
+import { registerRelayInjection } from "../lib/relay/registerContentRelay";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://claude.ai/*"],
   run_at: "document_idle",
 };
+
+// Relay handoff injection works even on pages where capture detects no chat.
+registerRelayInjection("claude");
 
 const parser = new ClaudeParser();
 if (!parser.detect()) {

@@ -47,6 +47,25 @@ export/import backup paths (`exportAllData`/`importAllData` + the prompt backup)
 Bump the schema version + add a migration for any store/index change; never mutate an
 existing version's stores.
 
+### Desktop bridge (VESTI-APP)
+`lib/services/desktopBridgeService.ts` talks to the Vesti desktop app's loopback
+HTTP bridge (`http://127.0.0.1:28765`, Bridge Protocol v1.1). Pairing trades a
+one-time 6-digit code for a Bearer token that lives in `chrome.storage.local`
+(`vesti_desktop_bridge`) and is never exposed to extension pages. Sync: the first
+run (or a manual full sync) POSTs `exportAllDataAsJson()`; afterwards a daily
+`chrome.alarms` job (`vesti-desktop-sync`, registered in `background/index.ts`)
+POSTs `exportIncrementalDataAsJson(sinceMs)` and persists the server-returned
+cursor. Imports are idempotent on the desktop side, so retries are always safe.
+
+**Relay (desktop → extension)** is the reverse direction: `lib/services/relayService.ts`
+polls `GET /v1/outbox` every 2 minutes (`vesti-relay-poll` alarm), queues items in
+`chrome.storage.local` (`vesti_relay_outbox`) with a toolbar badge count and the
+`RelayOutboxCard` settings UI, and `lib/relay/injectors.ts` fills the composer on
+all 8 platforms — fill only, never sends; the desktop item is acked only after a
+read-back check passes. Each `contents/<platform>.ts` calls
+`registerRelayInjection()` at module top level, so injection works even when no
+conversation is detected on the page.
+
 ---
 
 ## 2. i18n — three surfaces, don't mix them
