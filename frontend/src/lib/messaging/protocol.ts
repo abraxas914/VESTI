@@ -7,6 +7,7 @@ import type {
   CreateNoteInput,
   DashboardStats,
   DataOverviewSnapshot,
+  DesktopBridgeStatus,
   ExploreAskOptions,
   ExploreMessage,
   ExploreMode,
@@ -33,6 +34,7 @@ import type {
   PromptExtractionResult,
   PromptCompletionResult,
   RagResponse,
+  RelayItem,
   RoundtablePersonaId,
   RoundtableResult,
   RelatedConversation,
@@ -576,6 +578,45 @@ export type RequestMessage =
       requestId?: string
     }
   | {
+      type: "DESKTOP_BRIDGE_GET_STATE"
+      target?: "background"
+      requestId?: string
+    }
+  | {
+      type: "DESKTOP_BRIDGE_PAIR"
+      target?: "background"
+      requestId?: string
+      payload: { code: string }
+    }
+  | {
+      type: "DESKTOP_BRIDGE_DISCONNECT"
+      target?: "background"
+      requestId?: string
+    }
+  | {
+      type: "DESKTOP_BRIDGE_SYNC_NOW"
+      target?: "background"
+      requestId?: string
+      payload?: { full?: boolean }
+    }
+  | {
+      type: "RELAY_LIST"
+      target?: "background"
+      requestId?: string
+    }
+  | {
+      type: "RELAY_INJECT"
+      target?: "background"
+      requestId?: string
+      payload: { id: number }
+    }
+  | {
+      type: "RELAY_DISMISS"
+      target?: "background"
+      requestId?: string
+      payload: { id: number }
+    }
+  | {
       type: "LIST_PROMPTS"
       target?: "offscreen"
       via?: "background"
@@ -729,6 +770,23 @@ export type ResponseDataMap = {
   IMPORT_HISTORY_PROBE: { supported: boolean; platform?: Platform; available?: boolean }
   IMPORT_HISTORY_START: { started: boolean; platform?: Platform; reason?: string }
   IMPORT_HISTORY_CANCEL: { ok: boolean }
+  DESKTOP_BRIDGE_GET_STATE: { state: DesktopBridgeStatus }
+  DESKTOP_BRIDGE_PAIR: { state: DesktopBridgeStatus }
+  DESKTOP_BRIDGE_DISCONNECT: { state: DesktopBridgeStatus }
+  DESKTOP_BRIDGE_SYNC_NOW: {
+    state: DesktopBridgeStatus
+    synced: boolean
+    skipped?: string
+    conversations?: number
+    messages?: number
+  }
+  RELAY_LIST: {
+    items: RelayItem[]
+    outboxSupported: boolean
+    needsRepair: boolean
+  }
+  RELAY_INJECT: { item: RelayItem }
+  RELAY_DISMISS: { dismissed: boolean }
   LIST_PROMPTS: Prompt[]
   SEARCH_PROMPTS: Prompt[]
   CREATE_PROMPT: { prompt: Prompt; created: boolean }

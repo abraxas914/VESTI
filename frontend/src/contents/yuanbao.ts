@@ -4,12 +4,16 @@ import { ConversationObserver } from "../lib/core/observer/ConversationObserver"
 import { YuanbaoParser } from "../lib/core/parser/yuanbao/YuanbaoParser";
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline";
 import { sendRequest } from "../lib/messaging/runtime";
+import { registerRelayInjection } from "../lib/relay/registerContentRelay";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://yuanbao.tencent.com/*"],
   run_at: "document_idle",
 };
+
+// Relay handoff injection works even on pages where capture detects no chat.
+registerRelayInjection("yuanbao");
 
 const parser = new YuanbaoParser();
 if (!parser.detect()) {

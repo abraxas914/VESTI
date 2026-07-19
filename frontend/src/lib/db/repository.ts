@@ -1771,6 +1771,41 @@ async function collectExportDataset() {
   return { conversations, messages, summaries, weeklyReports, annotations }
 }
 
+// Incremental export slice for the desktop bridge: conversations whose capture
+// freshness moved past `sinceMs`, plus all of their messages. Summaries /
+// weeklyReports / annotations stay empty so the desktop side merges on the
+// conversation level only.
+async function collectExportDatasetSince(sinceMs: number) {
+  const conversationRecords = (await db.conversations.toArray()).filter(
+    (record) =>
+      typeof record.last_captured_at === "number" &&
+      Number.isFinite(record.last_captured_at) &&
+      record.last_captured_at > sinceMs
+  )
+  const conversations = conversationRecords.map(toConversation)
+  const ids = new Set(conversations.map((item) => item.id))
+  const messages = (await db.messages.toArray())
+    .filter((record) => ids.has(record.conversation_id))
+    .map(toMessage)
+  return {
+    conversations,
+    messages,
+    summaries: [] as SummaryRecord[],
+    weeklyReports: [] as WeeklyReportRecord[],
+    annotations: [] as Annotation[]
+  }
+}
+
+// JSON bundle (same shape as exportAllData("json")) restricted to captures
+// newer than `sinceMs`. Used by the desktop bridge incremental sync.
+export async function exportIncrementalDataAsJson(
+  sinceMs: number
+): Promise<string> {
+  const dataset = await collectExportDatasetSince(sinceMs)
+  const payload = buildExportJsonV1(dataset)
+  return payload.content
+}
+
 export async function getStorageUsage(): Promise<StorageUsageSnapshot> {
   return getStorageUsageSnapshot()
 }

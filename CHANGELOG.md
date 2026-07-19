@@ -11,6 +11,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ## [Unreleased]
 
 ### Added
+- **Connect to VESTI desktop** (Bridge Protocol v1.1): pair the extension with
+  the Vesti desktop app over loopback HTTP (`127.0.0.1:28765`) using a one-time
+  6-digit pair code; the Bearer token stays in `chrome.storage.local` and is
+  never exposed to extension pages. The first sync uploads everything; a daily
+  alarm then sends incremental updates against the server-returned cursor, with
+  manual sync and disconnect in the new Settings → desktop connect card.
+- **AI relay injection** (desktop → browser): relay packs pushed from the
+  desktop arrive through the bridge outbox (polled every 2 minutes, toolbar
+  badge counter, sidepanel outbox list) and can be injected into the composer
+  of all 8 supported platforms — fill only, never auto-sends; items are acked
+  back to the desktop only after a read-back check confirms the fill.
 - Added multi-language support for the UI and AI-generated content (English / 中文 / 日本語 / 한국어), driven by a central locale registry; thread summaries, the weekly recap, and Explore answers all follow the selected language.
 - **Real local search (CJK-aware, ranked)** — the #1 user need. Replaced the naive
   substring scan with a dependency-free engine: Lucene-style CJK character
@@ -56,11 +67,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   two-handle scrubber (with histogram) to filter conversations to a time window,
   and a toggle to order/group by the conversation's own time (按对话时间) vs
   capture time (按捕获时间).
-- **Bulk-import historical conversations** (ChatGPT, Claude): a new "Import
-  platform history" panel in the Data page reads your existing threads through
-  each platform's own API (using your current login) and saves them locally via
-  the normal capture pipeline (dedup keeps re-runs idempotent). Read-only,
-  throttled, cancellable, with live progress; other platforms slot into a
+- **Bulk-import historical conversations** (8 platforms: ChatGPT, Claude,
+  Gemini, DeepSeek, Doubao, Qwen, Kimi, Yuanbao): a new "Import platform
+  history" panel in the Data page reads your existing threads through each
+  platform's own API (using your current login) and saves them locally via the
+  normal capture pipeline (dedup keeps re-runs idempotent). Read-only,
+  throttled, cancellable, with live progress; new platforms slot into the
   provider registry. Fully localized (en/zh).
 - **One-click prompt backup**: export/import the prompt library as a JSON file
   from the Prompts tab, so prompts survive reinstalls (IndexedDB already survives

@@ -1,7 +1,8 @@
 # Historical Conversation Import (#3) — Design
 
-Status: implemented (framework + ChatGPT + Claude). Device verification pending
-(requires a logged-in session on each platform; not testable in CI).
+Status: implemented (framework + 8 platform providers: ChatGPT, Claude, Gemini,
+DeepSeek, Doubao, Qwen, Kimi, Yuanbao). Device verification pending (requires a
+logged-in session on each platform; not testable in CI).
 
 ## Problem
 
@@ -34,11 +35,14 @@ never submits anything to the platform.
   - list: `GET /api/organizations/{org}/chat_conversations?limit=30&offset`
   - detail: `…/chat_conversations/{uuid}?tree=True&rendering_mode=raw`
 - `lib/contents/history/registry.ts` — host → provider. Supported today:
-  ChatGPT, Claude. Others return `null` (UI shows "not yet supported").
+  ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi, Yuanbao (one provider
+  module per platform, e.g. `geminiHistory.ts`, `deepseekHistory.ts`,
+  `kimiHistory.ts`, `doubaoHistory.ts`, `qwenHistory.ts`, `yuanbaoHistory.ts`).
+  Unsupported hosts return `null` (UI shows "not yet supported").
 - `lib/contents/history/importRunner.ts` — orchestrator: list → for each, fetch
   + `sendRequest(CAPTURE_CONVERSATION, forceFlag)`; throttled (400ms),
   AbortSignal-cancellable, streams `ImportProgress`.
-- `contents/history-import.ts` — content script (chatgpt/claude hosts). Handles
+- `contents/history-import.ts` — content script (all 8 platforms' hosts). Handles
   `IMPORT_HISTORY_PROBE` / `IMPORT_HISTORY_RUN` / `IMPORT_HISTORY_CANCEL`, runs
   the runner, broadcasts `IMPORT_HISTORY_PROGRESS` to extension pages.
 - `background/index.ts` — relays UI ↔ active tab: `IMPORT_HISTORY_PROBE` /

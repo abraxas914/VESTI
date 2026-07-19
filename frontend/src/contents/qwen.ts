@@ -4,12 +4,16 @@ import { ConversationObserver } from "../lib/core/observer/ConversationObserver"
 import { QwenParser } from "../lib/core/parser/qwen/QwenParser";
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline";
 import { sendRequest } from "../lib/messaging/runtime";
+import { registerRelayInjection } from "../lib/relay/registerContentRelay";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://chat.qwen.ai/*"],
   run_at: "document_idle",
 };
+
+// Relay handoff injection works even on pages where capture detects no chat.
+registerRelayInjection("qwen");
 
 const parser = new QwenParser();
 if (!parser.detect()) {
