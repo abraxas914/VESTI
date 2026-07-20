@@ -1538,6 +1538,26 @@ export async function searchConversationMatchesByText(
 
   const parsedQuery = parseQuery(normalizedQuery)
 
+  // Cheap necessary-condition gate: scoreText can only return > 0 when every
+  // query token literally occurs in the text (an exact term hit means the term
+  // is one of the text's tokens — hence a substring; the trailing prefix term
+  // means some token starts with it — again a substring). Messages failing the
+  // gate skip the per-entry tokenize + tf-map work entirely; results are
+  // identical, just reached faster on large libraries.
+  const queryTokens = parsedQuery.tokens
+  const mightMatchQuery = (text: string): boolean => {
+    if (queryTokens.length === 0) {
+      return false
+    }
+    const lower = text.toLowerCase()
+    for (const token of queryTokens) {
+      if (!lower.includes(token)) {
+        return false
+      }
+    }
+    return true
+  }
+
   const matchMap = new Map<
     number,
     {
@@ -1550,13 +1570,24 @@ export async function searchConversationMatchesByText(
     }
   >()
 
-  const collection = candidateIds
-    ? db.messages.where("conversation_id").anyOf(candidateIds)
-    : db.messages.toCollection()
+  // Dexie anyOf() opens one index cursor per key and merges them; when the
+  // caller passes ~every conversation (the sidepanel's filtered body search
+  // does), that per-key overhead dominates the scan itself. Past a threshold,
+  // a single table scan with a Set membership check is strictly cheaper.
+  const candidateSet = candidateIds ? new Set(candidateIds) : null
+  const ANYOF_KEY_LIMIT = 500
+  const useFullScan = !candidateIds || candidateIds.length >= ANYOF_KEY_LIMIT
+
+  const collection = useFullScan
+    ? db.messages.toCollection()
+    : db.messages.where("conversation_id").anyOf(candidateIds)
 
   await collection.each((record) => {
     const conversationId = record.conversation_id
     if (typeof conversationId !== "number") {
+      return
+    }
+    if (candidateSet && !candidateSet.has(conversationId)) {
       return
     }
 
@@ -1575,6 +1606,7 @@ export async function searchConversationMatchesByText(
       attachments: record.attachments,
       artifacts: record.artifacts
     })
+      .filter((entry) => mightMatchQuery(entry.text))
       .map((entry) => ({ entry, score: scoreText(entry.text, parsedQuery) }))
       .filter((scored) => scored.score > 0)
     if (scoredEntries.length === 0) {
@@ -1624,14 +1656,17 @@ export async function searchConversationMatchesByText(
     const conversationId = record.conversation_id
     if (
       typeof conversationId !== "number" ||
-      (candidateIds && !candidateIds.includes(conversationId))
+      (candidateSet && !candidateSet.has(conversationId))
     ) {
       return
     }
 
     const entry = buildAnnotationSearchEntry(record)
-    const annScore = entry ? scoreText(entry.text, parsedQuery) : 0
-    if (!entry || annScore <= 0) {
+    if (!entry || !mightMatchQuery(entry.text)) {
+      return
+    }
+    const annScore = scoreText(entry.text, parsedQuery)
+    if (annScore <= 0) {
       return
     }
 
@@ -2091,28 +2126,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }
 
   const today = dayKey(Date.now())
-  const firstCapturedTodayCount = conversations.filter(
-    (c) => dayKey(getConversationFirstCapturedAt(c)) === today
-  ).length
+  // Single pass: one dayKey computation per conversation. The previous
+  // implementation filtered the whole list once per distinct day
+  // (O(conversations x days), with a Date allocation per pair).
+  const countsByDay = new Map<string, number>()
+  for (const c of conversations) {
+    const key = dayKey(getConversationFirstCapturedAt(c))
+    countsByDay.set(key, (countsByDay.get(key) ?? 0) + 1)
+  }
 
-  const daysWithConversations = new Set(
-    conversations.map((c) => dayKey(getConversationFirstCapturedAt(c)))
-  )
+  const firstCapturedTodayCount = countsByDay.get(today) ?? 0
+  const daysWithConversations = new Set(countsByDay.keys())
 
   let firstCaptureStreak = 0
-  let cursor = new Date()
+  const cursor = new Date()
   while (daysWithConversations.has(dayKey(cursor.getTime()))) {
     firstCaptureStreak += 1
     cursor.setDate(cursor.getDate() - 1)
   }
 
-  const firstCaptureHeatmapData = Array.from(daysWithConversations).map(
-    (d) => ({
-      date: d,
-      count: conversations.filter(
-        (c) => dayKey(getConversationFirstCapturedAt(c)) === d
-      ).length
-    })
+  const firstCaptureHeatmapData = Array.from(
+    countsByDay,
+    ([date, count]) => ({ date, count })
   )
 
   return {

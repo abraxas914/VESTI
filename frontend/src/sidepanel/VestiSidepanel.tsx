@@ -16,6 +16,10 @@ import {
 } from "./lib/threadsSearchReducer";
 
 const DASHBOARD_NAV_REQUEST_KEY = "vesti_dashboard_open_tab";
+// Capture/import bursts emit one VESTI_DATA_UPDATED per write; each one would
+// otherwise trigger a full list+topics+stats reload. Coalesce them into a
+// single refresh 500 ms after the last update.
+const DATA_REFRESH_DEBOUNCE_MS = 500;
 
 export function VestiSidepanel() {
   const [currentPage, setCurrentPage] = useState<PageId>("timeline");
@@ -32,6 +36,7 @@ export function VestiSidepanel() {
   const latestPipelineSeqRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
+    let refreshTimer: number | null = null;
     const handler = (message: unknown) => {
       if (!message || typeof message !== "object") return;
 
@@ -47,11 +52,20 @@ export function VestiSidepanel() {
 
       const type = (message as { type?: string }).type;
       if (type === "VESTI_DATA_UPDATED") {
-        setRefreshToken(Date.now());
+        if (refreshTimer !== null) {
+          window.clearTimeout(refreshTimer);
+        }
+        refreshTimer = window.setTimeout(() => {
+          refreshTimer = null;
+          setRefreshToken(Date.now());
+        }, DATA_REFRESH_DEBOUNCE_MS);
       }
     };
     chrome?.runtime?.onMessage?.addListener(handler);
     return () => {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
       chrome?.runtime?.onMessage?.removeListener?.(handler);
     };
   }, []);

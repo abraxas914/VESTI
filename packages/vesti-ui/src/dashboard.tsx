@@ -626,6 +626,12 @@ const DEFAULT_LABELS: DashboardLabels = {
     gapInsightTemplate: "You explored {a} and {b} but never linked them",
     conceptMentionedIn: "Across {count} conversations",
     relatedConversations: "Related conversations",
+    groupByLabel: "Group by",
+    groupByPlatform: "Platform",
+    groupByTopic: "Topic",
+    groupByProject: "Project",
+    groupOther: "Ungrouped",
+    clusterConversationCount: "{count} conversations",
   },
   prompts: {
     title: "Prompt Library",

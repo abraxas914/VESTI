@@ -73,11 +73,24 @@ export interface BuildThinkingMapOptions {
   maxGaps?: number;
   /** Concepts touching fewer than this many conversations are dropped from gaps. */
   minGapProminence?: number;
+  /** L1 digest key_topics per conversation. When a conversation has a
+   * non-empty digest topic list, those terms are used as its concepts
+   * (cleaner + cheaper than LLM key_insights); otherwise key_insights from
+   * the cached summary are used as fallback. */
+  digestTopicsById?: Map<number, string[]>;
+  /** Cap on mention edges (concept→conversation) per concept — keeps the
+   * canvas sparse for hot concepts. The concept's full conversationIds list
+   * is preserved for the detail panel. */
+  maxConversationsPerConcept?: number;
+  /** Global cap on conversation nodes. */
+  maxConversationNodes?: number;
 }
 
 const DEFAULT_MAX_CONCEPTS = 40;
 const DEFAULT_MAX_GAPS = 3;
 const DEFAULT_MIN_GAP_PROMINENCE = 2;
+const DEFAULT_MAX_CONVERSATIONS_PER_CONCEPT = 12;
+const DEFAULT_MAX_CONVERSATION_NODES = 200;
 
 // Distinct, theme-neutral cluster palette (works in light/dark — mid-ramp hues).
 const CLUSTER_PALETTE = [
@@ -124,18 +137,49 @@ export function buildThinkingMap(
   const maxConcepts = options.maxConcepts ?? DEFAULT_MAX_CONCEPTS;
   const maxGaps = options.maxGaps ?? DEFAULT_MAX_GAPS;
   const minGapProminence = options.minGapProminence ?? DEFAULT_MIN_GAP_PROMINENCE;
+  const maxConversationsPerConcept =
+    options.maxConversationsPerConcept ?? DEFAULT_MAX_CONVERSATIONS_PER_CONCEPT;
+  const maxConversationNodes =
+    options.maxConversationNodes ?? DEFAULT_MAX_CONVERSATION_NODES;
 
   const conversationById = new Map(
     conversations.map((conversation) => [conversation.id, conversation])
   );
 
-  // 1) Extract + merge concepts from key_insights across all summarized talks.
+  // 1) Extract + merge concepts across all summarized talks. Prefer digest
+  //    key_topics (deterministic L1 data) over LLM key_insights when present.
   const accumulators = new Map<string, ConceptAccumulator>();
   for (const conversation of conversations) {
     if (conversation.is_trash) continue;
+    const originAt = getConversationOriginAt(conversation);
+    const digestTopics = options.digestTopicsById?.get(conversation.id);
+
+    if (digestTopics && digestTopics.length > 0) {
+      for (const rawTerm of digestTopics) {
+        const term = normalizeTerm(rawTerm);
+        if (!term) continue;
+        const key = conceptKey(term);
+        const existing = accumulators.get(key);
+        if (existing) {
+          existing.conversationIds.add(conversation.id);
+          existing.firstSeenAt = Math.min(existing.firstSeenAt, originAt);
+          existing.lastSeenAt = Math.max(existing.lastSeenAt, originAt);
+        } else {
+          accumulators.set(key, {
+            key,
+            term,
+            definition: "",
+            conversationIds: new Set([conversation.id]),
+            firstSeenAt: originAt,
+            lastSeenAt: originAt,
+          });
+        }
+      }
+      continue;
+    }
+
     const summary = summariesById.get(conversation.id);
     if (!summary) continue;
-    const originAt = getConversationOriginAt(conversation);
 
     for (const insight of summary.key_insights ?? []) {
       const term = normalizeTerm(insight.term);
@@ -231,32 +275,47 @@ export function buildThinkingMap(
   }));
   const conceptById = new Map(concepts.map((concept) => [concept.id, concept]));
 
-  // 5) Conversation nodes = the talks referenced by kept concepts.
+  // 5) Conversation nodes = the talks referenced by kept concepts, capped to
+  //    the most recent ones so the canvas stays readable at scale.
   const referencedConversationIds = new Set<number>();
   for (const concept of concepts) {
     for (const conversationId of concept.conversationIds) {
       referencedConversationIds.add(conversationId);
     }
   }
-  const conversationNodes: ThinkingConversationNode[] = [];
-  for (const conversationId of referencedConversationIds) {
-    const conversation = conversationById.get(conversationId);
-    if (!conversation) continue;
-    conversationNodes.push({
+  const referencedByRecency = [...referencedConversationIds]
+    .map((conversationId) => conversationById.get(conversationId))
+    .filter((entry): entry is Conversation => Boolean(entry))
+    .sort((a, b) => getConversationOriginAt(b) - getConversationOriginAt(a) || b.id - a.id)
+    .slice(0, maxConversationNodes);
+  const keptConversationIds = new Set<number>(
+    referencedByRecency.map((conversation) => conversation.id)
+  );
+  const conversationNodes: ThinkingConversationNode[] = referencedByRecency.map(
+    (conversation) => ({
       id: `conv:${conversation.id}`,
       conversationId: conversation.id,
       title: conversation.title || "(untitled)",
       platform: conversation.platform,
       originAt: getConversationOriginAt(conversation),
       topicId: conversation.topic_id ?? null,
-    });
-  }
+    })
+  );
 
-  // 6) Edges: mentions (concept↔conversation) + relates (concept↔concept共现).
+  // 6) Edges: mentions (concept↔conversation, capped per concept to the most
+  //    recent talks) + relates (concept↔concept共现).
   const edges: ThinkingEdge[] = [];
   const conversationToConcepts = new Map<number, string[]>();
   for (const concept of concepts) {
-    for (const conversationId of concept.conversationIds) {
+    const mentionTargets = concept.conversationIds
+      .filter((conversationId) => keptConversationIds.has(conversationId))
+      .sort(
+        (a, b) =>
+          getConversationOriginAt(conversationById.get(b) ?? ({} as Conversation)) -
+          getConversationOriginAt(conversationById.get(a) ?? ({} as Conversation))
+      )
+      .slice(0, maxConversationsPerConcept);
+    for (const conversationId of mentionTargets) {
       edges.push({
         source: concept.id,
         target: `conv:${conversationId}`,

@@ -27,6 +27,9 @@ interface TemporalGraphProps {
   highlightedNodeIds?: number[];
   onNodeClick?: (nodeId: number) => void;
   onBackgroundClick?: () => void;
+  /** Extra hover-detail line for a node (e.g. digest one-liner, cluster date
+   * range). Return null for title-only tooltips. */
+  getNodeTooltip?: (node: GraphNode) => string | null;
 }
 
 interface RenderNode extends GraphNode {
@@ -247,6 +250,7 @@ export function TemporalGraph({
   highlightedNodeIds,
   onNodeClick,
   onBackgroundClick,
+  getNodeTooltip,
 }: TemporalGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -258,8 +262,10 @@ export function TemporalGraph({
   const transformRef = useRef<ViewTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const activePointersRef = useRef(new Map<number, PointerSnapshot>());
   const gestureRef = useRef<GestureState>(createGestureState());
+  const hoverIdRef = useRef<number | null>(null);
   const [width, setWidth] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [hoveredNode, setHoveredNode] = useState<RenderNode | null>(null);
 
   const highlightedNodeIdSet = useMemo(
     () => new Set(highlightedNodeIds ?? []),
@@ -282,10 +288,16 @@ export function TemporalGraph({
     if (!context) return;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    // Resizing the canvas clears it and reallocates the backing store — only
+    // do it when the size actually changed (per-frame draws just clearRect).
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    }
 
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, width, height);
@@ -297,10 +309,25 @@ export function TemporalGraph({
     const renderedNodesById = new Map<number, RenderNode>();
     const labelCandidates: LabelCandidate[] = [];
 
+    // Viewport culling: skip work for nodes far outside the visible rect.
+    const viewMargin = 60;
+    const viewLeft = -transform.offsetX / transform.scale - viewMargin;
+    const viewRight = (width - transform.offsetX) / transform.scale + viewMargin;
+    const viewTop = -transform.offsetY / transform.scale - viewMargin;
+    const viewBottom = (height - transform.offsetY) / transform.scale + viewMargin;
+
     for (const node of data.nodes) {
       if (node.timelineDay > currentDayRef.current) continue;
       const anchor = layoutRef.current.get(node.id);
       if (!anchor) continue;
+      if (
+        anchor.anchorX < viewLeft ||
+        anchor.anchorX > viewRight ||
+        anchor.anchorY < viewTop ||
+        anchor.anchorY > viewBottom
+      ) {
+        continue;
+      }
 
       const targetX = projectX(anchor.anchorX, transform);
       const targetY = projectY(anchor.anchorY, transform);
@@ -376,27 +403,43 @@ export function TemporalGraph({
         context.fill();
       }
 
+      const isCluster = node.kind === "cluster";
+
       context.beginPath();
       context.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-      context.fillStyle = hexToRgba(node.color, alpha * (isSelected ? 1 : 0.9));
+      context.fillStyle = hexToRgba(node.color, alpha * (isSelected ? 1 : isCluster ? 0.55 : 0.9));
       context.fill();
       context.strokeStyle = isSelected
         ? themeMode === "dark"
           ? "rgba(229, 227, 219, 0.95)"
           : "rgba(26, 26, 26, 0.92)"
         : hexToRgba(node.color, Math.min(1, alpha * 1.35));
-      context.lineWidth = isSelected ? 2.2 : 1;
+      context.lineWidth = isSelected ? 2.2 : isCluster ? 1.6 : 1;
       context.stroke();
+
+      // Clusters get a dashed outer ring so they read as "many" at a glance.
+      if (isCluster) {
+        context.save();
+        context.setLineDash([3, 3]);
+        context.beginPath();
+        context.arc(node.x, node.y, node.radius + 4, 0, Math.PI * 2);
+        context.strokeStyle = hexToRgba(node.color, alpha * 0.9);
+        context.lineWidth = 1;
+        context.stroke();
+        context.restore();
+      }
 
       const allowGeneralLabel =
         transform.scale >= fitScaleRef.current * 1.35 || nodeDegree === 0;
 
-      if (isSelected || isNeighbor || (alpha > 0.36 && allowGeneralLabel)) {
+      if (isCluster || isSelected || isNeighbor || (alpha > 0.36 && allowGeneralLabel)) {
         const labelAlpha = isSelected
           ? 1
-          : isNeighbor
-            ? Math.max(0.62, Math.min(1, (alpha - 0.2) / 0.28))
-            : Math.min(0.9, (alpha - 0.32) / 0.22);
+          : isCluster
+            ? Math.max(0.55, Math.min(1, alpha + 0.25))
+            : isNeighbor
+              ? Math.max(0.62, Math.min(1, (alpha - 0.2) / 0.28))
+              : Math.min(0.9, (alpha - 0.32) / 0.22);
         const label = truncateLabel(node.label, 18);
         const anchor = layoutRef.current.get(node.id);
         const labelHalfWidth = anchor?.labelHalfWidth ?? Math.max(36, label.length * 4);
@@ -521,6 +564,14 @@ export function TemporalGraph({
     return () => observer.disconnect();
   }, []);
 
+  // Latest-draw ref: the layout effect must NOT re-run when only selection /
+  // highlight / theme change (those redraw via the effect below). Layout is
+  // O(n·iter) work and only depends on data + viewport size.
+  const drawRef = useRef(draw);
+  useEffect(() => {
+    drawRef.current = draw;
+  }, [draw]);
+
   useEffect(() => {
     if (width <= 0) {
       layoutRef.current = new Map();
@@ -536,8 +587,8 @@ export function TemporalGraph({
     worldBoundsRef.current = worldBounds;
     fitScaleRef.current = getFitScale(worldBounds, width, height);
     transformRef.current = createCenteredTransform(worldBounds, width, height);
-    draw();
-  }, [data.edges, data.nodes, draw, height, width]);
+    drawRef.current();
+  }, [data.edges, data.nodes, height, width]);
 
   useEffect(() => {
     currentDayRef.current = currentDay;
@@ -682,6 +733,34 @@ export function TemporalGraph({
     [setTransformAndRedraw]
   );
 
+  // Hover tooltip: hit-test only when no gesture is active, and only set
+  // state when the hovered node changes (no per-move re-renders).
+  const handleHoverMove = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (activePointersRef.current.size > 0 || gestureRef.current.moved) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const hit = hitTestNode(
+        activeNodesRef.current,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+        currentDayRef.current
+      );
+      const nextId = hit ? hit.id : null;
+      if (nextId === hoverIdRef.current) return;
+      hoverIdRef.current = nextId;
+      setHoveredNode(hit);
+    },
+    []
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    if (hoverIdRef.current === null) return;
+    hoverIdRef.current = null;
+    setHoveredNode(null);
+  }, []);
+
+  const hoveredTooltip = hoveredNode ? getNodeTooltip?.(hoveredNode) ?? null : null;
+
   return (
     <div ref={wrapperRef} className="relative h-full w-full">
       <canvas
@@ -689,11 +768,35 @@ export function TemporalGraph({
         className="block h-full w-full"
         style={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none" }}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
+        onPointerMove={(event) => {
+          handlePointerMove(event);
+          handleHoverMove(event);
+        }}
         onPointerUp={releasePointer}
         onPointerCancel={releasePointer}
+        onPointerLeave={handlePointerLeave}
         onWheel={handleWheel}
       />
+      {hoveredNode && !isDragging && (
+        <div
+          className="pointer-events-none absolute z-10 max-w-[260px] rounded-md border border-border-subtle bg-bg-primary px-2.5 py-1.5 shadow-md"
+          style={{
+            left: Math.min(hoveredNode.x + 12, Math.max(0, width - 270)),
+            top: Math.max(4, hoveredNode.y - hoveredNode.radius - 8),
+          }}
+        >
+          <div className="truncate text-[11px] font-sans font-medium text-text-primary">
+            {hoveredNode.kind === "cluster"
+              ? hoveredNode.label
+              : truncateLabel(hoveredNode.label, 42)}
+          </div>
+          {hoveredTooltip && (
+            <div className="mt-0.5 line-clamp-2 text-[10px] font-sans text-text-tertiary">
+              {hoveredTooltip}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

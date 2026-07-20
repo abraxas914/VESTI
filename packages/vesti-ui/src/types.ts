@@ -1268,6 +1268,12 @@ export interface DashboardLabels {
     gapInsightTemplate: string;
     conceptMentionedIn: string;
     relatedConversations: string;
+    groupByLabel: string;
+    groupByPlatform: string;
+    groupByTopic: string;
+    groupByProject: string;
+    groupOther: string;
+    clusterConversationCount: string;
   };
   prompts: {
     title: string;
