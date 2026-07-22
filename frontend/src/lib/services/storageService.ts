@@ -1,4 +1,4 @@
-﻿import type { ConversationUpdateChanges } from "../messaging/protocol"
+import type { ConversationUpdateChanges } from "../messaging/protocol"
 import type { SupportedLocale } from "../i18n/locales"
 import { sendRequest } from "../messaging/runtime"
 import type {
@@ -9,6 +9,7 @@ import type {
   CreateNoteInput,
   DashboardStats,
   DataOverviewSnapshot,
+  DesktopBridgeStatus,
   ExploreAskOptions,
   ExploreMessage,
   ExploreMode,
@@ -31,6 +32,7 @@ import type {
   PromptExtractionResult,
   PromptCompletionResult,
   RagResponse,
+  RelayItem,
   RoundtablePersonaId,
   RoundtableResult,
   RelatedConversation,
@@ -924,6 +926,108 @@ export async function forceArchiveTransient(): Promise<ForceArchiveTransientResu
     type: "FORCE_ARCHIVE_TRANSIENT",
     target: "background"
   }) as Promise<ForceArchiveTransientResult>
+}
+
+// ---- VESTI Desktop Bridge --------------------------------------------------
+
+export async function getDesktopBridgeState(): Promise<{
+  state: DesktopBridgeStatus
+}> {
+  return sendRequest(
+    {
+      type: "DESKTOP_BRIDGE_GET_STATE",
+      target: "background"
+    },
+    10000
+  ) as Promise<{ state: DesktopBridgeStatus }>
+}
+
+export async function pairDesktopBridge(code: string): Promise<{
+  state: DesktopBridgeStatus
+}> {
+  return sendRequest(
+    {
+      type: "DESKTOP_BRIDGE_PAIR",
+      target: "background",
+      payload: { code }
+    },
+    20000
+  ) as Promise<{ state: DesktopBridgeStatus }>
+}
+
+export async function disconnectDesktopBridge(): Promise<{
+  state: DesktopBridgeStatus
+}> {
+  return sendRequest({
+    type: "DESKTOP_BRIDGE_DISCONNECT",
+    target: "background"
+  }) as Promise<{ state: DesktopBridgeStatus }>
+}
+
+export async function syncDesktopBridgeNow(full?: boolean): Promise<{
+  state: DesktopBridgeStatus
+  synced: boolean
+  skipped?: string
+  conversations?: number
+  messages?: number
+}> {
+  return sendRequest(
+    {
+      type: "DESKTOP_BRIDGE_SYNC_NOW",
+      target: "background",
+      payload: { full: full === true }
+    },
+    LONG_RUNNING_TIMEOUT_MS
+  ) as Promise<{
+    state: DesktopBridgeStatus
+    synced: boolean
+    skipped?: string
+    conversations?: number
+    messages?: number
+  }>
+}
+
+// ---- Relay handoff packets (desktop outbox → platform composer) -------------
+
+export async function listRelayOutbox(): Promise<{
+  items: RelayItem[]
+  outboxSupported: boolean
+  needsRepair: boolean
+}> {
+  return sendRequest(
+    {
+      type: "RELAY_LIST",
+      target: "background"
+    },
+    10000
+  ) as Promise<{
+    items: RelayItem[]
+    outboxSupported: boolean
+    needsRepair: boolean
+  }>
+}
+
+export async function injectRelayItem(id: number): Promise<{
+  item: RelayItem
+}> {
+  return sendRequest(
+    {
+      type: "RELAY_INJECT",
+      target: "background",
+      payload: { id }
+    },
+    15000
+  ) as Promise<{ item: RelayItem }>
+}
+
+export async function dismissRelayItem(id: number): Promise<{
+  dismissed: boolean
+}> {
+  return sendRequest({
+    type: "RELAY_DISMISS",
+    target: "background",
+    payload: { id }
+  }) as Promise<{ dismissed: boolean }>
 }
 
 // ---- Prompt Management -----------------------------------------------------

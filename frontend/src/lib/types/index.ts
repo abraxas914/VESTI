@@ -1145,3 +1145,56 @@ export interface WeeklyReportRecord {
 }
 
 export type AsyncStatus = "idle" | "loading" | "ready" | "error"
+
+// ── VESTI Desktop bridge (Bridge Protocol v1) ──────────────────────────────
+// UI-facing connection state for the local VESTI desktop app. The bearer token
+// itself never leaves the background worker / chrome.storage — the panel only
+// ever sees this sanitised snapshot.
+export interface DesktopBridgeStatus {
+  /** A token is stored (pairing completed at least once). */
+  paired: boolean
+  /** Persistent extension-side client id sent during pairing. */
+  clientId: string | null
+  pairedAt: number | null
+  /** Last known reachability of the desktop bridge; null = not probed yet. */
+  online: boolean | null
+  /** Desktop app version reported by /v1/status, when known. */
+  desktopVersion: string | null
+  /** Desktop rejected the token (401) — the user must re-pair. */
+  needsRepair: boolean
+  syncing: boolean
+  /** Epoch ms of the last successful sync (from the server cursor). */
+  lastSyncAt: number | null
+  lastSyncConversations: number | null
+  lastSyncMessages: number | null
+  /** Last sync failure reason (internal error code), for diagnostics. */
+  lastError: string | null
+  /**
+   * Capability flags reported by /v1/status (Bridge Protocol v1.1+), e.g.
+   * ["pair","import","outbox"]. Empty when the desktop predates v1.1 or has
+   * never been probed — features gated on a capability must stay hidden then.
+   */
+  capabilities: string[]
+}
+
+// ── Relay handoff packets (desktop outbox → AI platform composer) ───────────
+// The desktop app queues "AI handoff packets" (prompts) in its outbox; the
+// extension polls them and, on user request, fills the composer of the AI
+// platform open in the active tab (fill only, never send).
+export type RelayItemStatus = "pending" | "injected" | "dismissed"
+
+export interface RelayItem {
+  /** Monotonic outbox id assigned by the desktop. */
+  id: number
+  prompt: string
+  /** ISO timestamp from the desktop; null when the payload omitted it. */
+  createdAt: string | null
+  status: RelayItemStatus
+  /**
+   * Why the last injection attempt failed (composer_not_found,
+   * content_unreachable, …). The item stays pending so the user can retry.
+   */
+  failReason: string | null
+  /** Internal bookkeeping: the desktop confirmed receipt via /v1/outbox/ack. */
+  acked?: boolean
+}

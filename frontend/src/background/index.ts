@@ -68,6 +68,29 @@ import { exportConversationToNotion } from "../lib/services/conversationExportSe
 import { getCaptureSettings } from "../lib/services/captureSettingsService"
 import { getLanguageSettings } from "../lib/services/languageSettingsService"
 import { resolveLocale } from "../lib/i18n/locales"
+import {
+  DESKTOP_SYNC_ALARM,
+  DESKTOP_SYNC_PERIOD_MINUTES,
+  clearStaleDesktopSyncFlag,
+  disconnectDesktop,
+  getDesktopBridgeStatus,
+  pairWithDesktop,
+  probeDesktopInfo,
+  recordDesktopReachability,
+  syncWithDesktop
+} from "../lib/services/desktopBridgeService"
+import {
+  RELAY_POLL_ALARM,
+  RELAY_POLL_PERIOD_MINUTES,
+  clearRelayQueue,
+  completeRelayInjection,
+  dismissRelayItem,
+  getRelayItem,
+  listPendingRelayItems,
+  markRelayItemFailed,
+  pollRelayOutbox,
+  refreshRelayBadge
+} from "../lib/services/relayService"
 import { runGardener } from "../lib/services/gardenerService"
 import {
   generateConversationSummary,
@@ -384,6 +407,20 @@ function getModeFromSettings(mode: CaptureMode): CaptureMode {
   return "mirror"
 }
 
+// Desktop bridge sync entry point (pair / alarm / startup / manual). Every
+// failure is swallowed into the bridge state — an offline desktop must never
+// surface as background noise for the user.
+async function runDesktopSync(reason: string, full = false): Promise<void> {
+  try {
+    await syncWithDesktop({ reason, full })
+  } catch (error) {
+    logger.warn("background", "Desktop sync failed", {
+      reason,
+      error: (error as Error)?.message ?? String(error)
+    })
+  }
+}
+
 async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -633,6 +670,134 @@ async function handleBackgroundRequest(
           }
         }
         return { ok: true, type: messageType, data: { ok: true } }
+      }
+      case "DESKTOP_BRIDGE_GET_STATE": {
+        let state = await getDesktopBridgeStatus()
+        // Live-probe the desktop so the UI can show its online/offline state.
+        // A refused localhost connection fails fast, so polling stays cheap.
+        try {
+          const info = await probeDesktopInfo()
+          if (
+            state.online !== true ||
+            state.desktopVersion !== info.version ||
+            state.capabilities.join(",") !== info.capabilities.join(",")
+          ) {
+            state = await recordDesktopReachability(
+              true,
+              info.version,
+              info.capabilities
+            )
+          }
+        } catch {
+          if (state.online !== false) {
+            state = await recordDesktopReachability(false, state.desktopVersion)
+          }
+        }
+        return { ok: true, type: messageType, data: { state } }
+      }
+      case "DESKTOP_BRIDGE_PAIR": {
+        const state = await pairWithDesktop(message.payload.code)
+        // Pairing succeeded → kick off the initial full sync right away, in
+        // the background; the panel picks up progress by polling GET_STATE.
+        void runDesktopSync("pair", true)
+        // Same for handoff packets: pull whatever the desktop queued while
+        // the extension was unpaired.
+        void pollRelayOutbox("pair")
+        return { ok: true, type: messageType, data: { state } }
+      }
+      case "DESKTOP_BRIDGE_DISCONNECT": {
+        const state = await disconnectDesktop()
+        // The outbox belongs to the bridge session — drop the local queue so
+        // a stale badge never outlives the pairing.
+        await clearRelayQueue()
+        return { ok: true, type: messageType, data: { state } }
+      }
+      case "DESKTOP_BRIDGE_SYNC_NOW": {
+        const result = await syncWithDesktop({
+          reason: "manual",
+          full: message.payload?.full === true
+        })
+        const state = await getDesktopBridgeStatus()
+        return {
+          ok: true,
+          type: messageType,
+          data: {
+            state,
+            synced: result.synced,
+            skipped: result.skipped,
+            conversations: result.conversations,
+            messages: result.messages
+          }
+        }
+      }
+      case "RELAY_LIST": {
+        const [items, bridge] = await Promise.all([
+          listPendingRelayItems(),
+          getDesktopBridgeStatus()
+        ])
+        return {
+          ok: true,
+          type: messageType,
+          data: {
+            items,
+            outboxSupported: bridge.capabilities.includes("outbox"),
+            needsRepair: bridge.needsRepair
+          }
+        }
+      }
+      case "RELAY_DISMISS": {
+        await dismissRelayItem(message.payload.id)
+        return { ok: true, type: messageType, data: { dismissed: true } }
+      }
+      case "RELAY_INJECT": {
+        const itemId = message.payload.id
+        const item = await getRelayItem(itemId)
+        if (!item || item.status !== "pending") {
+          throw new Error("RELAY_ITEM_NOT_FOUND")
+        }
+
+        // Route by the active tab's URL: each platform's own content script
+        // carries the composer injector registered for its host.
+        const tab = await getActiveTab()
+        const platform = tab?.url ? resolvePlatformFromUrl(tab.url) : undefined
+        if (!tab?.id || !platform) {
+          throw new Error("RELAY_TAB_UNSUPPORTED")
+        }
+
+        let fillResponse: { ok?: boolean; error?: string } | undefined
+        try {
+          fillResponse = await sendMessageToTab<{
+            ok?: boolean
+            error?: string
+          }>(tab.id, {
+            type: "RELAY_INJECT",
+            payload: { prompt: item.prompt }
+          })
+        } catch {
+          // Content script missing (page predates the extension install or is
+          // mid-navigation) — the item stays pending for a retry.
+          await markRelayItemFailed(itemId, "content_unreachable")
+          throw new Error("RELAY_CONTENT_UNREACHABLE")
+        }
+
+        if (!fillResponse?.ok) {
+          // Selector-level failure (composer not found / fill rejected): do
+          // NOT ack — record the reason and keep the item pending.
+          await markRelayItemFailed(
+            itemId,
+            fillResponse?.error || "fill_failed"
+          )
+          throw new Error("RELAY_FILL_FAILED")
+        }
+
+        // Fill confirmed by the content script → ack on the desktop and mark
+        // injected (ack failure is retried on the next poll).
+        const updated = await completeRelayInjection(itemId)
+        logger.info("background", "Relay handoff packet injected", {
+          id: itemId,
+          platform
+        })
+        return { ok: true, type: messageType, data: { item: updated } }
       }
       default:
         return {
@@ -1101,8 +1266,21 @@ async function handleOffscreenRequest(
   }
 }
 
+// The worker may have been killed mid desktop-sync; drop the stale flag so the
+// UI never shows a phantom "syncing" state.
+void clearStaleDesktopSyncFlag()
+
+// Badge text does not survive a browser restart; rebuild it from the queue.
+void refreshRelayBadge()
+
 if (chrome?.alarms?.create) {
   chrome.alarms.create("vectorize-job", { periodInMinutes: 5 })
+  chrome.alarms.create(DESKTOP_SYNC_ALARM, {
+    periodInMinutes: DESKTOP_SYNC_PERIOD_MINUTES
+  })
+  chrome.alarms.create(RELAY_POLL_ALARM, {
+    periodInMinutes: RELAY_POLL_PERIOD_MINUTES
+  })
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === "vectorize-job") {
       void runVectorizationTask("alarm")
@@ -1118,6 +1296,13 @@ if (chrome?.alarms?.create) {
         .finally(() => {
           void syncWeeklyPushAlarm()
         })
+      return
+    }
+    if (alarm.name === DESKTOP_SYNC_ALARM) {
+      void runDesktopSync("alarm")
+    }
+    if (alarm.name === RELAY_POLL_ALARM) {
+      void pollRelayOutbox("alarm")
     }
   })
   void syncWeeklyPushAlarm()
@@ -1126,6 +1311,14 @@ if (chrome?.alarms?.create) {
   })
   chrome.runtime.onStartup.addListener(() => {
     void syncWeeklyPushAlarm()
+  })
+}
+
+// Once per browser launch, retry whatever the last scheduled sync missed.
+if (chrome?.runtime?.onStartup) {
+  chrome.runtime.onStartup.addListener(() => {
+    void runDesktopSync("startup")
+    void pollRelayOutbox("startup")
   })
 }
 

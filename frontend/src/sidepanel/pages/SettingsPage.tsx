@@ -86,6 +86,8 @@ import {
 } from "~lib/services/promptAssistSettingsService"
 import type { SupportedLocale } from "~lib/types"
 import { SUPPORTED_LOCALES, getLocaleNativeName } from "~lib/i18n/locales"
+import { DesktopConnectCard } from "../components/DesktopConnectCard"
+import { RelayOutboxCard } from "../components/RelayOutboxCard"
 import { DisclosureSection } from "../components/DisclosureSection"
 
 const MIN_TURNS_DEFAULT = DEFAULT_CAPTURE_SETTINGS.smartConfig.minTurns
@@ -1801,6 +1803,10 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
             </div>
           </div>
         </DisclosureSection>
+
+        <DesktopConnectCard />
+
+        <RelayOutboxCard />
 
         <DisclosureSection
           title={t.settings.dataManagement.title}

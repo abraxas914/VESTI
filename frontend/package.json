@@ -58,6 +58,7 @@
       "https://dashscope.aliyuncs.com/*",
       "https://api-inference.modelscope.cn/*",
       "https://api.notion.com/*",
+      "http://127.0.0.1:28765/*",
       "https://chatgpt.com/*",
       "https://chat.openai.com/*",
       "https://claude.ai/*",

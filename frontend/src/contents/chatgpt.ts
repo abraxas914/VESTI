@@ -4,12 +4,16 @@ import { ChatGPTParser } from "../lib/core/parser/chatgpt/ChatGPTParser";
 import { ConversationObserver } from "../lib/core/observer/ConversationObserver";
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline";
 import { sendRequest } from "../lib/messaging/runtime";
+import { registerRelayInjection } from "../lib/relay/registerContentRelay";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
   matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
   run_at: "document_idle",
 };
+
+// Relay handoff injection works even on pages where capture detects no chat.
+registerRelayInjection("chatgpt");
 
 const parser = new ChatGPTParser();
 if (!parser.detect()) {
