@@ -5,11 +5,13 @@
   SummaryRecord,
   WeeklyLiteReportV1,
   WeeklyRecapV1,
+  WeeklyGrowthReportV2,
   WeeklyReportRecord,
   WeeklyReportV1,
 } from "../types";
 import type {
   ChatSummaryData,
+  WeeklyGrowthData,
   WeeklyRecapData,
   WeeklySummaryData,
 } from "../types/insightsPresentation";
@@ -301,6 +303,35 @@ function isWeeklyReportV1(value: unknown): value is WeeklyReportV1 {
 function isWeeklyRecapV1(value: unknown): value is WeeklyRecapV1 {
   if (!value || typeof value !== "object") return false;
   return "greeting" in value && "stats" in value && "persona_tag" in value;
+}
+
+export function isWeeklyGrowthReportV2(
+  value: unknown
+): value is WeeklyGrowthReportV2 {
+  if (!value || typeof value !== "object") return false;
+  const row = value as {
+    schema?: unknown;
+    energy?: unknown;
+    growth?: unknown;
+    contributionGrid?: unknown;
+  };
+  if (row.schema === "weekly_growth_report.v2") return true;
+  return (
+    !!row.energy &&
+    typeof row.energy === "object" &&
+    !!row.growth &&
+    typeof row.growth === "object" &&
+    Array.isArray(row.contributionGrid)
+  );
+}
+
+export function isWeeklyGrowthReport(
+  report: WeeklyReportRecord
+): boolean {
+  return (
+    report.schemaVersion === "weekly_growth_report.v2" ||
+    isWeeklyGrowthReportV2(report.structured)
+  );
 }
 
 /**
@@ -758,6 +789,34 @@ export function toWeeklyRecapData(
     },
     highlight,
     narrative,
+    plain_text: report.content,
+  };
+}
+
+export function toWeeklyGrowthData(
+  report: WeeklyReportRecord,
+  locale: SupportedLocale = "en"
+): WeeklyGrowthData | null {
+  if (!isWeeklyGrowthReportV2(report.structured)) {
+    return null;
+  }
+
+  return {
+    meta: {
+      title: `Weekly Growth ${toRangeLabel(
+        report.rangeStart,
+        report.rangeEnd,
+        locale
+      )}`,
+      generated_at: toIsoTime(report.createdAt),
+      tags: (report.structured.tags?.current ?? [])
+        .map((tag) => normalizeText(tag.name ?? ""))
+        .filter(Boolean)
+        .slice(0, 8),
+      fallback: report.status === "fallback",
+      range_label: toRangeLabel(report.rangeStart, report.rangeEnd, locale),
+    },
+    report: report.structured,
     plain_text: report.content,
   };
 }

@@ -1,4 +1,5 @@
 import type { ConversationUpdateChanges } from "../messaging/protocol"
+import type { SupportedLocale } from "../i18n/locales"
 import { sendRequest } from "../messaging/runtime"
 import type {
   ActiveCaptureStatus,
@@ -40,6 +41,10 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyGrowthTimeMachineData,
+  WeeklyKnowledgeNoteSaveResult,
+  WeeklyKnowledgeNoteStatus,
+  WeeklyPushSettings,
   WeeklyReportRecord
 } from "../types"
 import type { ChatSummaryData } from "../types/insightsPresentation"
@@ -414,6 +419,37 @@ export async function deleteNote(id: number): Promise<void> {
     target: "offscreen",
     payload: { id }
   })
+}
+
+export async function getWeeklyKnowledgeNoteStatus(
+  reportId: number
+): Promise<WeeklyKnowledgeNoteStatus> {
+  return sendRequest({
+    type: "GET_WEEKLY_KNOWLEDGE_NOTE",
+    target: "offscreen",
+    payload: { reportId }
+  }) as Promise<WeeklyKnowledgeNoteStatus>
+}
+
+export async function saveWeeklyKnowledgeNote(
+  reportId: number,
+  locale: SupportedLocale
+): Promise<WeeklyKnowledgeNoteSaveResult> {
+  return sendRequest({
+    type: "SAVE_WEEKLY_KNOWLEDGE_NOTE",
+    target: "offscreen",
+    payload: { reportId, locale }
+  }) as Promise<WeeklyKnowledgeNoteSaveResult>
+}
+
+export async function getWeeklyGrowthTimeMachine(
+  reportId: number
+): Promise<WeeklyGrowthTimeMachineData> {
+  return sendRequest({
+    type: "GET_WEEKLY_GROWTH_TIME_MACHINE",
+    target: "offscreen",
+    payload: { reportId }
+  }) as Promise<WeeklyGrowthTimeMachineData>
 }
 
 export async function importObsidianDirectory(
@@ -815,14 +851,67 @@ export async function generateWeeklyRecap(
   rangeStart: number,
   rangeEnd: number
 ): Promise<WeeklyReportRecord> {
+  const generationRequestId = crypto.randomUUID()
+
   return sendRequest(
     {
       type: "GENERATE_WEEKLY_RECAP",
       target: "offscreen",
+      requestId: generationRequestId,
       payload: { rangeStart, rangeEnd }
     },
-    LONG_RUNNING_TIMEOUT_MS
+    LONG_RUNNING_TIMEOUT_MS,
+    () => {
+      void sendRequest(
+        {
+          type: "CANCEL_WEEKLY_RECAP",
+          target: "offscreen",
+          payload: { generationRequestId }
+        },
+        READ_TIMEOUT_MS
+      ).catch(() => {
+        // The UI is already in a timeout state. Cancellation is best-effort;
+        // the background watchdog remains the final safety net.
+      })
+    }
   ) as Promise<WeeklyReportRecord>
+}
+
+export async function getWeeklyPushSettings(): Promise<{
+  settings: WeeklyPushSettings
+  nextAt: number | null
+}> {
+  return sendRequest({
+    type: "GET_WEEKLY_PUSH_SETTINGS",
+    target: "background"
+  }) as Promise<{
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }>
+}
+
+export async function setWeeklyPushSettings(
+  changes: Partial<WeeklyPushSettings>
+): Promise<{
+  settings: WeeklyPushSettings
+  nextAt: number | null
+}> {
+  return sendRequest({
+    type: "SET_WEEKLY_PUSH_SETTINGS",
+    target: "background",
+    payload: { changes }
+  }) as Promise<{
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }>
+}
+
+export async function testWeeklyPushNotification(): Promise<string> {
+  const result = (await sendRequest({
+    type: "TEST_WEEKLY_PUSH_NOTIFICATION",
+    target: "background"
+  })) as { notificationId: string }
+  return result.notificationId
 }
 
 export async function getActiveCaptureStatus(): Promise<ActiveCaptureStatus> {

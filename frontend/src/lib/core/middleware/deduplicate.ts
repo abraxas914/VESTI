@@ -1,6 +1,9 @@
 import type { ConversationDraft, ParsedMessage } from "../../messaging/protocol";
 import { countAiTurns } from "../../capture/turn-metrics";
-import { db } from "../../db/schema";
+import {
+  db,
+  resolveConversationRecordOriginAt,
+} from "../../db/schema";
 import type { ConversationRecord, MessageRecord } from "../../db/schema";
 import { enforceStorageWriteGuard } from "../../db/storageLimits";
 import { isAstRoot } from "../../utils/astText";
@@ -266,6 +269,11 @@ export async function deduplicateAndSave(
         snippet: cleanMessages[0]?.textContent.slice(0, 100) ?? conversation.snippet,
         source_created_at: mergedSourceCreatedAt,
         first_captured_at: mergedFirstCapturedAt,
+        origin_at: resolveConversationRecordOriginAt({
+          source_created_at: mergedSourceCreatedAt,
+          first_captured_at: mergedFirstCapturedAt,
+          created_at: existing.created_at,
+        }),
       } as Partial<ConversationRecord>);
 
       return {
@@ -275,16 +283,22 @@ export async function deduplicateAndSave(
       };
     }
 
+    const firstCapturedAt = resolveFirstCapturedAt(
+      undefined,
+      conversation.first_captured_at,
+      persistedAt
+    );
     const record: ConversationRecord = {
       ...conversation,
-      first_captured_at: resolveFirstCapturedAt(
-        undefined,
-        conversation.first_captured_at,
-        persistedAt
-      ),
+      first_captured_at: firstCapturedAt,
       last_captured_at: persistedAt,
       created_at: persistedAt,
       updated_at: persistedAt,
+      origin_at: resolveConversationRecordOriginAt({
+        source_created_at: conversation.source_created_at,
+        first_captured_at: firstCapturedAt,
+        created_at: persistedAt,
+      }),
       message_count: cleanMessages.length,
       turn_count: turnCount,
       snippet: cleanMessages[0]?.textContent.slice(0, 100) ?? conversation.snippet,

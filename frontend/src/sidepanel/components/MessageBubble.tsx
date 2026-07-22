@@ -42,6 +42,7 @@ interface MessageBubbleProps {
   occurrenceIndexMap?: OccurrenceIndexMap | null;
   sidecarTargetMap?: Record<string, ReaderSidecarTarget> | null;
   currentIndex?: number | null;
+  isTarget?: boolean;
 }
 
 export function MessageBubble({
@@ -51,6 +52,7 @@ export function MessageBubble({
   occurrenceIndexMap,
   sidecarTargetMap,
   currentIndex,
+  isTarget = false,
 }: MessageBubbleProps) {
   const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -188,7 +190,14 @@ export function MessageBubble({
   };
 
   return (
-    <div className={`reader-turn ${isAi ? "reader-turn-ai" : "reader-turn-user"}`}>
+    <div
+      data-message-id={message.id}
+      className={`reader-turn ${isAi ? "reader-turn-ai" : "reader-turn-user"} ${
+        isTarget
+          ? "rounded-lg bg-accent-primary-light ring-2 ring-border-focus ring-offset-2 ring-offset-bg-primary"
+          : ""
+      }`}
+    >
       <div className="reader-turn-header">
         <span
           className={`reader-role-label ${

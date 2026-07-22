@@ -7,6 +7,7 @@ type LogScope =
   | "background"
   | "content"
   | "service"
+  | "weekly-push"
   | "llm"
   | "vectorize";
 

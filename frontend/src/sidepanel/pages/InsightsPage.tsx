@@ -23,6 +23,7 @@ import type {
   InsightPipelineStage,
   InsightPipelineStatus,
 } from "~lib/messaging/protocol";
+import { RequestTimeoutError } from "~lib/messaging/runtime";
 import {
   generateConversationSummary,
   generateWeeklyRecap,
@@ -33,16 +34,19 @@ import {
 import { resolveTurnCount } from "~lib/capture/turn-metrics";
 import {
   toChatSummaryData,
+  toWeeklyGrowthData,
   toWeeklyRecapData,
   toWeeklySummaryData,
 } from "~lib/services/insightAdapter";
 import { getConversationOriginAt } from "~lib/conversations/timestamps";
 import type {
+  WeeklyGrowthData,
   WeeklyRecapData,
   WeeklySummaryData,
 } from "~lib/types/insightsPresentation";
 import { InsightsAccordionItem } from "../components/InsightsAccordionItem";
 import { InsightsWandIcon } from "../components/InsightsWandIcon";
+import { WeeklyGrowthReport } from "../components/weekly/WeeklyGrowthReport";
 
 const COLLAPSE_AT = 3;
 const WEEKLY_DIGEST_SOON = false;
@@ -187,6 +191,13 @@ function getErrorMessage(
   if (error instanceof Error) {
     if (error.message.includes("STORAGE_HARD_LIMIT_REACHED")) {
       return t.insights.storageLimitError;
+    }
+    if (
+      error instanceof RequestTimeoutError ||
+      error.name === "AbortError" ||
+      /timed out|timeout|aborted/i.test(error.message)
+    ) {
+      return t.insights.weeklyGenerationTimeout;
     }
     return error.message;
   }
@@ -576,6 +587,7 @@ function resolveWeeklyStableState(
   locale: SupportedLocale
 ): WeeklyStableUiState {
   if (!report) return "idle";
+  if (toWeeklyGrowthData(report, locale)) return "ready";
   if (toWeeklyRecapData(report, locale)) return "ready";
   return toWeeklyStableState(toWeeklySummaryData(report, locale));
 }
@@ -584,12 +596,17 @@ interface InsightsPageProps {
   conversation: Conversation | null;
   refreshToken: number;
   pipelineProgressEvent?: InsightPipelineProgressPayload | null;
+  onOpenWeeklyHighlight?: (
+    conversation: Conversation,
+    messageId: number
+  ) => void;
 }
 
 export function InsightsPage({
   conversation,
   refreshToken,
   pipelineProgressEvent = null,
+  onOpenWeeklyHighlight,
 }: InsightsPageProps) {
   const { t, locale } = useI18n();
   const [summary, setSummary] = useState<SummaryRecord | null>(null);
@@ -659,6 +676,10 @@ export function InsightsPage({
   );
   const weeklyRecapData = useMemo<WeeklyRecapData | null>(
     () => (weeklyReport ? toWeeklyRecapData(weeklyReport, locale) : null),
+    [weeklyReport, locale]
+  );
+  const weeklyGrowthData = useMemo<WeeklyGrowthData | null>(
+    () => (weeklyReport ? toWeeklyGrowthData(weeklyReport, locale) : null),
     [weeklyReport, locale]
   );
   const activeThreadPipelineEvent = useMemo(() => {
@@ -1696,6 +1717,76 @@ export function InsightsPage({
   };
 
   const renderWeeklyReady = () => {
+    if (weeklyGrowthData) {
+      return (
+        <>
+          <div className="ins-week-banner">
+            <p className="ins-week-range">{weeklyRangeLabel}</p>
+            <span className="ins-week-count-chip">
+              {weeklyCountLabel} - {weeklyRangeModeLabel}
+            </span>
+          </div>
+          {renderWeeklyRangeToggle()}
+
+          {weeklyError && (
+            <p className="ins-status-row ins-status-error ins-week-inline-gap">
+              {t.insights.latestRegenerationFailed} {weeklyError}
+              <button
+                type="button"
+                onClick={handleGenerateWeekly}
+                className="ins-inline-link"
+              >
+                {t.common.retry}
+              </button>
+            </p>
+          )}
+
+          <WeeklyGrowthReport
+            data={weeklyGrowthData}
+            reportId={weeklyReport.id}
+            onOpenHighlight={(conversationId, messageId) => {
+              const target = weeklyConversations.find(
+                (item) => item.id === conversationId
+              );
+              if (target) {
+                onOpenWeeklyHighlight?.(target, messageId);
+              }
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={handleGenerateWeekly}
+            className="ins-generate-btn"
+          >
+            <InsightsWandIcon className="h-3.5 w-3.5 text-accent-primary" />
+            {t.insights.regenerate}
+          </button>
+
+          {weeklyReport && (
+            <div className="ins-model-meta">
+              <p className="ins-model-meta-line">
+                <span className="ins-model-meta-label">
+                  {t.insights.modelLabel}:
+                </span>
+                <span className="ins-model-meta-value">
+                  {weeklyReport.modelId}
+                </span>
+              </p>
+              <p className="ins-model-meta-line">
+                <span className="ins-model-meta-label">
+                  {t.insights.generatedLabel}:
+                </span>
+                <span className="ins-model-meta-value">
+                  {formatDateTime(weeklyReport.createdAt, locale)}
+                </span>
+              </p>
+            </div>
+          )}
+        </>
+      );
+    }
+
     if (weeklyRecapData) {
       return renderWeeklyRecap(weeklyRecapData);
     }

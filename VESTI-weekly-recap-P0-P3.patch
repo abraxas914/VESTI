@@ -1,0 +1,1055 @@
+diff --git a/frontend/package.json b/frontend/package.json
+index 899329b4528f2300290e643478a99ac624f72c16..b1fd55525b995d86f670ead602473cabb8fecfd9 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -53,6 +53,7 @@
+     "version": "1.2.0",
+     "version_name": "1.2.0-rc.8",
+     "host_permissions": [
++      "https://vesti-gate.vercel.app/*",
+       "https://vesti-proxy.vercel.app/*",
+       "https://dashscope.aliyuncs.com/*",
+       "https://api-inference.modelscope.cn/*",
+diff --git a/frontend/src/background/index.ts b/frontend/src/background/index.ts
+index 568c58838b2fd458733c2e1f676c67de9c798f06..768614841b365178cf7846f1ac6a9cdb4b8cdc5e 100644
+--- a/frontend/src/background/index.ts
++++ b/frontend/src/background/index.ts
+@@ -99,6 +99,8 @@ import { logger } from "../lib/utils/logger"
+ 
+ let isVectorizing = false
+ let rerunVectorizationRequested = false
++const WEEKLY_RECAP_TIMEOUT_MS = 120000
++const weeklyRecapControllers = new Map<string, AbortController>()
+ 
+ async function runVectorizationTask(reason: string): Promise<boolean> {
+   if (isVectorizing) {
+@@ -767,13 +769,48 @@ async function handleOffscreenRequest(
+         return { ok: true, type: messageType, data: record }
+       }
+       case "GENERATE_WEEKLY_RECAP": {
+-        const settings = requireSettings(await getLlmSettings())
+-        const record = await generateWeeklyRecap(
+-          settings,
+-          message.payload.rangeStart,
+-          message.payload.rangeEnd
++        const generationRequestId = message.requestId ?? crypto.randomUUID()
++        const controller = new AbortController()
++        weeklyRecapControllers.set(generationRequestId, controller)
++
++        // Independent watchdog: abort even if the sidepanel closes before it
++        // can send CANCEL_WEEKLY_RECAP.
++        const watchdog = setTimeout(() => {
++          controller.abort()
++        }, WEEKLY_RECAP_TIMEOUT_MS)
++
++        try {
++          const settings = requireSettings(await getLlmSettings())
++          const record = await generateWeeklyRecap(
++            settings,
++            message.payload.rangeStart,
++            message.payload.rangeEnd,
++            { signal: controller.signal }
++          )
++          return { ok: true, type: messageType, data: record }
++        } finally {
++          clearTimeout(watchdog)
++          weeklyRecapControllers.delete(generationRequestId)
++        }
++      }
++      case "CANCEL_WEEKLY_RECAP": {
++        const controller = weeklyRecapControllers.get(
++          message.payload.generationRequestId
+         )
+-        return { ok: true, type: messageType, data: record }
++        if (!controller) {
++          return {
++            ok: true,
++            type: messageType,
++            data: { aborted: false }
++          }
++        }
++
++        controller.abort()
++        return {
++          ok: true,
++          type: messageType,
++          data: { aborted: true }
++        }
+       }
+       case "CREATE_EXPLORE_SESSION": {
+         const sessionId = await createExploreSession(message.payload.title)
+diff --git a/frontend/src/lib/core/middleware/deduplicate.ts b/frontend/src/lib/core/middleware/deduplicate.ts
+index 22337c3a82cb37123efd3db8583f0599911b2d92..b0584ceb921eeab26d1a91985ca664079f948761 100644
+--- a/frontend/src/lib/core/middleware/deduplicate.ts
++++ b/frontend/src/lib/core/middleware/deduplicate.ts
+@@ -1,6 +1,9 @@
+ import type { ConversationDraft, ParsedMessage } from "../../messaging/protocol";
+ import { countAiTurns } from "../../capture/turn-metrics";
+-import { db } from "../../db/schema";
++import {
++  db,
++  resolveConversationRecordOriginAt,
++} from "../../db/schema";
+ import type { ConversationRecord, MessageRecord } from "../../db/schema";
+ import { enforceStorageWriteGuard } from "../../db/storageLimits";
+ import { isAstRoot } from "../../utils/astText";
+@@ -266,6 +269,11 @@ export async function deduplicateAndSave(
+         snippet: cleanMessages[0]?.textContent.slice(0, 100) ?? conversation.snippet,
+         source_created_at: mergedSourceCreatedAt,
+         first_captured_at: mergedFirstCapturedAt,
++        origin_at: resolveConversationRecordOriginAt({
++          source_created_at: mergedSourceCreatedAt,
++          first_captured_at: mergedFirstCapturedAt,
++          created_at: existing.created_at,
++        }),
+       } as Partial<ConversationRecord>);
+ 
+       return {
+@@ -275,16 +283,22 @@ export async function deduplicateAndSave(
+       };
+     }
+ 
++    const firstCapturedAt = resolveFirstCapturedAt(
++      undefined,
++      conversation.first_captured_at,
++      persistedAt
++    );
+     const record: ConversationRecord = {
+       ...conversation,
+-      first_captured_at: resolveFirstCapturedAt(
+-        undefined,
+-        conversation.first_captured_at,
+-        persistedAt
+-      ),
++      first_captured_at: firstCapturedAt,
+       last_captured_at: persistedAt,
+       created_at: persistedAt,
+       updated_at: persistedAt,
++      origin_at: resolveConversationRecordOriginAt({
++        source_created_at: conversation.source_created_at,
++        first_captured_at: firstCapturedAt,
++        created_at: persistedAt,
++      }),
+       message_count: cleanMessages.length,
+       turn_count: turnCount,
+       snippet: cleanMessages[0]?.textContent.slice(0, 100) ?? conversation.snippet,
+diff --git a/frontend/src/lib/db/repository.ts b/frontend/src/lib/db/repository.ts
+index 09839074986f77a9a93adcc9290b77dc3f8e37c6..82aa5f9ff990c5b1b0c2380378cf8a41681d554c 100644
+--- a/frontend/src/lib/db/repository.ts
++++ b/frontend/src/lib/db/repository.ts
+@@ -69,7 +69,7 @@ import {
+   prepareObsidianDirectoryImport,
+   prepareObsidianZipImport
+ } from "../notes/obsidianImport"
+-import { db } from "./schema"
++import { db, resolveConversationRecordOriginAt } from "./schema"
+ import type {
+   AnnotationRecord,
+   ConversationRecord,
+@@ -743,6 +743,14 @@ function normalizeImportedConversation(
+     optional: true,
+     fallback: updatedAt
+   })
++  const sourceCreatedAt = readImportNullableNumber(
++    record,
++    "source_created_at",
++    path,
++    {
++      optional: true
++    }
++  )
+ 
+   return {
+     id,
+@@ -757,18 +765,16 @@ function normalizeImportedConversation(
+       optional: true,
+       fallback: ""
+     }),
+-    source_created_at: readImportNullableNumber(
+-      record,
+-      "source_created_at",
+-      path,
+-      {
+-        optional: true
+-      }
+-    ),
++    source_created_at: sourceCreatedAt,
+     first_captured_at: firstCapturedAt,
+     last_captured_at: lastCapturedAt,
+     created_at: createdAt,
+     updated_at: updatedAt,
++    origin_at: resolveConversationRecordOriginAt({
++      source_created_at: sourceCreatedAt,
++      first_captured_at: firstCapturedAt,
++      created_at: createdAt
++    }),
+     message_count: normalizeImportNonNegativeInt(
+       readImportNumber(record, "message_count", path, {
+         optional: true,
+@@ -1387,13 +1393,23 @@ export async function listConversationsByRange(
+   rangeStart: number,
+   rangeEnd: number
+ ): Promise<Conversation[]> {
+-  const records = await db.conversations.toArray()
++  if (
++    !Number.isFinite(rangeStart) ||
++    !Number.isFinite(rangeEnd) ||
++    rangeEnd < rangeStart
++  ) {
++    return []
++  }
++
++  const records = await db.transaction("r", db.conversations, () =>
++    db.conversations
++      .where("origin_at")
++      .between(rangeStart, rangeEnd, true, true)
++      .toArray()
++  )
++
+   return records
+     .map(toConversation)
+-    .filter((conversation) => {
+-      const originAt = getConversationOriginAt(conversation)
+-      return originAt >= rangeStart && originAt <= rangeEnd
+-    })
+     .sort((a, b) => getConversationOriginAt(b) - getConversationOriginAt(a))
+ }
+ 
+@@ -2028,23 +2044,48 @@ export async function getWeeklyReport(
+ }
+ 
+ export async function saveWeeklyReport(
+-  record: Omit<WeeklyReportRecord, "id">
++  record: Omit<WeeklyReportRecord, "id">,
++  control: { signal?: AbortSignal } = {}
+ ): Promise<WeeklyReportRecord> {
+   await enforceStorageWriteGuard()
+ 
+-  const existing = await db.weekly_reports
+-    .where("rangeStart")
+-    .equals(record.rangeStart)
+-    .and((item) => item.rangeEnd === record.rangeEnd)
+-    .first()
+-
+-  if (existing?.id !== undefined) {
+-    await db.weekly_reports.update(existing.id, record)
+-    return toWeeklyReport({ ...existing, ...record, id: existing.id })
++  const throwIfAborted = () => {
++    if (!control.signal?.aborted) return
++    if (control.signal.reason instanceof Error) {
++      throw control.signal.reason
++    }
++    throw new DOMException("Weekly report persistence aborted", "AbortError")
+   }
+ 
+-  const id = await db.weekly_reports.add(record)
+-  return toWeeklyReport({ ...record, id })
++  throwIfAborted()
++  return db.transaction("rw", db.weekly_reports, async (transaction) => {
++    const abortTransaction = () => transaction.abort()
++    control.signal?.addEventListener("abort", abortTransaction, { once: true })
++
++    try {
++      throwIfAborted()
++      const existing = await db.weekly_reports
++        .where("rangeStart")
++        .equals(record.rangeStart)
++        .and((item) => item.rangeEnd === record.rangeEnd)
++        .first()
++
++      throwIfAborted()
++      if (existing?.id !== undefined) {
++        await db.weekly_reports.update(existing.id, record)
++        // Aborting before the transaction resolves rolls back the update.
++        throwIfAborted()
++        return toWeeklyReport({ ...existing, ...record, id: existing.id })
++      }
++
++      const id = await db.weekly_reports.add(record)
++      // Aborting before the transaction resolves rolls back the insert.
++      throwIfAborted()
++      return toWeeklyReport({ ...record, id })
++    } finally {
++      control.signal?.removeEventListener("abort", abortTransaction)
++    }
++  })
+ }
+ 
+ export async function getDashboardStats(): Promise<DashboardStats> {
+diff --git a/frontend/src/lib/db/schema.ts b/frontend/src/lib/db/schema.ts
+index 04f7cb5c814b093f1df2a79a6dc906ed245f78a5..11a0d6afdf84ce161b5b78db666e36ffff32b0b4 100644
+--- a/frontend/src/lib/db/schema.ts
++++ b/frontend/src/lib/db/schema.ts
+@@ -17,13 +17,47 @@ import {
+   shouldPreferAstCanonicalText,
+ } from "../utils/astText";
+ 
+-export type ConversationRecord = Omit<Conversation, "id"> & { id?: number };
++export type ConversationRecord = Omit<Conversation, "id"> & {
++  id?: number;
++  /**
++   * Indexed equivalent of source_created_at ?? first_captured_at ?? created_at.
++   * Kept internal so the public Conversation contract remains unchanged.
++   */
++  origin_at?: number;
++};
+ export type MessageRecord = Omit<Message, "id" | "content_ast"> & {
+   id?: number;
+   content_ast?: unknown | null;
+ };
+ export type SummaryRecordRecord = Omit<SummaryRecord, "id"> & { id?: number };
+ export type WeeklyReportRecordRecord = Omit<WeeklyReportRecord, "id"> & { id?: number };
++
++export function resolveConversationRecordOriginAt(
++  record: Partial<ConversationRecord>,
++): number {
++  const sourceCreatedAt = record.source_created_at;
++  if (
++    typeof sourceCreatedAt === "number" &&
++    Number.isFinite(sourceCreatedAt) &&
++    sourceCreatedAt > 0
++  ) {
++    return sourceCreatedAt;
++  }
++
++  const firstCapturedAt = record.first_captured_at;
++  if (
++    typeof firstCapturedAt === "number" &&
++    Number.isFinite(firstCapturedAt) &&
++    firstCapturedAt > 0
++  ) {
++    return firstCapturedAt;
++  }
++
++  const createdAt = record.created_at;
++  return typeof createdAt === "number" && Number.isFinite(createdAt)
++    ? createdAt
++    : 0;
++}
+ export interface TopicRecord {
+   id?: number;
+   parent_id: number | null;
+@@ -685,6 +719,37 @@ export class MemoryHubDB extends Dexie {
+           "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
+       })
+       .upgrade(() => undefined);
++    this.version(18)
++      .stores({
++        conversations:
++          "++id, platform, title, created_at, updated_at, origin_at, uuid, source_created_at, turn_count, topic_id, is_starred, [platform+created_at], [platform+uuid], [topic_id+updated_at]",
++        messages:
++          "++id, conversation_id, role, created_at, [conversation_id+created_at]",
++        summaries: "++id, conversationId, createdAt",
++        weekly_reports: "++id, rangeStart, rangeEnd, createdAt",
++        topics:
++          "++id, parent_id, name, created_at, updated_at, [parent_id+name]",
++        vectors: "++id, conversation_id, text_hash",
++        notes:
++          "++id, created_at, updated_at, source_type, source_path, [source_type+updated_at], [source_type+source_path]",
++        note_sources: "id, kind, updated_at, created_at",
++        note_assets:
++          "id, vault_id, relative_path, hash, updated_at, [vault_id+relative_path]",
++        annotations:
++          "++id, conversation_id, message_id, created_at, days_after, [conversation_id+message_id], [conversation_id+created_at]",
++        explore_sessions: "id, updatedAt, createdAt",
++        explore_messages: "id, sessionId, timestamp, [sessionId+timestamp]",
++        prompts:
++          "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
++      })
++      .upgrade((tx) =>
++        tx
++          .table("conversations")
++          .toCollection()
++          .modify((record: Partial<ConversationRecord>) => {
++            record.origin_at = resolveConversationRecordOriginAt(record);
++          }),
++      );
+   }
+ }
+ 
+diff --git a/frontend/src/lib/i18n/translations/en.ts b/frontend/src/lib/i18n/translations/en.ts
+index 74ecf924b5b577533a1eedc3a70fe04ad42996fe..e179a512306c8ce3814ec22767d208cc6948406c 100644
+--- a/frontend/src/lib/i18n/translations/en.ts
++++ b/frontend/src/lib/i18n/translations/en.ts
+@@ -508,6 +508,7 @@ export const enTranslations = {
+     },
+     latestRegenerationFailed: "Latest regeneration failed.",
+     failedToGenerateWeekly: "Failed to generate weekly digest.",
++    weeklyGenerationTimeout: "Generation timed out. Please try again.",
+     failedToGenerateSummary: "Failed to generate summary.",
+     notEnoughData: "Not enough data to generate this week's digest.",
+     sub3Hint: "This range has fewer than 3 substantial summaries. Weekly Digest will resume automatically when enough structured evidence is available.",
+diff --git a/frontend/src/lib/i18n/translations/ja.ts b/frontend/src/lib/i18n/translations/ja.ts
+index 94d7b383b69ac2463ddf0702bddea359da1694d9..72495da5cd14bc8ced96429ba4eeec603a611404 100644
+--- a/frontend/src/lib/i18n/translations/ja.ts
++++ b/frontend/src/lib/i18n/translations/ja.ts
+@@ -511,6 +511,7 @@ export const jaTranslations = {
+     },
+     latestRegenerationFailed: "直近の再生成に失敗しました。",
+     failedToGenerateWeekly: "週次ダイジェストの生成に失敗しました。",
++    weeklyGenerationTimeout: "生成がタイムアウトしました。もう一度お試しください。",
+     failedToGenerateSummary: "サマリーの生成に失敗しました。",
+     notEnoughData: "今週のダイジェストを生成するにはデータが不足しています。",
+     sub3Hint: "この範囲には十分なサマリーが 3 件未満です。構造化された証拠が十分に揃うと、週次ダイジェストは自動的に再開されます。",
+diff --git a/frontend/src/lib/i18n/translations/ko.ts b/frontend/src/lib/i18n/translations/ko.ts
+index 5f0d57d2b0e0cd4802858e7ac970ae050aa0cd55..ea93115606ea2b896b3e0fb9ddba730925118b5e 100644
+--- a/frontend/src/lib/i18n/translations/ko.ts
++++ b/frontend/src/lib/i18n/translations/ko.ts
+@@ -511,6 +511,7 @@ export const koTranslations = {
+     },
+     latestRegenerationFailed: "최근 재생성에 실패했습니다.",
+     failedToGenerateWeekly: "주간 다이제스트 생성에 실패했습니다.",
++    weeklyGenerationTimeout: "생성 시간이 초과되었습니다. 다시 시도해 주세요.",
+     failedToGenerateSummary: "요약 생성에 실패했습니다.",
+     notEnoughData: "이번 주 다이제스트를 생성하기에 데이터가 부족합니다.",
+     sub3Hint: "이 범위에는 충실한 요약이 3개 미만입니다. 충분한 구조화된 근거가 확보되면 주간 다이제스트가 자동으로 재개됩니다.",
+diff --git a/frontend/src/lib/i18n/translations/zh.ts b/frontend/src/lib/i18n/translations/zh.ts
+index ef2dcff312f35e60fc1cdca48efab2e36b924d27..99c9507135ebf3838b7881e385f0443f6b443267 100644
+--- a/frontend/src/lib/i18n/translations/zh.ts
++++ b/frontend/src/lib/i18n/translations/zh.ts
+@@ -507,6 +507,7 @@ export const zhTranslations = {
+     },
+     latestRegenerationFailed: "上次重新生成失败。",
+     failedToGenerateWeekly: "生成周报失败。",
++    weeklyGenerationTimeout: "生成超时，请重试。",
+     failedToGenerateSummary: "生成摘要失败。",
+     notEnoughData: "数据不足，无法生成本周周报。",
+     sub3Hint: "该时间范围内的有效结构化摘要少于 3 个。当积累到足够的结构化证据后，周报会自动继续生成。",
+diff --git a/frontend/src/lib/messaging/protocol.ts b/frontend/src/lib/messaging/protocol.ts
+index f72d1b8f82e8d841fd4ae9772744fd9728cc35de..78a153c0d4c230c7a3b02f2232877b8bf0f2d19c 100644
+--- a/frontend/src/lib/messaging/protocol.ts
++++ b/frontend/src/lib/messaging/protocol.ts
+@@ -545,6 +545,13 @@ export type RequestMessage =
+       requestId?: string
+       payload: { rangeStart: number; rangeEnd: number }
+     }
++  | {
++      type: "CANCEL_WEEKLY_RECAP"
++      target?: "offscreen"
++      via?: "background"
++      requestId?: string
++      payload: { generationRequestId: string }
++    }
+   | {
+       type: "GET_ACTIVE_CAPTURE_STATUS"
+       target?: "background"
+@@ -723,6 +730,7 @@ export type ResponseDataMap = {
+   GET_WEEKLY_REPORT: WeeklyReportRecord | null
+   GENERATE_WEEKLY_REPORT: WeeklyReportRecord
+   GENERATE_WEEKLY_RECAP: WeeklyReportRecord
++  CANCEL_WEEKLY_RECAP: { aborted: boolean }
+   GET_ACTIVE_CAPTURE_STATUS: ActiveCaptureStatus
+   FORCE_ARCHIVE_TRANSIENT: ForceArchiveTransientResult
+   RUN_VECTORIZATION: { queued: boolean }
+diff --git a/frontend/src/lib/messaging/runtime.ts b/frontend/src/lib/messaging/runtime.ts
+index 6f619bb80810206f94985a4bec6c416b53a3cc5c..de75a8b3289d44edbe2c56eead9af0d393067ff7 100644
+--- a/frontend/src/lib/messaging/runtime.ts
++++ b/frontend/src/lib/messaging/runtime.ts
+@@ -2,13 +2,28 @@
+ 
+ const DEFAULT_TIMEOUT_MS = 4000;
+ 
++export class RequestTimeoutError extends Error {
++  readonly timeoutMs: number;
++
++  constructor(timeoutMs: number) {
++    super(`Request timed out after ${timeoutMs}ms`);
++    this.name = "RequestTimeoutError";
++    this.timeoutMs = timeoutMs;
++  }
++}
++
+ export async function sendMessageWithTimeout<T extends keyof ResponseDataMap>(
+   message: RequestMessage,
+-  timeoutMs: number = DEFAULT_TIMEOUT_MS
++  timeoutMs: number = DEFAULT_TIMEOUT_MS,
++  onTimeout?: () => void | Promise<void>
+ ): Promise<ResponseMessage<T>> {
+   return new Promise((resolve, reject) => {
+     const timer = setTimeout(() => {
+-      reject(new Error(`Timeout after ${timeoutMs}ms`));
++      try {
++        void onTimeout?.();
++      } finally {
++        reject(new RequestTimeoutError(timeoutMs));
++      }
+     }, timeoutMs);
+ 
+     try {
+@@ -30,9 +45,14 @@ export async function sendMessageWithTimeout<T extends keyof ResponseDataMap>(
+ 
+ export async function sendRequest<T extends keyof ResponseDataMap>(
+   message: RequestMessage,
+-  timeoutMs?: number
++  timeoutMs?: number,
++  onTimeout?: () => void | Promise<void>
+ ): Promise<ResponseDataMap[T]> {
+-  const response = await sendMessageWithTimeout<T>(message, timeoutMs);
++  const response = await sendMessageWithTimeout<T>(
++    message,
++    timeoutMs,
++    onTimeout
++  );
+   if (!response.ok) {
+     const failure = response as Extract<ResponseMessage<T>, { ok: false }>;
+     throw new Error(failure.error || "Request failed");
+diff --git a/frontend/src/lib/services/insightGenerationService.ts b/frontend/src/lib/services/insightGenerationService.ts
+index 514cc28846627ed98981bcff318743414fcfefbe..1ef1ba6d7d17435c09572339d85770b2a544e523 100644
+--- a/frontend/src/lib/services/insightGenerationService.ts
++++ b/frontend/src/lib/services/insightGenerationService.ts
+@@ -208,6 +208,10 @@ interface SummaryGenerationHooks {
+   onStage?: (stage: "distilling_core_logic" | "curating_summary") => void;
+ }
+ 
++interface InsightGenerationControl {
++  signal?: AbortSignal;
++}
++
+ interface WeeklyGenerationHooks {
+   onStage?: (stage: "aggregating_weekly_digest") => void;
+ }
+@@ -223,6 +227,24 @@ interface PipelineProgressEmitter {
+   ) => void;
+ }
+ 
++function throwIfGenerationAborted(signal?: AbortSignal): void {
++  if (!signal?.aborted) return;
++
++  if (signal.reason instanceof Error) {
++    throw signal.reason;
++  }
++
++  throw new DOMException("Insight generation aborted", "AbortError");
++}
++
++function isGenerationAbort(error: unknown, signal?: AbortSignal): boolean {
++  return Boolean(
++    signal?.aborted ||
++      (error instanceof DOMException && error.name === "AbortError") ||
++      (error instanceof Error && error.name === "AbortError")
++  );
++}
++
+ function resolvePipelineRoute(settings: LlmConfig): InsightPipelineRoute {
+   return getLlmAccessMode(settings) === "demo_proxy" ? "proxy" : "modelscope";
+ }
+@@ -1079,8 +1101,10 @@ async function runCompaction(
+   conversation: Conversation,
+   messages: PromptReadyMessage[],
+   transcriptOverride: string,
+-  locale: SupportedLocale
++  locale: SupportedLocale,
++  signal?: AbortSignal
+ ): Promise<CompactionExecution> {
++  throwIfGenerationAborted(signal);
+   const prompt = getPrompt("compaction", { variant: "current" });
+   const charsIn = countInputChars(messages);
+   const payload = {
+@@ -1100,6 +1124,7 @@ async function runCompaction(
+     );
+     const result = await callInference(settings, compactionPrompt, {
+       systemPrompt: prompt.system,
++      signal,
+     });
+     const content = result.content.trim();
+     const charsOut = content.length;
+@@ -1135,6 +1160,10 @@ async function runCompaction(
+       llmCallCount: 1,
+     };
+   } catch (error) {
++    if (isGenerationAbort(error, signal)) {
++      throw error;
++    }
++
+     const reason = (error as Error).message || "COMPACTION_FAILED";
+     logPromptUsage({
+       promptType: "compaction",
+@@ -1691,10 +1720,12 @@ async function generateStructuredSummary(
+   conversation: Conversation,
+   messages: Message[],
+   locale: SupportedLocale,
+-  hooks?: SummaryGenerationHooks
++  hooks?: SummaryGenerationHooks,
++  control: InsightGenerationControl = {}
+ ): Promise<
+   StructuredGenerationResult<SummaryStructured, SummarySchemaVersion>
+ > {
++  throwIfGenerationAborted(control.signal);
+   const summaryStartedAt = Date.now();
+   const prompt = getPrompt("conversationSummary", { variant: "current" });
+   const dedupeErrors = (errors: string[]): string[] => [...new Set(errors)];
+@@ -1722,7 +1753,8 @@ async function generateStructuredSummary(
+         conversation,
+         promptMessages,
+         promptContext.transcript,
+-        locale
++        locale,
++        control.signal
+       );
+   const summaryPath: SummaryPath = compaction.used ? "compacted" : "direct";
+   let summaryLlmCallCount = compaction.llmCallCount;
+@@ -1747,6 +1779,7 @@ async function generateStructuredSummary(
+     const result = await callInference(settings, inputPrompt, {
+       responseFormat: "json_object",
+       systemPrompt: prompt.system,
++      signal: control.signal,
+     });
+     if (result.contentSource === "reasoning_content") {
+       summaryJsonRecoveredFromReasoning = true;
+@@ -2657,18 +2690,22 @@ async function generateStructuredWeekly(
+ 
+ export async function generateConversationSummary(
+   settings: LlmConfig,
+-  conversationId: number
++  conversationId: number,
++  control: InsightGenerationControl = {}
+ ): Promise<SummaryRecord> {
++  throwIfGenerationAborted(control.signal);
+   const conversation = await getConversationById(conversationId);
+   if (!conversation) {
+     throw new Error("CONVERSATION_NOT_FOUND");
+   }
+ 
++  throwIfGenerationAborted(control.signal);
+   const messages = await listMessages(conversationId);
+   if (messages.length === 0) {
+     throw new Error("CONVERSATION_MESSAGES_EMPTY");
+   }
+ 
++  throwIfGenerationAborted(control.signal);
+   const { locale } = await getLanguageSettings();
+ 
+   const pipelineEmitter = createPipelineProgressEmitter({
+@@ -2682,11 +2719,19 @@ export async function generateConversationSummary(
+ 
+   try {
+     const previous = await getSummary(conversationId);
+-    const generated = await generateStructuredSummary(settings, conversation, messages, locale, {
+-      onStage: (stage) => {
+-        pipelineEmitter.emit(stage, "in_progress");
++    const generated = await generateStructuredSummary(
++      settings,
++      conversation,
++      messages,
++      locale,
++      {
++        onStage: (stage) => {
++          pipelineEmitter.emit(stage, "in_progress");
++        },
+       },
+-    });
++      control
++    );
++    throwIfGenerationAborted(control.signal);
+     pipelineEmitter.emit("persisting_result", "in_progress", {
+       attempt: generated.attempt,
+       promptVersion: generated.promptVersion,
+@@ -2735,6 +2780,7 @@ export async function generateConversationSummary(
+       });
+     }
+ 
++    throwIfGenerationAborted(control.signal);
+     const saved = await saveSummary({
+       conversationId: conversation.id,
+       content: generated.content,
+@@ -3120,47 +3166,154 @@ function buildCodeOnlyRecap(
+   });
+ }
+ 
++interface WeeklyRecapCacheKeyInput {
++  sourceFingerprint: string;
++  modelId: string;
++  promptVersion: string;
++  locale: SupportedLocale;
++}
++
++function buildWeeklyRecapSourceFingerprint(
++  conversations: Conversation[],
++  historyStart: number,
++  rangeEnd: number
++): string {
++  const items = [...conversations]
++    .sort((left, right) => left.id - right.id)
++    .map((conversation) => ({
++      id: conversation.id,
++      originAt: getConversationOriginAt(conversation),
++      sourceCreatedAt: conversation.source_created_at,
++      firstCapturedAt: conversation.first_captured_at,
++      lastCapturedAt: conversation.last_captured_at,
++      updatedAt: conversation.updated_at,
++      platform: conversation.platform,
++      title: conversation.title,
++      topicId: conversation.topic_id,
++      starred: conversation.is_starred,
++      trash: conversation.is_trash,
++      messageCount: conversation.message_count,
++      turnCount: conversation.turn_count,
++    }));
++
++  return JSON.stringify({
++    historyStart,
++    rangeEnd,
++    items,
++  });
++}
++
++async function buildWeeklyRecapCacheKey(
++  input: WeeklyRecapCacheKeyInput
++): Promise<string> {
++  const encoded = new TextEncoder().encode(
++    JSON.stringify({
++      version: "weekly-recap-cache.v1",
++      sourceHash: input.sourceFingerprint,
++      model: input.modelId,
++      promptVersion: input.promptVersion,
++      locale: input.locale,
++      schemaVersion: "weekly_recap.v1",
++    })
++  );
++  const digest = await crypto.subtle.digest("SHA-256", encoded);
++  const hex = Array.from(new Uint8Array(digest), (byte) =>
++    byte.toString(16).padStart(2, "0")
++  ).join("");
++  return `weekly-recap-cache.v1:${hex}`;
++}
++
++function isReusableWeeklyRecap(
++  report: WeeklyReportRecord | null,
++  cacheKey: string,
++  modelId: string
++): report is WeeklyReportRecord {
++  return Boolean(
++    report &&
++      report.schemaVersion === "weekly_recap.v1" &&
++      report.status === "ok" &&
++      report.structured &&
++      report.modelId === modelId &&
++      report.sourceHash === cacheKey
++  );
++}
++
+ export async function generateWeeklyRecap(
+   settings: LlmConfig,
+   rangeStart: number,
+-  rangeEnd: number
++  rangeEnd: number,
++  control: InsightGenerationControl = {}
+ ): Promise<WeeklyReportRecord> {
++  const prompt = getPrompt("weeklyRecap", { variant: "current" });
++  const modelId = getEffectiveModelId(settings);
+   const targetId = `${rangeStart}:${rangeEnd}`;
+   const pipelineEmitter = createPipelineProgressEmitter({
+     scope: "weekly",
+     targetId,
+     route: resolvePipelineRoute(settings),
+-    modelId: getEffectiveModelId(settings),
+-    promptVersion: getPrompt("weeklyRecap", { variant: "current" }).version,
++    modelId,
++    promptVersion: prompt.version,
+   });
+   pipelineEmitter.emit("initiating_pipeline", "in_progress");
+ 
+   try {
+-    const { locale } = await getLanguageSettings();
+-    const allConversations = await listConversationsByRange(rangeStart, rangeEnd);
+-    const conversations = allConversations.filter(
+-      (conversation) => !conversation.is_trash
+-    );
+-    const sourceHash = buildWeeklySourceHash(conversations, rangeStart, rangeEnd);
+-    const topics = await getTopics();
++    throwIfGenerationAborted(control.signal);
+ 
+-    // Prior-week counts (local DB, cheap) for streak + week-over-week delta.
+     const priorRanges = buildPriorWeekRanges(
+       rangeStart,
+       rangeEnd,
+       WEEKLY_RECAP_PRIOR_WEEKS
+     );
+-    const previousWeekCounts: number[] = [];
+-    for (const range of priorRanges) {
+-      const priorConversations = await listConversationsByRange(
+-        range.start,
+-        range.end
+-      );
+-      previousWeekCounts.push(
+-        priorConversations.filter((conversation) => !conversation.is_trash).length
+-      );
++    const historyStart =
++      priorRanges[priorRanges.length - 1]?.start ?? rangeStart;
++
++    const [{ locale }, cachedReport, historyConversations] = await Promise.all([
++      getLanguageSettings(),
++      getWeeklyReport(rangeStart, rangeEnd),
++      listConversationsByRange(historyStart, rangeEnd),
++    ]);
++    throwIfGenerationAborted(control.signal);
++
++    const sourceFingerprint = buildWeeklyRecapSourceFingerprint(
++      historyConversations,
++      historyStart,
++      rangeEnd
++    );
++    const cacheKey = await buildWeeklyRecapCacheKey({
++      sourceFingerprint,
++      modelId,
++      promptVersion: prompt.version,
++      locale,
++    });
++    throwIfGenerationAborted(control.signal);
++
++    if (isReusableWeeklyRecap(cachedReport, cacheKey, modelId)) {
++      pipelineEmitter.emit("completed", "completed", {
++        promptVersion: prompt.version,
++      });
++      return cachedReport;
+     }
+ 
++    const conversations = historyConversations.filter((conversation) => {
++      if (conversation.is_trash) return false;
++      const originAt = getConversationOriginAt(conversation);
++      return originAt >= rangeStart && originAt <= rangeEnd;
++    });
++    const previousWeekCounts = priorRanges.map((range) => {
++      let count = 0;
++      for (const conversation of historyConversations) {
++        if (conversation.is_trash) continue;
++        const originAt = getConversationOriginAt(conversation);
++        if (originAt >= range.start && originAt <= range.end) {
++          count += 1;
++        }
++      }
++      return count;
++    });
++
++    const topics = await getTopics();
++    throwIfGenerationAborted(control.signal);
++
+     const stats = computeWeeklyStats(conversations, {
+       topics,
+       previousWeekCounts,
+@@ -3177,15 +3330,18 @@ export async function generateWeeklyRecap(
+ 
+     if (heaviest) {
+       try {
++        throwIfGenerationAborted(control.signal);
+         const existing = toSummaryV2ForWeekly(
+           await getSummary(heaviest.conversationId)
+         );
++        throwIfGenerationAborted(control.signal);
+         if (existing && isSubstantiveSummary(existing)) {
+           summaryGist = buildSummaryGistFromV2(existing);
+         } else {
+           const generatedRecord = await generateConversationSummary(
+             settings,
+-            heaviest.conversationId
++            heaviest.conversationId,
++            control
+           );
+           const generated = toSummaryV2ForWeekly(generatedRecord);
+           if (generated && isSubstantiveSummary(generated)) {
+@@ -3195,6 +3351,10 @@ export async function generateWeeklyRecap(
+           }
+         }
+       } catch (error) {
++        if (isGenerationAbort(error, control.signal)) {
++          throw error;
++        }
++
+         // Never throw — emotional product must always return something.
+         logger.warn("service", "Weekly recap top-1 summary failed", {
+           conversationId: heaviest.conversationId,
+@@ -3210,7 +3370,6 @@ export async function generateWeeklyRecap(
+       summaryGist
+     );
+ 
+-    const prompt = getPrompt("weeklyRecap", { variant: "current" });
+     const payload: WeeklyRecapPromptPayload = {
+       stats,
+       highlightContext,
+@@ -3240,6 +3399,7 @@ export async function generateWeeklyRecap(
+       const first = await callInference(settings, primaryPrompt, {
+         responseFormat: "json_object",
+         systemPrompt: prompt.system,
++        signal: control.signal,
+       });
+ 
+       let parsed = parseRecapRaw(first.content);
+@@ -3257,6 +3417,7 @@ export async function generateWeeklyRecap(
+         const repaired = await callInference(settings, repairPrompt, {
+           responseFormat: "json_object",
+           systemPrompt: prompt.system,
++          signal: control.signal,
+         });
+         parsed = parseRecapRaw(repaired.content);
+       }
+@@ -3276,6 +3437,10 @@ export async function generateWeeklyRecap(
+         });
+       }
+     } catch (error) {
++      if (isGenerationAbort(error, control.signal)) {
++        throw error;
++      }
++
+       logger.warn("service", "Weekly recap LLM copy failed", {
+         rangeStart,
+         rangeEnd,
+@@ -3302,18 +3467,22 @@ export async function generateWeeklyRecap(
+       weekly_recap_has_highlight: Boolean(highlightContext),
+     });
+ 
+-    const saved = await saveWeeklyReport({
+-      rangeStart,
+-      rangeEnd,
+-      content: renderWeeklyRecapText(recap, locale),
+-      structured: recap,
+-      format: "structured_v1",
+-      status,
+-      schemaVersion: "weekly_recap.v1",
+-      modelId: getEffectiveModelId(settings),
+-      createdAt: Date.now(),
+-      sourceHash,
+-    });
++    throwIfGenerationAborted(control.signal);
++    const saved = await saveWeeklyReport(
++      {
++        rangeStart,
++        rangeEnd,
++        content: renderWeeklyRecapText(recap, locale),
++        structured: recap,
++        format: "structured_v1",
++        status,
++        schemaVersion: "weekly_recap.v1",
++        modelId,
++        createdAt: Date.now(),
++        sourceHash: cacheKey,
++      },
++      { signal: control.signal }
++    );
+ 
+     if (status === "fallback") {
+       pipelineEmitter.emit("degraded_fallback", "degraded_fallback", {
+diff --git a/frontend/src/lib/services/llmService.ts b/frontend/src/lib/services/llmService.ts
+index 4893c7f78fdb3f80d5e42236ebfc3ace1924b3d8..61f59d4b8d015020afb22c5008252228164d6de3 100644
+--- a/frontend/src/lib/services/llmService.ts
++++ b/frontend/src/lib/services/llmService.ts
+@@ -53,6 +53,7 @@ export interface CallModelScopeOptions {
+   responseFormat?: "json_object";
+   systemPrompt?: string;
+   stream?: boolean;
++  signal?: AbortSignal;
+ }
+ 
+ export interface InferenceUsage {
+@@ -524,7 +525,8 @@ async function requestModelScope(
+   streamDecision: StreamDecision = {
+     stage: "stable_non_stream",
+     reason: "not_requested",
+-  }
++  },
++  signal?: AbortSignal
+ ): Promise<Response> {
+   const baseUrl = config.baseUrl.replace(/\/+$/, "");
+   const url = `${baseUrl}/chat/completions`;
+@@ -537,6 +539,7 @@ async function requestModelScope(
+       Authorization: `Bearer ${config.apiKey}`,
+     },
+     body: JSON.stringify(payload),
++    signal,
+   });
+ }
+ 
+@@ -547,7 +550,8 @@ async function requestProxyService(
+   streamDecision: StreamDecision = {
+     stage: "stable_non_stream",
+     reason: "not_requested",
+-  }
++  },
++  signal?: AbortSignal
+ ): Promise<Response> {
+   const url = getProxyRouteUrl(config, "chat");
+   const serviceToken = (config.proxyServiceToken || "").trim();
+@@ -565,6 +569,7 @@ async function requestProxyService(
+     method: "POST",
+     headers,
+     body: JSON.stringify(payload),
++    signal,
+   });
+ }
+ 
+@@ -583,7 +588,14 @@ async function callProvider(
+   const request = (
+     messages: ModelScopeMessage[],
+     responseFormat?: "json_object"
+-  ) => requester(config, messages, responseFormat, streamDecision);
++  ) =>
++    requester(
++      config,
++      messages,
++      responseFormat,
++      streamDecision,
++      options.signal
++    );
+   const modelProfile = getLlmModelProfile(getEffectiveModelId(config));
+ 
+   const baseMessages: ModelScopeMessage[] = [
+diff --git a/frontend/src/lib/services/storageService.ts b/frontend/src/lib/services/storageService.ts
+index bf094be235481e847f6d25c8fc5f3a12d24af526..a85e8c5495c8ffa95691e052b9340fccf57ba29c 100644
+--- a/frontend/src/lib/services/storageService.ts
++++ b/frontend/src/lib/services/storageService.ts
+@@ -813,13 +813,29 @@ export async function generateWeeklyRecap(
+   rangeStart: number,
+   rangeEnd: number
+ ): Promise<WeeklyReportRecord> {
++  const generationRequestId = crypto.randomUUID()
++
+   return sendRequest(
+     {
+       type: "GENERATE_WEEKLY_RECAP",
+       target: "offscreen",
++      requestId: generationRequestId,
+       payload: { rangeStart, rangeEnd }
+     },
+-    LONG_RUNNING_TIMEOUT_MS
++    LONG_RUNNING_TIMEOUT_MS,
++    () => {
++      void sendRequest(
++        {
++          type: "CANCEL_WEEKLY_RECAP",
++          target: "offscreen",
++          payload: { generationRequestId }
++        },
++        READ_TIMEOUT_MS
++      ).catch(() => {
++        // The UI is already in a timeout state. Cancellation is best-effort;
++        // the background watchdog remains the final safety net.
++      })
++    }
+   ) as Promise<WeeklyReportRecord>
+ }
+ 
+diff --git a/frontend/src/sidepanel/pages/InsightsPage.tsx b/frontend/src/sidepanel/pages/InsightsPage.tsx
+index 1a2f7a3c70098ed312514716cc0d42a24d47f535..3f053fe210834c69e7f127df59bb4ce1a84f19ae 100644
+--- a/frontend/src/sidepanel/pages/InsightsPage.tsx
++++ b/frontend/src/sidepanel/pages/InsightsPage.tsx
+@@ -23,6 +23,7 @@ import type {
+   InsightPipelineStage,
+   InsightPipelineStatus,
+ } from "~lib/messaging/protocol";
++import { RequestTimeoutError } from "~lib/messaging/runtime";
+ import {
+   generateConversationSummary,
+   generateWeeklyRecap,
+@@ -188,6 +189,13 @@ function getErrorMessage(
+     if (error.message.includes("STORAGE_HARD_LIMIT_REACHED")) {
+       return t.insights.storageLimitError;
+     }
++    if (
++      error instanceof RequestTimeoutError ||
++      error.name === "AbortError" ||
++      /timed out|timeout|aborted/i.test(error.message)
++    ) {
++      return t.insights.weeklyGenerationTimeout;
++    }
+     return error.message;
+   }
+   return String(error);

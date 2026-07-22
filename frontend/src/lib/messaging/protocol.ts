@@ -43,6 +43,10 @@ import type {
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  WeeklyGrowthTimeMachineData,
+  WeeklyKnowledgeNoteSaveResult,
+  WeeklyKnowledgeNoteStatus,
+  WeeklyPushSettings,
   WeeklyReportRecord
 } from "../types"
 import type { AstRoot, AstVersion } from "../types/ast"
@@ -395,6 +399,27 @@ export type RequestMessage =
       payload: { id: number }
     }
   | {
+      type: "GET_WEEKLY_KNOWLEDGE_NOTE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number }
+    }
+  | {
+      type: "SAVE_WEEKLY_KNOWLEDGE_NOTE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number; locale: string }
+    }
+  | {
+      type: "GET_WEEKLY_GROWTH_TIME_MACHINE"
+      target: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { reportId: number }
+    }
+  | {
       type: "IMPORT_OBSIDIAN_DIRECTORY"
       target: "offscreen"
       via?: "background"
@@ -546,6 +571,29 @@ export type RequestMessage =
       via?: "background"
       requestId?: string
       payload: { rangeStart: number; rangeEnd: number }
+    }
+  | {
+      type: "CANCEL_WEEKLY_RECAP"
+      target?: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { generationRequestId: string }
+    }
+  | {
+      type: "GET_WEEKLY_PUSH_SETTINGS"
+      target?: "background"
+      requestId?: string
+    }
+  | {
+      type: "SET_WEEKLY_PUSH_SETTINGS"
+      target?: "background"
+      requestId?: string
+      payload: { changes: Partial<WeeklyPushSettings> }
+    }
+  | {
+      type: "TEST_WEEKLY_PUSH_NOTIFICATION"
+      target?: "background"
+      requestId?: string
     }
   | {
       type: "GET_ACTIVE_CAPTURE_STATUS"
@@ -729,6 +777,9 @@ export type ResponseDataMap = {
   CREATE_NOTE: { note: Note }
   UPDATE_NOTE: { note: Note }
   DELETE_NOTE: { deleted: boolean }
+  GET_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteStatus
+  SAVE_WEEKLY_KNOWLEDGE_NOTE: WeeklyKnowledgeNoteSaveResult
+  GET_WEEKLY_GROWTH_TIME_MACHINE: WeeklyGrowthTimeMachineData
   IMPORT_OBSIDIAN_DIRECTORY: ObsidianImportSummary
   IMPORT_OBSIDIAN_ZIP: ObsidianImportSummary
   GET_NOTE_ASSET: NoteAssetRecord | null
@@ -764,6 +815,10 @@ export type ResponseDataMap = {
   GET_WEEKLY_REPORT: WeeklyReportRecord | null
   GENERATE_WEEKLY_REPORT: WeeklyReportRecord
   GENERATE_WEEKLY_RECAP: WeeklyReportRecord
+  CANCEL_WEEKLY_RECAP: { aborted: boolean }
+  GET_WEEKLY_PUSH_SETTINGS: { settings: WeeklyPushSettings; nextAt: number | null }
+  SET_WEEKLY_PUSH_SETTINGS: { settings: WeeklyPushSettings; nextAt: number | null }
+  TEST_WEEKLY_PUSH_NOTIFICATION: { notificationId: string }
   GET_ACTIVE_CAPTURE_STATUS: ActiveCaptureStatus
   FORCE_ARCHIVE_TRANSIENT: ForceArchiveTransientResult
   RUN_VECTORIZATION: { queued: boolean }

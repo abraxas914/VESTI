@@ -18,7 +18,11 @@ import {
 const DASHBOARD_NAV_REQUEST_KEY = "vesti_dashboard_open_tab";
 
 export function VestiSidepanel() {
-  const [currentPage, setCurrentPage] = useState<PageId>("timeline");
+  const [currentPage, setCurrentPage] = useState<PageId>(() =>
+    typeof window !== "undefined" && window.location.hash === "#weekly"
+      ? "insights"
+      : "timeline"
+  );
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [threadsState, dispatch] = useReducer(
@@ -67,6 +71,19 @@ export function VestiSidepanel() {
       firstMatchedMessageId,
     });
     setSelectedConversation(conversation);
+  };
+
+  const handleOpenWeeklyHighlight = (
+    conversation: Conversation,
+    messageId: number
+  ) => {
+    dispatch({
+      type: "OPEN_READER",
+      conversationId: conversation.id,
+      firstMatchedMessageId: messageId,
+    });
+    setSelectedConversation(conversation);
+    setCurrentPage("timeline");
   };
 
   const handleBack = () => {
@@ -152,6 +169,7 @@ export function VestiSidepanel() {
               conversation={selectedConversation}
               refreshToken={refreshToken}
               pipelineProgressEvent={pipelineProgressEvent}
+              onOpenWeeklyHighlight={handleOpenWeeklyHighlight}
             />
           ) : currentPage === "settings" ? (
             <SettingsPage onNavigateToData={handleNavigateToData} />
