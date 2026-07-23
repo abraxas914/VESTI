@@ -696,6 +696,9 @@ export interface Note {
   source_path: string | null;
   import_meta: NoteImportMeta | null;
   obsidian_export: NoteObsidianExportMeta | null;
+  kind?: "user" | "weekly_report";
+  source_report_id?: number | null;
+  is_starred?: boolean;
 }
 
 export interface CreateNoteInput {
@@ -706,6 +709,9 @@ export interface CreateNoteInput {
   source_path?: string | null;
   import_meta?: NoteImportMeta | null;
   obsidian_export?: NoteObsidianExportMeta | null;
+  kind?: "user" | "weekly_report";
+  source_report_id?: number | null;
+  is_starred?: boolean;
 }
 
 export interface UpdateNoteChanges {
@@ -716,6 +722,9 @@ export interface UpdateNoteChanges {
   source_path?: string | null;
   import_meta?: NoteImportMeta | null;
   obsidian_export?: NoteObsidianExportMeta | null;
+  kind?: "user" | "weekly_report";
+  source_report_id?: number | null;
+  is_starred?: boolean;
 }
 
 export interface NoteSourceRecord {
@@ -1159,6 +1168,10 @@ export interface DashboardLabels {
     createNote: string;
     localNotes: string;
     noLocalNotesYet: string;
+    weeklyKnowledge: string;
+    weeklyKnowledgeNote: string;
+    generatedFromWeeklyReport: string;
+    noWeeklyKnowledgeYet: string;
     importedVaults: string;
     // Rename / delete dialogs
     renameNote: string;

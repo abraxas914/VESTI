@@ -53,6 +53,7 @@ export interface CallModelScopeOptions {
   responseFormat?: "json_object";
   systemPrompt?: string;
   stream?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface InferenceUsage {
@@ -524,7 +525,8 @@ async function requestModelScope(
   streamDecision: StreamDecision = {
     stage: "stable_non_stream",
     reason: "not_requested",
-  }
+  },
+  signal?: AbortSignal
 ): Promise<Response> {
   const baseUrl = config.baseUrl.replace(/\/+$/, "");
   const url = `${baseUrl}/chat/completions`;
@@ -537,6 +539,7 @@ async function requestModelScope(
       Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify(payload),
+    signal,
   });
 }
 
@@ -547,7 +550,8 @@ async function requestProxyService(
   streamDecision: StreamDecision = {
     stage: "stable_non_stream",
     reason: "not_requested",
-  }
+  },
+  signal?: AbortSignal
 ): Promise<Response> {
   const url = getProxyRouteUrl(config, "chat");
   const serviceToken = (config.proxyServiceToken || "").trim();
@@ -565,6 +569,7 @@ async function requestProxyService(
     method: "POST",
     headers,
     body: JSON.stringify(payload),
+    signal,
   });
 }
 
@@ -583,7 +588,14 @@ async function callProvider(
   const request = (
     messages: ModelScopeMessage[],
     responseFormat?: "json_object"
-  ) => requester(config, messages, responseFormat, streamDecision);
+  ) =>
+    requester(
+      config,
+      messages,
+      responseFormat,
+      streamDecision,
+      options.signal
+    );
   const modelProfile = getLlmModelProfile(getEffectiveModelId(config));
 
   const baseMessages: ModelScopeMessage[] = [

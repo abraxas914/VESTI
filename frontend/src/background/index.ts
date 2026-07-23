@@ -66,6 +66,8 @@ import {
 } from "../lib/services/annotationExportService"
 import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import { getCaptureSettings } from "../lib/services/captureSettingsService"
+import { getLanguageSettings } from "../lib/services/languageSettingsService"
+import { resolveLocale } from "../lib/i18n/locales"
 import {
   DESKTOP_DISCOVER_ALARM,
   DESKTOP_DISCOVER_PERIOD_MINUTES,
@@ -107,6 +109,16 @@ import {
   setLlmSettings
 } from "../lib/services/llmSettingsService"
 import {
+  computeNextWeeklyReminderAt,
+  getWeeklyPushSettings,
+  setWeeklyPushSettings
+} from "../lib/services/weeklyPushSettingsService"
+import {
+  getWeeklyKnowledgeNoteStatus,
+  saveWeeklyKnowledgeNote
+} from "../lib/services/weeklyKnowledgeNoteService"
+import { getWeeklyGrowthTimeMachine } from "../lib/services/weeklyGrowthTimeMachineService"
+import {
   askKnowledgeBase,
   findAllEdges,
   findRelatedConversations,
@@ -118,12 +130,137 @@ import type {
   CaptureMode,
   ForceArchiveTransientResult,
   LlmConfig,
-  Platform
+  Platform,
+  WeeklyGrowthReportV2,
+  WeeklyPushSettings
 } from "../lib/types"
 import { logger } from "../lib/utils/logger"
 
 let isVectorizing = false
 let rerunVectorizationRequested = false
+const WEEKLY_RECAP_TIMEOUT_MS = 120000
+const weeklyRecapControllers = new Map<string, AbortController>()
+const WEEKLY_PUSH_ALARM = "weekly-growth-reminder"
+const WEEKLY_NOTIFICATION_PREFIX = "weekly-growth:"
+
+function getPreviousFullWeekRange(referenceDate = new Date()): {
+  rangeStart: number
+  rangeEnd: number
+} {
+  const currentWeekMonday = new Date(referenceDate)
+  const daysSinceMonday = (currentWeekMonday.getDay() + 6) % 7
+  currentWeekMonday.setHours(0, 0, 0, 0)
+  currentWeekMonday.setDate(currentWeekMonday.getDate() - daysSinceMonday)
+
+  const previousWeekMonday = new Date(currentWeekMonday)
+  previousWeekMonday.setDate(previousWeekMonday.getDate() - 7)
+
+  const previousWeekSunday = new Date(previousWeekMonday)
+  previousWeekSunday.setDate(previousWeekSunday.getDate() + 6)
+  previousWeekSunday.setHours(23, 59, 59, 999)
+
+  return {
+    rangeStart: previousWeekMonday.getTime(),
+    rangeEnd: previousWeekSunday.getTime()
+  }
+}
+
+function isWeeklyGrowthReport(
+  value: unknown
+): value is WeeklyGrowthReportV2 {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      (value as WeeklyGrowthReportV2).schema === "weekly_growth_report.v2"
+  )
+}
+
+function clearWeeklyPushAlarm(): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.alarms.clear(WEEKLY_PUSH_ALARM, () => {
+      void chrome.runtime.lastError
+      resolve()
+    })
+  })
+}
+
+async function syncWeeklyPushAlarm(
+  suppliedSettings?: WeeklyPushSettings
+): Promise<number | null> {
+  if (!chrome?.alarms?.create) return null
+  const settings = suppliedSettings ?? (await getWeeklyPushSettings())
+  await clearWeeklyPushAlarm()
+  if (!settings.enabled) return null
+  const nextAt = computeNextWeeklyReminderAt(settings)
+  chrome.alarms.create(WEEKLY_PUSH_ALARM, { when: nextAt })
+  return nextAt
+}
+
+function createWeeklyNotification(
+  title: string,
+  message: string
+): Promise<string> {
+  const notificationId = `${WEEKLY_NOTIFICATION_PREFIX}${Date.now()}`
+  const manifest = chrome.runtime.getManifest()
+  const iconPath =
+    manifest.icons?.["128"] ??
+    manifest.icons?.["64"] ??
+    manifest.icons?.["48"] ??
+    ""
+
+  return new Promise((resolve, reject) => {
+    chrome.notifications.create(
+      notificationId,
+      {
+        type: "basic",
+        iconUrl: iconPath ? chrome.runtime.getURL(iconPath) : "",
+        title,
+        message
+      },
+      (createdId) => {
+        const error = chrome.runtime.lastError
+        if (error) {
+          reject(new Error(error.message))
+          return
+        }
+        resolve(createdId)
+      }
+    )
+  })
+}
+
+async function showWeeklyPushNotification(): Promise<string> {
+  const [{ locale }, range] = await Promise.all([
+    getLanguageSettings(),
+    Promise.resolve(getPreviousFullWeekRange())
+  ])
+  const report = await getWeeklyReport(range.rangeStart, range.rangeEnd)
+  const growth = isWeeklyGrowthReport(report?.structured)
+    ? report.structured
+    : null
+  const identity = growth?.identity?.label?.trim()
+  const greeting = growth?.greeting?.trim()
+  const copy = {
+    en: {
+      title: identity ? `Your weekly identity: ${identity}` : "Your weekly reflection is ready",
+      message: greeting || "Last week is complete. Open Vesti to revisit what moved your thinking forward."
+    },
+    zh: {
+      title: identity ? `你的本周身份：${identity}` : "你的个人成长周报待回顾",
+      message: greeting || "上周已经收尾，打开 Vesti 回顾推动你思考前进的时刻。"
+    },
+    ja: {
+      title: identity ? `今週のあなた：${identity}` : "週間レポートを振り返りましょう",
+      message: greeting || "先週を振り返り、思考が前進した瞬間を見つけましょう。"
+    },
+    ko: {
+      title: identity ? `이번 주의 나: ${identity}` : "주간 성장 리포트를 돌아보세요",
+      message: greeting || "지난주를 돌아보고 생각이 성장한 순간을 확인해 보세요."
+    }
+  }[locale]
+
+  return createWeeklyNotification(copy.title, copy.message)
+}
 
 async function runVectorizationTask(reason: string): Promise<boolean> {
   if (isVectorizing) {
@@ -404,6 +541,34 @@ async function handleBackgroundRequest(
 
   try {
     switch (message.type) {
+      case "GET_WEEKLY_PUSH_SETTINGS": {
+        const settings = await getWeeklyPushSettings()
+        const nextAt = settings.enabled
+          ? computeNextWeeklyReminderAt(settings)
+          : null
+        return {
+          ok: true,
+          type: messageType,
+          data: { settings, nextAt }
+        }
+      }
+      case "SET_WEEKLY_PUSH_SETTINGS": {
+        const settings = await setWeeklyPushSettings(message.payload.changes)
+        const nextAt = await syncWeeklyPushAlarm(settings)
+        return {
+          ok: true,
+          type: messageType,
+          data: { settings, nextAt }
+        }
+      }
+      case "TEST_WEEKLY_PUSH_NOTIFICATION": {
+        const notificationId = await showWeeklyPushNotification()
+        return {
+          ok: true,
+          type: messageType,
+          data: { notificationId }
+        }
+      }
       case "GET_ACTIVE_CAPTURE_STATUS": {
         const settings = await getCaptureSettings()
         const mode = getModeFromSettings(settings.mode)
@@ -830,6 +995,25 @@ async function handleOffscreenRequest(
         await deleteNote(message.payload.id)
         return { ok: true, type: messageType, data: { deleted: true } }
       }
+      case "GET_WEEKLY_KNOWLEDGE_NOTE": {
+        const data = await getWeeklyKnowledgeNoteStatus(
+          message.payload.reportId
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "SAVE_WEEKLY_KNOWLEDGE_NOTE": {
+        const data = await saveWeeklyKnowledgeNote(
+          message.payload.reportId,
+          resolveLocale(message.payload.locale)
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "GET_WEEKLY_GROWTH_TIME_MACHINE": {
+        const data = await getWeeklyGrowthTimeMachine(
+          message.payload.reportId
+        )
+        return { ok: true, type: messageType, data }
+      }
       case "IMPORT_OBSIDIAN_DIRECTORY": {
         const data = await importObsidianDirectory(
           message.payload.vaultName,
@@ -952,13 +1136,48 @@ async function handleOffscreenRequest(
         return { ok: true, type: messageType, data: record }
       }
       case "GENERATE_WEEKLY_RECAP": {
-        const settings = requireSettings(await getLlmSettings())
-        const record = await generateWeeklyRecap(
-          settings,
-          message.payload.rangeStart,
-          message.payload.rangeEnd
+        const generationRequestId = message.requestId ?? crypto.randomUUID()
+        const controller = new AbortController()
+        weeklyRecapControllers.set(generationRequestId, controller)
+
+        // Independent watchdog: abort even if the sidepanel closes before it
+        // can send CANCEL_WEEKLY_RECAP.
+        const watchdog = setTimeout(() => {
+          controller.abort()
+        }, WEEKLY_RECAP_TIMEOUT_MS)
+
+        try {
+          const settings = requireSettings(await getLlmSettings())
+          const record = await generateWeeklyRecap(
+            settings,
+            message.payload.rangeStart,
+            message.payload.rangeEnd,
+            { signal: controller.signal }
+          )
+          return { ok: true, type: messageType, data: record }
+        } finally {
+          clearTimeout(watchdog)
+          weeklyRecapControllers.delete(generationRequestId)
+        }
+      }
+      case "CANCEL_WEEKLY_RECAP": {
+        const controller = weeklyRecapControllers.get(
+          message.payload.generationRequestId
         )
-        return { ok: true, type: messageType, data: record }
+        if (!controller) {
+          return {
+            ok: true,
+            type: messageType,
+            data: { aborted: false }
+          }
+        }
+
+        controller.abort()
+        return {
+          ok: true,
+          type: messageType,
+          data: { aborted: true }
+        }
       }
       case "CREATE_EXPLORE_SESSION": {
         const sessionId = await createExploreSession(message.payload.title)
@@ -1088,6 +1307,19 @@ if (chrome?.alarms?.create) {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === "vectorize-job") {
       void runVectorizationTask("alarm")
+      return
+    }
+    if (alarm.name === WEEKLY_PUSH_ALARM) {
+      void showWeeklyPushNotification()
+        .catch((error) => {
+          logger.warn("weekly-push", "Weekly notification failed", {
+            error: (error as Error)?.message ?? String(error)
+          })
+        })
+        .finally(() => {
+          void syncWeeklyPushAlarm()
+        })
+      return
     }
     if (alarm.name === DESKTOP_SYNC_ALARM) {
       void runDesktopSync("alarm")
@@ -1098,6 +1330,13 @@ if (chrome?.alarms?.create) {
     if (alarm.name === RELAY_POLL_ALARM) {
       void pollRelayOutbox("alarm")
     }
+  })
+  void syncWeeklyPushAlarm()
+  chrome.runtime.onInstalled.addListener(() => {
+    void syncWeeklyPushAlarm()
+  })
+  chrome.runtime.onStartup.addListener(() => {
+    void syncWeeklyPushAlarm()
   })
 }
 
@@ -1115,6 +1354,19 @@ if (chrome?.runtime?.onStartup) {
 if (chrome?.runtime?.onInstalled) {
   chrome.runtime.onInstalled.addListener(() => {
     void runDesktopAutoConnect("installed")
+  })
+}
+
+// Weekly notification click → open sidepanel with weekly tab.
+if (chrome?.notifications?.onClicked) {
+  chrome.notifications.onClicked.addListener((notificationId) => {
+    if (!notificationId.startsWith(WEEKLY_NOTIFICATION_PREFIX)) return
+    chrome.notifications.clear(notificationId, () => {
+      void chrome.runtime.lastError
+    })
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("sidepanel.html#weekly")
+    })
   })
 }
 

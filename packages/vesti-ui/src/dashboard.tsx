@@ -38,6 +38,8 @@ type DrawerView = "settings" | "data";
 type ReturnTab = Exclude<Tab, "library">;
 type DashboardNavRequest = {
   tab?: unknown;
+  view?: unknown;
+  noteId?: unknown;
   requestedAt?: unknown;
 };
 type ThemeSyncStatus = "idle" | "syncing" | "error";
@@ -227,6 +229,10 @@ const DEFAULT_LABELS: DashboardLabels = {
     createNote: "Create a note",
     localNotes: "Local Notes",
     noLocalNotesYet: "No local notes yet.",
+    weeklyKnowledge: "Weekly Knowledge",
+    weeklyKnowledgeNote: "Weekly knowledge",
+    generatedFromWeeklyReport: "Generated from a weekly report",
+    noWeeklyKnowledgeYet: "Save a growth report to build your weekly knowledge archive.",
     importedVaults: "Imported Vaults",
     renameNote: "Rename Note",
     updateNoteTitle: "Update the title for this note.",
@@ -911,6 +917,13 @@ export function VestiDashboard({
   );
   const [settingsAvailable, setSettingsAvailable] = useState(true);
   const [openConversationId, setOpenConversationId] = useState<number | null>(null);
+  const [openNoteId, setOpenNoteId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") !== "notes") return null;
+    const noteId = Number(params.get("noteId"));
+    return Number.isSafeInteger(noteId) && noteId > 0 ? noteId : null;
+  });
   const [returnTab, setReturnTab] = useState<ReturnTab | null>(null);
   const [mountedTabs, setMountedTabs] = useState<Record<Tab, boolean>>(() => ({
     library: activeTab === "library",
@@ -940,7 +953,8 @@ export function VestiDashboard({
     if (typeof chrome === "undefined" || !chrome.storage?.local) return;
 
     const applyNavRequest = (raw: unknown) => {
-      if (!raw || typeof raw !== "object") return;
+      if (!raw || typeof raw !== "object") return false;
+      let applied = false;
       const tab = (raw as DashboardNavRequest).tab;
       if (
         tab === "library" ||
@@ -949,11 +963,30 @@ export function VestiDashboard({
         tab === "prompts"
       ) {
         setActiveTab(tab);
+        applied = true;
+      }
+      const request = raw as DashboardNavRequest;
+      const noteId = Number(request.noteId);
+      if (
+        request.view === "notes" &&
+        Number.isSafeInteger(noteId) &&
+        noteId > 0
+      ) {
+        setOpenConversationId(null);
+        setOpenNoteId(noteId);
+        applied = true;
+      }
+      return applied;
+    };
+
+    const consumeNavRequest = (raw: unknown) => {
+      if (applyNavRequest(raw)) {
+        chrome.storage.local.remove(DASHBOARD_NAV_REQUEST_KEY);
       }
     };
 
     chrome.storage.local.get(DASHBOARD_NAV_REQUEST_KEY, (result) => {
-      applyNavRequest(result?.[DASHBOARD_NAV_REQUEST_KEY]);
+      consumeNavRequest(result?.[DASHBOARD_NAV_REQUEST_KEY]);
     });
 
     const onStorageChanged: Parameters<typeof chrome.storage.onChanged.addListener>[0] =
@@ -961,7 +994,7 @@ export function VestiDashboard({
         if (areaName !== "local") return;
         const navRequest = changes[DASHBOARD_NAV_REQUEST_KEY];
         if (!navRequest) return;
-        applyNavRequest(navRequest.newValue);
+        consumeNavRequest(navRequest.newValue);
       };
 
     chrome.storage.onChanged.addListener(onStorageChanged);
@@ -1305,6 +1338,8 @@ export function VestiDashboard({
                 themeMode={themeMode}
                 openConversationId={openConversationId}
                 onConversationOpened={() => setOpenConversationId(null)}
+                openNoteId={openNoteId}
+                onNoteOpened={() => setOpenNoteId(null)}
                 returnToSourceLabel={returnToSourceLabel}
                 onReturnToSource={returnToSourceLabel ? handleReturnToSource : undefined}
                 labels={labels.library}

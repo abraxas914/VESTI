@@ -23,10 +23,10 @@ import type {
 import {
   getConversationById,
   getSummary,
-  getTopics,
   getWeeklyReport,
   listConversationsByRange,
   listMessages,
+  listTopicDefinitions,
   saveSummary,
   saveWeeklyReport,
 } from "../db/repository";
@@ -69,6 +69,7 @@ import {
   createPromptReadyConversationContext,
   type PromptReadyMessage,
 } from "../prompts/promptIngestionAdapter";
+import { generateWeeklyGrowthReportV2 } from "./weeklyGrowthGenerationService";
 
 const SUMMARY_MAX_CHARS = 12000;
 const WEEKLY_MAX_CHARS = 12000;
@@ -208,6 +209,10 @@ interface SummaryGenerationHooks {
   onStage?: (stage: "distilling_core_logic" | "curating_summary") => void;
 }
 
+interface InsightGenerationControl {
+  signal?: AbortSignal;
+}
+
 interface WeeklyGenerationHooks {
   onStage?: (stage: "aggregating_weekly_digest") => void;
 }
@@ -221,6 +226,24 @@ interface PipelineProgressEmitter {
       promptVersion?: string;
     }
   ) => void;
+}
+
+function throwIfGenerationAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+
+  if (signal.reason instanceof Error) {
+    throw signal.reason;
+  }
+
+  throw new DOMException("Insight generation aborted", "AbortError");
+}
+
+function isGenerationAbort(error: unknown, signal?: AbortSignal): boolean {
+  return Boolean(
+    signal?.aborted ||
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+  );
 }
 
 function resolvePipelineRoute(settings: LlmConfig): InsightPipelineRoute {
@@ -1079,8 +1102,10 @@ async function runCompaction(
   conversation: Conversation,
   messages: PromptReadyMessage[],
   transcriptOverride: string,
-  locale: SupportedLocale
+  locale: SupportedLocale,
+  signal?: AbortSignal
 ): Promise<CompactionExecution> {
+  throwIfGenerationAborted(signal);
   const prompt = getPrompt("compaction", { variant: "current" });
   const charsIn = countInputChars(messages);
   const payload = {
@@ -1100,6 +1125,7 @@ async function runCompaction(
     );
     const result = await callInference(settings, compactionPrompt, {
       systemPrompt: prompt.system,
+      signal,
     });
     const content = result.content.trim();
     const charsOut = content.length;
@@ -1135,6 +1161,10 @@ async function runCompaction(
       llmCallCount: 1,
     };
   } catch (error) {
+    if (isGenerationAbort(error, signal)) {
+      throw error;
+    }
+
     const reason = (error as Error).message || "COMPACTION_FAILED";
     logPromptUsage({
       promptType: "compaction",
@@ -1691,10 +1721,12 @@ async function generateStructuredSummary(
   conversation: Conversation,
   messages: Message[],
   locale: SupportedLocale,
-  hooks?: SummaryGenerationHooks
+  hooks?: SummaryGenerationHooks,
+  control: InsightGenerationControl = {}
 ): Promise<
   StructuredGenerationResult<SummaryStructured, SummarySchemaVersion>
 > {
+  throwIfGenerationAborted(control.signal);
   const summaryStartedAt = Date.now();
   const prompt = getPrompt("conversationSummary", { variant: "current" });
   const dedupeErrors = (errors: string[]): string[] => [...new Set(errors)];
@@ -1722,7 +1754,8 @@ async function generateStructuredSummary(
         conversation,
         promptMessages,
         promptContext.transcript,
-        locale
+        locale,
+        control.signal
       );
   const summaryPath: SummaryPath = compaction.used ? "compacted" : "direct";
   let summaryLlmCallCount = compaction.llmCallCount;
@@ -1747,6 +1780,7 @@ async function generateStructuredSummary(
     const result = await callInference(settings, inputPrompt, {
       responseFormat: "json_object",
       systemPrompt: prompt.system,
+      signal: control.signal,
     });
     if (result.contentSource === "reasoning_content") {
       summaryJsonRecoveredFromReasoning = true;
@@ -2657,18 +2691,22 @@ async function generateStructuredWeekly(
 
 export async function generateConversationSummary(
   settings: LlmConfig,
-  conversationId: number
+  conversationId: number,
+  control: InsightGenerationControl = {}
 ): Promise<SummaryRecord> {
+  throwIfGenerationAborted(control.signal);
   const conversation = await getConversationById(conversationId);
   if (!conversation) {
     throw new Error("CONVERSATION_NOT_FOUND");
   }
 
+  throwIfGenerationAborted(control.signal);
   const messages = await listMessages(conversationId);
   if (messages.length === 0) {
     throw new Error("CONVERSATION_MESSAGES_EMPTY");
   }
 
+  throwIfGenerationAborted(control.signal);
   const { locale } = await getLanguageSettings();
 
   const pipelineEmitter = createPipelineProgressEmitter({
@@ -2682,11 +2720,19 @@ export async function generateConversationSummary(
 
   try {
     const previous = await getSummary(conversationId);
-    const generated = await generateStructuredSummary(settings, conversation, messages, locale, {
-      onStage: (stage) => {
-        pipelineEmitter.emit(stage, "in_progress");
+    const generated = await generateStructuredSummary(
+      settings,
+      conversation,
+      messages,
+      locale,
+      {
+        onStage: (stage) => {
+          pipelineEmitter.emit(stage, "in_progress");
+        },
       },
-    });
+      control
+    );
+    throwIfGenerationAborted(control.signal);
     pipelineEmitter.emit("persisting_result", "in_progress", {
       attempt: generated.attempt,
       promptVersion: generated.promptVersion,
@@ -2735,6 +2781,7 @@ export async function generateConversationSummary(
       });
     }
 
+    throwIfGenerationAborted(control.signal);
     const saved = await saveSummary({
       conversationId: conversation.id,
       content: generated.content,
@@ -2902,7 +2949,7 @@ function buildPriorWeekRanges(
 
 function buildRecapHighlightContext(
   conversations: Conversation[],
-  topics: Awaited<ReturnType<typeof getTopics>>,
+  topics: Awaited<ReturnType<typeof listTopicDefinitions>>,
   summaryGist?: string
 ): WeeklyRecapPromptPayload["highlightContext"] {
   const ranked = rankHighlightCandidates(conversations, { topics });
@@ -3120,46 +3167,153 @@ function buildCodeOnlyRecap(
   });
 }
 
-export async function generateWeeklyRecap(
+interface WeeklyRecapCacheKeyInput {
+  sourceFingerprint: string;
+  modelId: string;
+  promptVersion: string;
+  locale: SupportedLocale;
+}
+
+function buildWeeklyRecapSourceFingerprint(
+  conversations: Conversation[],
+  historyStart: number,
+  rangeEnd: number
+): string {
+  const items = [...conversations]
+    .sort((left, right) => left.id - right.id)
+    .map((conversation) => ({
+      id: conversation.id,
+      originAt: getConversationOriginAt(conversation),
+      sourceCreatedAt: conversation.source_created_at,
+      firstCapturedAt: conversation.first_captured_at,
+      lastCapturedAt: conversation.last_captured_at,
+      updatedAt: conversation.updated_at,
+      platform: conversation.platform,
+      title: conversation.title,
+      topicId: conversation.topic_id,
+      starred: conversation.is_starred,
+      trash: conversation.is_trash,
+      messageCount: conversation.message_count,
+      turnCount: conversation.turn_count,
+    }));
+
+  return JSON.stringify({
+    historyStart,
+    rangeEnd,
+    items,
+  });
+}
+
+async function buildWeeklyRecapCacheKey(
+  input: WeeklyRecapCacheKeyInput
+): Promise<string> {
+  const encoded = new TextEncoder().encode(
+    JSON.stringify({
+      version: "weekly-recap-cache.v1",
+      sourceHash: input.sourceFingerprint,
+      model: input.modelId,
+      promptVersion: input.promptVersion,
+      locale: input.locale,
+      schemaVersion: "weekly_recap.v1",
+    })
+  );
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  const hex = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `weekly-recap-cache.v1:${hex}`;
+}
+
+function isReusableWeeklyRecap(
+  report: WeeklyReportRecord | null,
+  cacheKey: string,
+  modelId: string
+): report is WeeklyReportRecord {
+  return Boolean(
+    report &&
+      report.schemaVersion === "weekly_recap.v1" &&
+      report.status === "ok" &&
+      report.structured &&
+      report.modelId === modelId &&
+      report.sourceHash === cacheKey
+  );
+}
+
+async function generateWeeklyRecapV1(
   settings: LlmConfig,
   rangeStart: number,
-  rangeEnd: number
+  rangeEnd: number,
+  control: InsightGenerationControl = {}
 ): Promise<WeeklyReportRecord> {
+  const prompt = getPrompt("weeklyRecap", { variant: "current" });
+  const modelId = getEffectiveModelId(settings);
   const targetId = `${rangeStart}:${rangeEnd}`;
   const pipelineEmitter = createPipelineProgressEmitter({
     scope: "weekly",
     targetId,
     route: resolvePipelineRoute(settings),
-    modelId: getEffectiveModelId(settings),
-    promptVersion: getPrompt("weeklyRecap", { variant: "current" }).version,
+    modelId,
+    promptVersion: prompt.version,
   });
   pipelineEmitter.emit("initiating_pipeline", "in_progress");
 
   try {
-    const { locale } = await getLanguageSettings();
-    const allConversations = await listConversationsByRange(rangeStart, rangeEnd);
-    const conversations = allConversations.filter(
-      (conversation) => !conversation.is_trash
-    );
-    const sourceHash = buildWeeklySourceHash(conversations, rangeStart, rangeEnd);
-    const topics = await getTopics();
+    throwIfGenerationAborted(control.signal);
 
-    // Prior-week counts (local DB, cheap) for streak + week-over-week delta.
     const priorRanges = buildPriorWeekRanges(
       rangeStart,
       rangeEnd,
       WEEKLY_RECAP_PRIOR_WEEKS
     );
-    const previousWeekCounts: number[] = [];
-    for (const range of priorRanges) {
-      const priorConversations = await listConversationsByRange(
-        range.start,
-        range.end
-      );
-      previousWeekCounts.push(
-        priorConversations.filter((conversation) => !conversation.is_trash).length
-      );
+    const historyStart =
+      priorRanges[priorRanges.length - 1]?.start ?? rangeStart;
+
+    const [{ locale }, cachedReport, historyConversations] = await Promise.all([
+      getLanguageSettings(),
+      getWeeklyReport(rangeStart, rangeEnd),
+      listConversationsByRange(historyStart, rangeEnd),
+    ]);
+    throwIfGenerationAborted(control.signal);
+
+    const sourceFingerprint = buildWeeklyRecapSourceFingerprint(
+      historyConversations,
+      historyStart,
+      rangeEnd
+    );
+    const cacheKey = await buildWeeklyRecapCacheKey({
+      sourceFingerprint,
+      modelId,
+      promptVersion: prompt.version,
+      locale,
+    });
+    throwIfGenerationAborted(control.signal);
+
+    if (isReusableWeeklyRecap(cachedReport, cacheKey, modelId)) {
+      pipelineEmitter.emit("completed", "completed", {
+        promptVersion: prompt.version,
+      });
+      return cachedReport;
     }
+
+    const conversations = historyConversations.filter((conversation) => {
+      if (conversation.is_trash) return false;
+      const originAt = getConversationOriginAt(conversation);
+      return originAt >= rangeStart && originAt <= rangeEnd;
+    });
+    const previousWeekCounts = priorRanges.map((range) => {
+      let count = 0;
+      for (const conversation of historyConversations) {
+        if (conversation.is_trash) continue;
+        const originAt = getConversationOriginAt(conversation);
+        if (originAt >= range.start && originAt <= range.end) {
+          count += 1;
+        }
+      }
+      return count;
+    });
+
+    const topics = await listTopicDefinitions();
+    throwIfGenerationAborted(control.signal);
 
     const stats = computeWeeklyStats(conversations, {
       topics,
@@ -3177,15 +3331,18 @@ export async function generateWeeklyRecap(
 
     if (heaviest) {
       try {
+        throwIfGenerationAborted(control.signal);
         const existing = toSummaryV2ForWeekly(
           await getSummary(heaviest.conversationId)
         );
+        throwIfGenerationAborted(control.signal);
         if (existing && isSubstantiveSummary(existing)) {
           summaryGist = buildSummaryGistFromV2(existing);
         } else {
           const generatedRecord = await generateConversationSummary(
             settings,
-            heaviest.conversationId
+            heaviest.conversationId,
+            control
           );
           const generated = toSummaryV2ForWeekly(generatedRecord);
           if (generated && isSubstantiveSummary(generated)) {
@@ -3195,6 +3352,10 @@ export async function generateWeeklyRecap(
           }
         }
       } catch (error) {
+        if (isGenerationAbort(error, control.signal)) {
+          throw error;
+        }
+
         // Never throw — emotional product must always return something.
         logger.warn("service", "Weekly recap top-1 summary failed", {
           conversationId: heaviest.conversationId,
@@ -3210,7 +3371,6 @@ export async function generateWeeklyRecap(
       summaryGist
     );
 
-    const prompt = getPrompt("weeklyRecap", { variant: "current" });
     const payload: WeeklyRecapPromptPayload = {
       stats,
       highlightContext,
@@ -3240,6 +3400,7 @@ export async function generateWeeklyRecap(
       const first = await callInference(settings, primaryPrompt, {
         responseFormat: "json_object",
         systemPrompt: prompt.system,
+        signal: control.signal,
       });
 
       let parsed = parseRecapRaw(first.content);
@@ -3257,6 +3418,7 @@ export async function generateWeeklyRecap(
         const repaired = await callInference(settings, repairPrompt, {
           responseFormat: "json_object",
           systemPrompt: prompt.system,
+          signal: control.signal,
         });
         parsed = parseRecapRaw(repaired.content);
       }
@@ -3276,6 +3438,10 @@ export async function generateWeeklyRecap(
         });
       }
     } catch (error) {
+      if (isGenerationAbort(error, control.signal)) {
+        throw error;
+      }
+
       logger.warn("service", "Weekly recap LLM copy failed", {
         rangeStart,
         rangeEnd,
@@ -3302,18 +3468,22 @@ export async function generateWeeklyRecap(
       weekly_recap_has_highlight: Boolean(highlightContext),
     });
 
-    const saved = await saveWeeklyReport({
-      rangeStart,
-      rangeEnd,
-      content: renderWeeklyRecapText(recap, locale),
-      structured: recap,
-      format: "structured_v1",
-      status,
-      schemaVersion: "weekly_recap.v1",
-      modelId: getEffectiveModelId(settings),
-      createdAt: Date.now(),
-      sourceHash,
-    });
+    throwIfGenerationAborted(control.signal);
+    const saved = await saveWeeklyReport(
+      {
+        rangeStart,
+        rangeEnd,
+        content: renderWeeklyRecapText(recap, locale),
+        structured: recap,
+        format: "structured_v1",
+        status,
+        schemaVersion: "weekly_recap.v1",
+        modelId,
+        createdAt: Date.now(),
+        sourceHash: cacheKey,
+      },
+      { signal: control.signal }
+    );
 
     if (status === "fallback") {
       pipelineEmitter.emit("degraded_fallback", "degraded_fallback", {
@@ -3330,6 +3500,20 @@ export async function generateWeeklyRecap(
     pipelineEmitter.emit("degraded_fallback", "degraded_fallback");
     throw error;
   }
+}
+
+export async function generateWeeklyRecap(
+  settings: LlmConfig,
+  rangeStart: number,
+  rangeEnd: number,
+  control: InsightGenerationControl = {}
+): Promise<WeeklyReportRecord> {
+  return generateWeeklyGrowthReportV2(
+    settings,
+    rangeStart,
+    rangeEnd,
+    control
+  );
 }
 
 

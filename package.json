@@ -4,7 +4,9 @@
   "scripts": {
     "pw:auth": "node ./scripts/playwright/bootstrap-auth.mjs",
     "pw:state": "node ./scripts/playwright/export-storage-state.mjs",
-    "pw:sample": "node ./scripts/playwright/dom-sample.mjs"
+    "pw:sample": "node ./scripts/playwright/dom-sample.mjs",
+    "test:weekly-knowledge": "node ./scripts/verify-weekly-knowledge-note.mjs",
+    "test:weekly-time-machine": "node ./scripts/verify-weekly-growth-time-machine.mjs"
   },
   "workspaces": [
     "frontend",

@@ -2587,6 +2587,16 @@
     gap: 10px;
   }
 
+  .weekly-report-action-label {
+    display: inline;
+  }
+
+  @media (max-width: 380px) {
+    .weekly-report-action-label {
+      display: none;
+    }
+  }
+
   .ins-week-sec-head {
     margin-bottom: 6px;
     display: flex;
