@@ -157,6 +157,12 @@ interface TopicOption {
   label: string;
 }
 
+// Progressive rendering: the first page mounts immediately, further pages
+// append as the sentinel nears the viewport. Keeps initial mount (and every
+// re-render while filtering) bounded at ~50 cards instead of the full library.
+const LIST_PAGE_SIZE = 50;
+const LIST_LOAD_MARGIN_PX = 400;
+
 function flattenTopics(
   topics: Topic[],
   level: number = 0,
@@ -213,7 +219,9 @@ export function ConversationList({
   const searchRequestSeqRef = useRef(0);
   const searchDebounceRef = useRef<number | null>(null);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const listSentinelRef = useRef<HTMLDivElement | null>(null);
   const lastAnchorRef = useRef<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
   const normalizedSearchQuery = normalizeSearchQuery(searchQuery);
   const searchReadiness = getSearchReadiness(normalizedSearchQuery);
   const shouldRunMessageSearch = shouldRunFullTextSearch(normalizedSearchQuery);
@@ -464,6 +472,45 @@ export function ConversationList({
     return groups;
   }, [filteredConversations, timeOf, sortMode, t, isSearching]);
 
+  // Restart progressive rendering from the first page whenever the user
+  // changes the result set (search / filters / sort / time window). Data
+  // reloads (refreshToken) intentionally do NOT reset: truncating the list
+  // under the user's scroll position on a background capture would be jarring.
+  useEffect(() => {
+    setVisibleCount(LIST_PAGE_SIZE);
+  }, [normalizedSearchQuery, filterKey, sortMode, timeRange]);
+
+  const hasMoreItems = visibleCount < filteredConversations.length;
+
+  const visibleGroups = useMemo(() => {
+    let remaining = visibleCount;
+    const result: { label: string; items: FilteredConversationItem[] }[] = [];
+    for (const group of grouped) {
+      if (remaining <= 0) break;
+      result.push({ label: group.label, items: group.items.slice(0, remaining) });
+      remaining -= group.items.length;
+    }
+    return result;
+  }, [grouped, visibleCount]);
+
+  // Append the next page when the sentinel approaches the viewport.
+  useEffect(() => {
+    if (!hasMoreItems) return;
+    const sentinel = listSentinelRef.current;
+    const root = listContainerRef.current;
+    if (!sentinel || !root) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((count) => count + LIST_PAGE_SIZE);
+        }
+      },
+      { root, rootMargin: `${LIST_LOAD_MARGIN_PX}px 0px` }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreItems]);
+
   useEffect(() => {
     if (!anchorConversationId || loading) return;
     if (lastAnchorRef.current === anchorConversationId) return;
@@ -474,8 +521,24 @@ export function ConversationList({
       target.scrollIntoView({ block: "nearest", behavior: "smooth" });
       lastAnchorRef.current = anchorConversationId;
       onAnchorConsumed?.();
+      return;
     }
-  }, [anchorConversationId, grouped, loading, onAnchorConsumed]);
+    // The anchor card is beyond the rendered window — grow the window to cover
+    // it; this effect re-runs after the grow and scrolls it into view.
+    const anchorIndex = filteredConversations.findIndex(
+      (item) => item.conversation.id === anchorConversationId
+    );
+    if (anchorIndex >= visibleCount) {
+      setVisibleCount(anchorIndex + 1);
+    }
+  }, [
+    anchorConversationId,
+    visibleGroups,
+    loading,
+    onAnchorConsumed,
+    filteredConversations,
+    visibleCount,
+  ]);
 
   const handleCopyFullText = useCallback(async (conversation: Conversation) => {
     const hasCache = fullTextCacheRef.current.has(conversation.id);
@@ -635,7 +698,7 @@ export function ConversationList({
       className="vesti-scroll h-full min-h-0 flex flex-col gap-2 overflow-y-scroll px-4"
       style={{ paddingBottom: `${bottomInsetPx}px` }}
     >
-      {grouped.map((group) => (
+      {visibleGroups.map((group) => (
         <div key={group.label}>
           <h4 className="-mx-4 sticky top-0 z-10 bg-bg-app px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
             {group.label}
@@ -671,6 +734,9 @@ export function ConversationList({
           </div>
         </div>
       ))}
+      {hasMoreItems && (
+        <div ref={listSentinelRef} className="h-1 shrink-0" aria-hidden="true" />
+      )}
     </div>
   );
 }

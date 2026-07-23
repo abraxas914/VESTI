@@ -14,7 +14,9 @@
     "package:ci": "pnpm run build && plasmo package",
     "package:safe": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/safe-package.ps1 -Overwrite",
     "eval:prompts": "pnpm -C ../packages/vesti-content-package build && pnpm exec tsc --project ../scripts/tsconfig.eval.json && node ../.tmp/eval/scripts/eval-prompts.js",
-    "check:ui-boundaries": "node ../scripts/check-frontend-ui-boundary.mjs"
+    "check:ui-boundaries": "node ../scripts/check-frontend-ui-boundary.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -47,7 +49,8 @@
     "prettier": "3.2.4",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "vitest": "^4.1.10"
   },
   "manifest": {
     "version": "1.2.0",

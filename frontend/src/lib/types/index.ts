@@ -1160,7 +1160,12 @@ export interface DesktopBridgeStatus {
   online: boolean | null
   /** Desktop app version reported by /v1/status, when known. */
   desktopVersion: string | null
-  /** Desktop rejected the token (401) — the user must re-pair. */
+  /**
+   * Legacy: the desktop rejected the token (401). Since Bridge Protocol
+   * v1.2 the token is dropped instead and the next discovery tick
+   * re-associates automatically — this flag only survives on pre-v1.2
+   * persisted records until the next tick clears it.
+   */
   needsRepair: boolean
   syncing: boolean
   /** Epoch ms of the last successful sync (from the server cursor). */
@@ -1175,6 +1180,23 @@ export interface DesktopBridgeStatus {
    * never been probed — features gated on a capability must stay hidden then.
    */
   capabilities: string[]
+  /**
+   * Pairing window reported by /v1/status (Bridge Protocol v1.2+); null when
+   * the desktop predates the field or was never probed.
+   */
+  pairingWindow: "open" | "closed" | null
+  /** An /v1/associate request is pending the in-app user confirmation. */
+  associating: boolean
+  /**
+   * Local cooldown after the user declined an association in the desktop app
+   * (epoch ms); auto-connect stays silent until then. Null = no cooldown.
+   */
+  associationRejectedUntil: number | null
+  /**
+   * True after an explicit user disconnect: auto-connect is suspended until
+   * the user reconnects from the settings card.
+   */
+  autoConnectSuppressed: boolean
 }
 
 // ── Relay handoff packets (desktop outbox → AI platform composer) ───────────

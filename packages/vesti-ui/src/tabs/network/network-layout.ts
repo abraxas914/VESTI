@@ -212,6 +212,7 @@ function buildConnectedComponents(
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const visited = new Set<number>();
   const components: ComponentInfo[] = [];
+  const componentIndexByNodeId = new Map<number, number>();
 
   for (const node of nodes) {
     if (visited.has(node.id)) continue;
@@ -231,12 +232,9 @@ function buildConnectedComponents(
       }
     }
 
-    const componentNodeIdSet = new Set(componentNodeIds);
-    let totalWeight = 0;
-    for (const edge of edges) {
-      if (componentNodeIdSet.has(edge.source) && componentNodeIdSet.has(edge.target)) {
-        totalWeight += edge.weight;
-      }
+    const componentIndex = components.length;
+    for (const nodeId of componentNodeIds) {
+      componentIndexByNodeId.set(nodeId, componentIndex);
     }
 
     const componentNodes = componentNodeIds
@@ -247,13 +245,21 @@ function buildConnectedComponents(
       id: node.id,
       nodeIds: componentNodeIds,
       nodeCount: componentNodeIds.length,
-      totalWeight,
+      totalWeight: 0,
       earliestOriginAt: Math.min(...componentNodes.map((entry) => entry.originAt)),
       minId: Math.min(...componentNodeIds),
       maxCollisionRadius: Math.max(
         ...componentNodeIds.map((id) => metricsById.get(id)?.collisionRadius ?? 22)
       ),
     });
+  }
+
+  // Single pass over edges to weight each component (was O(components × edges)).
+  for (const edge of edges) {
+    const componentIndex = componentIndexByNodeId.get(edge.source);
+    if (componentIndex === undefined) continue;
+    if (componentIndexByNodeId.get(edge.target) !== componentIndex) continue;
+    components[componentIndex].totalWeight += edge.weight;
   }
 
   components.sort((left, right) => {
@@ -453,38 +459,75 @@ function relaxStates(
 ) {
   const statesById = new Map(states.map((state) => [state.id, state]));
 
+  // Uniform spatial grid: collision pairs only ever involve nearby nodes, so
+  // bucket nodes per iteration and test 3×3 neighbor cells instead of all
+  // O(n²) pairs. Cell size covers the largest possible interaction distance.
+  const maxInteractionDistance =
+    states.reduce((value, state) => Math.max(value, state.collisionRadius), 0) *
+      2 +
+    18;
+  const cellSize = Math.max(32, maxInteractionDistance);
+
   for (let iteration = 0; iteration < RELAXATION_ITERATIONS; iteration += 1) {
     const displacement = new Map<number, { x: number; y: number }>();
     states.forEach((state) => {
       displacement.set(state.id, { x: 0, y: 0 });
     });
 
+    const grid = new Map<string, number[]>();
+    for (let index = 0; index < states.length; index += 1) {
+      const state = states[index];
+      const cellKey = `${Math.floor(state.x / cellSize)}|${Math.floor(state.y / cellSize)}`;
+      const bucket = grid.get(cellKey);
+      if (bucket) {
+        bucket.push(index);
+      } else {
+        grid.set(cellKey, [index]);
+      }
+    }
+
     for (let leftIndex = 0; leftIndex < states.length; leftIndex += 1) {
       const leftState = states[leftIndex];
-      for (let rightIndex = leftIndex + 1; rightIndex < states.length; rightIndex += 1) {
-        const rightState = states[rightIndex];
-        const dx = leftState.x - rightState.x;
-        const dy = leftState.y - rightState.y;
-        const distance = Math.hypot(dx, dy);
-        const minimumDistance =
-          leftState.collisionRadius + rightState.collisionRadius + 18;
+      const cellX = Math.floor(leftState.x / cellSize);
+      const cellY = Math.floor(leftState.y / cellSize);
 
-        if (distance >= minimumDistance) continue;
+      for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+        for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+          const bucket = grid.get(`${cellX + offsetX}|${cellY + offsetY}`);
+          if (!bucket) continue;
 
-        const vector =
-          distance > 0.001
-            ? { x: dx / distance, y: dy / distance }
-            : resolveFallbackVector(leftState.id, rightState.id);
-        const overlap = minimumDistance - Math.max(distance, 0.001);
-        const push = overlap * 0.48;
+          for (const rightIndex of bucket) {
+            if (rightIndex <= leftIndex) continue;
+            const rightState = states[rightIndex];
+            const dx = leftState.x - rightState.x;
+            const dy = leftState.y - rightState.y;
+            const minimumDistance =
+              leftState.collisionRadius + rightState.collisionRadius + 18;
+            // Cheap squared-distance reject before the hypot.
+            if (
+              dx * dx + dy * dy >=
+              minimumDistance * minimumDistance
+            ) {
+              continue;
+            }
+            const distance = Math.hypot(dx, dy);
 
-        const leftDisplacement = displacement.get(leftState.id)!;
-        const rightDisplacement = displacement.get(rightState.id)!;
+            const vector =
+              distance > 0.001
+                ? { x: dx / distance, y: dy / distance }
+                : resolveFallbackVector(leftState.id, rightState.id);
+            const overlap = minimumDistance - Math.max(distance, 0.001);
+            const push = overlap * 0.48;
 
-        leftDisplacement.x += vector.x * push;
-        leftDisplacement.y += vector.y * push;
-        rightDisplacement.x -= vector.x * push;
-        rightDisplacement.y -= vector.y * push;
+            const leftDisplacement = displacement.get(leftState.id)!;
+            const rightDisplacement = displacement.get(rightState.id)!;
+
+            leftDisplacement.x += vector.x * push;
+            leftDisplacement.y += vector.y * push;
+            rightDisplacement.x -= vector.x * push;
+            rightDisplacement.y -= vector.y * push;
+          }
+        }
       }
     }
 

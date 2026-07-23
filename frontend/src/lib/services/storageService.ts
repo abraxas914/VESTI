@@ -964,6 +964,24 @@ export async function disconnectDesktopBridge(): Promise<{
   }) as Promise<{ state: DesktopBridgeStatus }>
 }
 
+/**
+ * Manual retry for TOFU auto-connect (after a decline/timeout, a closed
+ * pairing window, or an explicit disconnect). The background clears the
+ * local cooldown/suppression and starts a discovery tick; progress arrives
+ * via the regular state polling.
+ */
+export async function retryDesktopBridgeAutoConnect(): Promise<{
+  state: DesktopBridgeStatus
+}> {
+  return sendRequest(
+    {
+      type: "DESKTOP_BRIDGE_AUTO_CONNECT",
+      target: "background"
+    },
+    10000
+  ) as Promise<{ state: DesktopBridgeStatus }>
+}
+
 export async function syncDesktopBridgeNow(full?: boolean): Promise<{
   state: DesktopBridgeStatus
   synced: boolean

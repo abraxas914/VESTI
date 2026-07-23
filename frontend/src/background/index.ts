@@ -69,14 +69,16 @@ import { getCaptureSettings } from "../lib/services/captureSettingsService"
 import { getLanguageSettings } from "../lib/services/languageSettingsService"
 import { resolveLocale } from "../lib/i18n/locales"
 import {
+  DESKTOP_DISCOVER_ALARM,
+  DESKTOP_DISCOVER_PERIOD_MINUTES,
   DESKTOP_SYNC_ALARM,
   DESKTOP_SYNC_PERIOD_MINUTES,
+  autoConnectDesktop,
   clearStaleDesktopSyncFlag,
   disconnectDesktop,
   getDesktopBridgeStatus,
   pairWithDesktop,
-  probeDesktopInfo,
-  recordDesktopReachability,
+  resumeDesktopAutoConnect,
   syncWithDesktop
 } from "../lib/services/desktopBridgeService"
 import {
@@ -421,6 +423,25 @@ async function runDesktopSync(reason: string, full = false): Promise<void> {
   }
 }
 
+// TOFU auto-connect entry point (discover alarm / startup / install / UI
+// poll). Probes the desktop, and when unpaired with an open pairing window,
+// runs the one-tap association; a fresh token triggers the initial full sync
+// and drains whatever the outbox queued while unpaired.
+async function runDesktopAutoConnect(reason: string): Promise<void> {
+  try {
+    const result = await autoConnectDesktop(reason)
+    if (result.associated) {
+      void runDesktopSync("associate", true)
+      void pollRelayOutbox("associate")
+    }
+  } catch (error) {
+    logger.warn("background", "Desktop auto-connect failed", {
+      reason,
+      error: (error as Error)?.message ?? String(error)
+    })
+  }
+}
+
 async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -672,27 +693,12 @@ async function handleBackgroundRequest(
         return { ok: true, type: messageType, data: { ok: true } }
       }
       case "DESKTOP_BRIDGE_GET_STATE": {
-        let state = await getDesktopBridgeStatus()
-        // Live-probe the desktop so the UI can show its online/offline state.
-        // A refused localhost connection fails fast, so polling stays cheap.
-        try {
-          const info = await probeDesktopInfo()
-          if (
-            state.online !== true ||
-            state.desktopVersion !== info.version ||
-            state.capabilities.join(",") !== info.capabilities.join(",")
-          ) {
-            state = await recordDesktopReachability(
-              true,
-              info.version,
-              info.capabilities
-            )
-          }
-        } catch {
-          if (state.online !== false) {
-            state = await recordDesktopReachability(false, state.desktopVersion)
-          }
-        }
+        // The auto-connect tick probes the desktop live and records
+        // reachability / capabilities / pairing window; fire-and-forget so a
+        // pending association (up to ~70s) never blocks the panel's polling.
+        // The next poll picks up whatever changed.
+        void runDesktopAutoConnect("ui_poll")
+        const state = await getDesktopBridgeStatus()
         return { ok: true, type: messageType, data: { state } }
       }
       case "DESKTOP_BRIDGE_PAIR": {
@@ -703,6 +709,20 @@ async function handleBackgroundRequest(
         // Same for handoff packets: pull whatever the desktop queued while
         // the extension was unpaired.
         void pollRelayOutbox("pair")
+        return { ok: true, type: messageType, data: { state } }
+      }
+      case "DESKTOP_BRIDGE_AUTO_CONNECT": {
+        // Manual retry from the settings card: clear the local cooldown /
+        // disconnect suppression, then start a tick in the background — an
+        // associate can hang ~70s awaiting the in-app confirm, far past the
+        // panel's message timeout, so progress arrives via state polling.
+        void resumeDesktopAutoConnect("manual_retry").then((result) => {
+          if (result.associated) {
+            void runDesktopSync("associate", true)
+            void pollRelayOutbox("associate")
+          }
+        })
+        const state = await getDesktopBridgeStatus()
         return { ok: true, type: messageType, data: { state } }
       }
       case "DESKTOP_BRIDGE_DISCONNECT": {
@@ -1266,8 +1286,8 @@ async function handleOffscreenRequest(
   }
 }
 
-// The worker may have been killed mid desktop-sync; drop the stale flag so the
-// UI never shows a phantom "syncing" state.
+// The worker may have been killed mid desktop-sync (or mid-associate); drop
+// the stale flags so the UI never shows a phantom "syncing"/"waiting" state.
 void clearStaleDesktopSyncFlag()
 
 // Badge text does not survive a browser restart; rebuild it from the queue.
@@ -1277,6 +1297,9 @@ if (chrome?.alarms?.create) {
   chrome.alarms.create("vectorize-job", { periodInMinutes: 5 })
   chrome.alarms.create(DESKTOP_SYNC_ALARM, {
     periodInMinutes: DESKTOP_SYNC_PERIOD_MINUTES
+  })
+  chrome.alarms.create(DESKTOP_DISCOVER_ALARM, {
+    periodInMinutes: DESKTOP_DISCOVER_PERIOD_MINUTES
   })
   chrome.alarms.create(RELAY_POLL_ALARM, {
     periodInMinutes: RELAY_POLL_PERIOD_MINUTES
@@ -1301,6 +1324,9 @@ if (chrome?.alarms?.create) {
     if (alarm.name === DESKTOP_SYNC_ALARM) {
       void runDesktopSync("alarm")
     }
+    if (alarm.name === DESKTOP_DISCOVER_ALARM) {
+      void runDesktopAutoConnect("alarm")
+    }
     if (alarm.name === RELAY_POLL_ALARM) {
       void pollRelayOutbox("alarm")
     }
@@ -1317,11 +1343,21 @@ if (chrome?.alarms?.create) {
 // Once per browser launch, retry whatever the last scheduled sync missed.
 if (chrome?.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
+    void runDesktopAutoConnect("startup")
     void runDesktopSync("startup")
     void pollRelayOutbox("startup")
   })
 }
 
+// Install/update: the app may already be running with an open pairing
+// window (it opens for 10 minutes at app start) — associate right away.
+if (chrome?.runtime?.onInstalled) {
+  chrome.runtime.onInstalled.addListener(() => {
+    void runDesktopAutoConnect("installed")
+  })
+}
+
+// Weekly notification click → open sidepanel with weekly tab.
 if (chrome?.notifications?.onClicked) {
   chrome.notifications.onClicked.addListener((notificationId) => {
     if (!notificationId.startsWith(WEEKLY_NOTIFICATION_PREFIX)) return

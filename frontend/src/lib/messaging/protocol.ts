@@ -648,6 +648,11 @@ export type RequestMessage =
       payload?: { full?: boolean }
     }
   | {
+      type: "DESKTOP_BRIDGE_AUTO_CONNECT"
+      target?: "background"
+      requestId?: string
+    }
+  | {
       type: "RELAY_LIST"
       target?: "background"
       requestId?: string
@@ -835,6 +840,7 @@ export type ResponseDataMap = {
     conversations?: number
     messages?: number
   }
+  DESKTOP_BRIDGE_AUTO_CONNECT: { state: DesktopBridgeStatus }
   RELAY_LIST: {
     items: RelayItem[]
     outboxSupported: boolean
