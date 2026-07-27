@@ -1,49 +1,5 @@
 import { interceptAndPersistCapture } from "../lib/capture/storage-interceptor"
 import {
-  clearAllData,
-  clearInsightsCache,
-  createExploreSession,
-  createNote,
-  createTopic,
-  deleteAnnotation,
-  deleteConversation,
-  deleteExploreSession,
-  deleteNote,
-  exportAllData,
-  getDashboardStats,
-  getDataOverview,
-  getExploreMessages,
-  getExploreSession,
-  getStorageUsage,
-  getAllSummaries,
-  getSummary,
-  getTopics,
-  getWeeklyReport,
-  importAllData,
-  importObsidianDirectory,
-  importObsidianZip,
-  listAnnotations,
-  listConversations,
-  listExploreSessions,
-  listMessages,
-  bulkAddTagToConversations,
-  bulkSetConversationFlags,
-  listNotes,
-  moveTagAcrossConversations,
-  removeTagFromConversations,
-  renameTagAcrossConversations,
-  saveAnnotation,
-  searchConversationIdsByText,
-  searchConversationMatchesByText,
-  getNoteAsset,
-  updateConversation,
-  updateConversationTitle,
-  updateConversationTopic,
-  updateExploreMessageContext,
-  updateExploreSession,
-  updateNote
-} from "../lib/db/repository"
-import {
   createPrompt,
   deletePrompt,
   extractPromptsFromLibrary,
@@ -54,51 +10,93 @@ import {
   updatePrompt
 } from "../lib/db/promptRepository"
 import {
-  completePromptDraft,
-  distillFragments,
-  resolveUsableLlmConfig
-} from "../lib/services/promptLlmService"
+  bulkAddTagToConversations,
+  bulkSetConversationFlags,
+  clearAllData,
+  clearInsightsCache,
+  createExploreSession,
+  createNote,
+  createTopic,
+  deleteAnnotation,
+  deleteConversation,
+  deleteExploreSession,
+  deleteNote,
+  exportAllData,
+  getAllSummaries,
+  getDashboardStats,
+  getDataOverview,
+  getExploreMessages,
+  getExploreSession,
+  getNoteAsset,
+  getStorageUsage,
+  getSummary,
+  getTopics,
+  getWeeklyReport,
+  importAllData,
+  importObsidianDirectory,
+  importObsidianZip,
+  listAnnotations,
+  listConversations,
+  listExploreSessions,
+  listMessages,
+  listNotes,
+  moveTagAcrossConversations,
+  removeTagFromConversations,
+  renameTagAcrossConversations,
+  saveAnnotation,
+  searchConversationIdsByText,
+  searchConversationMatchesByText,
+  updateConversation,
+  updateConversationTitle,
+  updateConversationTopic,
+  updateExploreMessageContext,
+  updateExploreSession,
+  updateNote
+} from "../lib/db/repository"
+import { optimizeDeepSeekPromptInBackground } from "../lib/features/deepseekPromptBackgroundService"
+import { runCoreRoundTableService } from "../lib/features/roundTableBackgroundService"
+import { resolveLocale } from "../lib/i18n/locales"
 import { isRequestMessage } from "../lib/messaging/protocol"
 import type { RequestMessage, ResponseMessage } from "../lib/messaging/protocol"
+import {
+  beginOnboardingTour,
+  finishOnboarding,
+  handleOnboardingActionClick,
+  handleOnboardingInstalled,
+  recordOnboardingGuideProgress,
+  syncOnboardingPanelBehavior
+} from "../lib/onboarding/background"
+import {
+  isSupportedCaptureTabUrl,
+  rankSupportedCaptureTabs,
+  resolvePlatformFromUrl
+} from "../lib/onboarding/targeting"
 import {
   exportAnnotationToMyNotes,
   exportAnnotationToNotion
 } from "../lib/services/annotationExportService"
-import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import { getCaptureSettings } from "../lib/services/captureSettingsService"
-import { getLanguageSettings } from "../lib/services/languageSettingsService"
-import { resolveLocale } from "../lib/i18n/locales"
+import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import {
+  autoConnectDesktop,
+  clearStaleDesktopSyncFlag,
   DESKTOP_DISCOVER_ALARM,
   DESKTOP_DISCOVER_PERIOD_MINUTES,
   DESKTOP_SYNC_ALARM,
   DESKTOP_SYNC_PERIOD_MINUTES,
-  autoConnectDesktop,
-  clearStaleDesktopSyncFlag,
   disconnectDesktop,
   getDesktopBridgeStatus,
   pairWithDesktop,
   resumeDesktopAutoConnect,
   syncWithDesktop
 } from "../lib/services/desktopBridgeService"
-import {
-  RELAY_POLL_ALARM,
-  RELAY_POLL_PERIOD_MINUTES,
-  clearRelayQueue,
-  completeRelayInjection,
-  dismissRelayItem,
-  getRelayItem,
-  listPendingRelayItems,
-  markRelayItemFailed,
-  pollRelayOutbox,
-  refreshRelayBadge
-} from "../lib/services/relayService"
 import { runGardener } from "../lib/services/gardenerService"
 import {
   generateConversationSummary,
   generateWeeklyRecap,
   generateWeeklyReport
 } from "../lib/services/insightGenerationService"
+import { getLanguageSettings } from "../lib/services/languageSettingsService"
 import {
   getLlmAccessMode,
   normalizeLlmSettings
@@ -109,22 +107,39 @@ import {
   setLlmSettings
 } from "../lib/services/llmSettingsService"
 import {
-  computeNextWeeklyReminderAt,
-  getWeeklyPushSettings,
-  setWeeklyPushSettings
-} from "../lib/services/weeklyPushSettingsService"
+  completePromptDraft,
+  distillFragments,
+  resolveUsableLlmConfig
+} from "../lib/services/promptLlmService"
 import {
-  getWeeklyKnowledgeNoteStatus,
-  saveWeeklyKnowledgeNote
-} from "../lib/services/weeklyKnowledgeNoteService"
-import { getWeeklyGrowthTimeMachine } from "../lib/services/weeklyGrowthTimeMachineService"
+  clearRelayQueue,
+  completeRelayInjection,
+  dismissRelayItem,
+  getRelayItem,
+  listPendingRelayItems,
+  markRelayItemFailed,
+  pollRelayOutbox,
+  refreshRelayBadge,
+  RELAY_POLL_ALARM,
+  RELAY_POLL_PERIOD_MINUTES
+} from "../lib/services/relayService"
+import { runRoundtablePanel } from "../lib/services/roundtableService"
 import {
   askKnowledgeBase,
   findAllEdges,
   findRelatedConversations,
   vectorizeAllConversations
 } from "../lib/services/searchService"
-import { runRoundtablePanel } from "../lib/services/roundtableService"
+import { getWeeklyGrowthTimeMachine } from "../lib/services/weeklyGrowthTimeMachineService"
+import {
+  getWeeklyKnowledgeNoteStatus,
+  saveWeeklyKnowledgeNote
+} from "../lib/services/weeklyKnowledgeNoteService"
+import {
+  computeNextWeeklyReminderAt,
+  getWeeklyPushSettings,
+  setWeeklyPushSettings
+} from "../lib/services/weeklyPushSettingsService"
 import type {
   ActiveCaptureStatus,
   CaptureMode,
@@ -165,9 +180,7 @@ function getPreviousFullWeekRange(referenceDate = new Date()): {
   }
 }
 
-function isWeeklyGrowthReport(
-  value: unknown
-): value is WeeklyGrowthReportV2 {
+function isWeeklyGrowthReport(value: unknown): value is WeeklyGrowthReportV2 {
   return Boolean(
     value &&
       typeof value === "object" &&
@@ -242,20 +255,30 @@ async function showWeeklyPushNotification(): Promise<string> {
   const greeting = growth?.greeting?.trim()
   const copy = {
     en: {
-      title: identity ? `Your weekly identity: ${identity}` : "Your weekly reflection is ready",
-      message: greeting || "Last week is complete. Open Vesti to revisit what moved your thinking forward."
+      title: identity
+        ? `Your weekly identity: ${identity}`
+        : "Your weekly reflection is ready",
+      message:
+        greeting ||
+        "Last week is complete. Open Vesti to revisit what moved your thinking forward."
     },
     zh: {
       title: identity ? `你的本周身份：${identity}` : "你的个人成长周报待回顾",
       message: greeting || "上周已经收尾，打开 Vesti 回顾推动你思考前进的时刻。"
     },
     ja: {
-      title: identity ? `今週のあなた：${identity}` : "週間レポートを振り返りましょう",
-      message: greeting || "先週を振り返り、思考が前進した瞬間を見つけましょう。"
+      title: identity
+        ? `今週のあなた：${identity}`
+        : "週間レポートを振り返りましょう",
+      message:
+        greeting || "先週を振り返り、思考が前進した瞬間を見つけましょう。"
     },
     ko: {
-      title: identity ? `이번 주의 나: ${identity}` : "주간 성장 리포트를 돌아보세요",
-      message: greeting || "지난주를 돌아보고 생각이 성장한 순간을 확인해 보세요."
+      title: identity
+        ? `이번 주의 나: ${identity}`
+        : "주간 성장 리포트를 돌아보세요",
+      message:
+        greeting || "지난주를 돌아보고 생각이 성장한 순간을 확인해 보세요."
     }
   }[locale]
 
@@ -340,68 +363,6 @@ type ContentForceArchiveResponse =
     }
   | { ok: false; error: string }
 
-const SUPPORTED_CAPTURE_HOSTS = new Set([
-  "chatgpt.com",
-  "chat.openai.com",
-  "claude.ai",
-  "gemini.google.com",
-  "chat.deepseek.com",
-  "www.doubao.com",
-  "chat.qwen.ai",
-  "www.kimi.com",
-  "kimi.com",
-  "kimi.moonshot.cn",
-  "yuanbao.tencent.com"
-])
-
-function resolvePlatformFromUrl(url: string): Platform | undefined {
-  try {
-    const host = new URL(url).hostname.toLowerCase()
-    if (host === "chatgpt.com" || host === "chat.openai.com") {
-      return "ChatGPT"
-    }
-    if (host === "claude.ai") {
-      return "Claude"
-    }
-    if (host === "gemini.google.com") {
-      return "Gemini"
-    }
-    if (host === "chat.deepseek.com") {
-      return "DeepSeek"
-    }
-    if (host === "www.doubao.com") {
-      return "Doubao"
-    }
-    if (host === "chat.qwen.ai") {
-      return "Qwen"
-    }
-    if (
-      host === "www.kimi.com" ||
-      host === "kimi.com" ||
-      host === "kimi.moonshot.cn"
-    ) {
-      return "Kimi"
-    }
-    if (host === "yuanbao.tencent.com") {
-      return "Yuanbao"
-    }
-  } catch {
-    return undefined
-  }
-
-  return undefined
-}
-
-function isSupportedCaptureTabUrl(url?: string): boolean {
-  if (!url) return false
-  try {
-    const host = new URL(url).hostname.toLowerCase()
-    return SUPPORTED_CAPTURE_HOSTS.has(host)
-  } catch {
-    return false
-  }
-}
-
 function getModeFromSettings(mode: CaptureMode): CaptureMode {
   if (mode === "mirror" || mode === "smart" || mode === "manual") {
     return mode
@@ -448,6 +409,13 @@ async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
       resolve(tabs[0] ?? null)
     })
   })
+}
+
+async function getSupportedCaptureTabs(): Promise<chrome.tabs.Tab[]> {
+  const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) => {
+    chrome.tabs.query({}, (result) => resolve(result))
+  })
+  return rankSupportedCaptureTabs(tabs)
 }
 
 async function sendMessageToTab<T>(
@@ -620,6 +588,35 @@ async function handleBackgroundRequest(
 
         return { ok: true, type: messageType, data }
       }
+      case "ONBOARDING_TOUR_START": {
+        const data = await beginOnboardingTour()
+        return { ok: true, type: messageType, data }
+      }
+      case "ONBOARDING_GUIDE_PROGRESS": {
+        const data = await recordOnboardingGuideProgress(
+          message.payload.feature,
+          message.payload
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "ONBOARDING_COMPLETE": {
+        const data = await finishOnboarding(
+          message.payload.via,
+          message.payload.hasCleanedMockData
+        )
+        return { ok: true, type: messageType, data }
+      }
+      case "RUN_CORE_ROUNDTABLE": {
+        const data = await runCoreRoundTableService(message.payload.topic)
+        return { ok: true, type: messageType, data }
+      }
+      case "OPTIMIZE_DEEPSEEK_PROMPT": {
+        const data = await optimizeDeepSeekPromptInBackground(
+          message.payload.originalText,
+          message.payload.mode
+        )
+        return { ok: true, type: messageType, data }
+      }
       case "RUN_VECTORIZATION": {
         void runVectorizationTask("message")
         return { ok: true, type: messageType, data: { queued: true } }
@@ -653,10 +650,18 @@ async function handleBackgroundRequest(
       case "IMPORT_HISTORY_START": {
         const tab = await getActiveTab()
         if (!tab?.id) {
-          return { ok: true, type: messageType, data: { started: false, reason: "no_active_tab" } }
+          return {
+            ok: true,
+            type: messageType,
+            data: { started: false, reason: "no_active_tab" }
+          }
         }
         if (!isSupportedCaptureTabUrl(tab.url)) {
-          return { ok: true, type: messageType, data: { started: false, reason: "unsupported_tab" } }
+          return {
+            ok: true,
+            type: messageType,
+            data: { started: false, reason: "unsupported_tab" }
+          }
         }
         try {
           const resp = await sendMessageToTab<{
@@ -677,7 +682,64 @@ async function handleBackgroundRequest(
           return {
             ok: true,
             type: messageType,
-            data: { started: false, reason: (error as Error).message || "tab_unreachable" }
+            data: {
+              started: false,
+              reason: (error as Error).message || "tab_unreachable"
+            }
+          }
+        }
+      }
+      case "ONBOARDING_IMPORT_RECENT_WEEK": {
+        const tabs = await getSupportedCaptureTabs()
+        const selected = new Map<Platform, chrome.tabs.Tab>()
+        for (const tab of tabs) {
+          const platform = tab.url ? resolvePlatformFromUrl(tab.url) : undefined
+          if (platform && !selected.has(platform)) selected.set(platform, tab)
+        }
+
+        const availablePlatforms: Platform[] = []
+        const completedPlatforms: Platform[] = []
+        let saved = 0
+        let failed = 0
+
+        await Promise.all(
+          Array.from(selected.entries()).map(async ([platform, tab]) => {
+            if (typeof tab.id !== "number") return
+            try {
+              const probe = await sendMessageToTab<{
+                supported?: boolean
+                available?: boolean
+              }>(tab.id, { type: "IMPORT_HISTORY_PROBE" })
+              if (!probe?.supported || !probe.available) return
+              availablePlatforms.push(platform)
+              const response = await sendMessageToTab<{
+                started?: boolean
+                progress?: { saved?: number; failed?: number }
+              }>(tab.id, {
+                type: "IMPORT_HISTORY_RUN",
+                since: message.payload.since,
+                until: message.payload.until,
+                waitForCompletion: true
+              })
+              if (!response?.started) return
+              completedPlatforms.push(platform)
+              saved += response.progress?.saved ?? 0
+              failed += response.progress?.failed ?? 0
+            } catch {
+              failed += 1
+            }
+          })
+        )
+
+        return {
+          ok: true,
+          type: messageType,
+          data: {
+            attemptedTabs: selected.size,
+            availablePlatforms,
+            completedPlatforms,
+            saved,
+            failed
           }
         }
       }
@@ -1009,9 +1071,7 @@ async function handleOffscreenRequest(
         return { ok: true, type: messageType, data }
       }
       case "GET_WEEKLY_GROWTH_TIME_MACHINE": {
-        const data = await getWeeklyGrowthTimeMachine(
-          message.payload.reportId
-        )
+        const data = await getWeeklyGrowthTimeMachine(message.payload.reportId)
         return { ok: true, type: messageType, data }
       }
       case "IMPORT_OBSIDIAN_DIRECTORY": {
@@ -1180,7 +1240,10 @@ async function handleOffscreenRequest(
         }
       }
       case "CREATE_EXPLORE_SESSION": {
-        const sessionId = await createExploreSession(message.payload.title)
+        const sessionId = await createExploreSession(
+          message.payload.title,
+          message.payload.systemPrompt
+        )
         return { ok: true, type: messageType, data: { sessionId } }
       }
       case "LIST_EXPLORE_SESSIONS": {
@@ -1218,7 +1281,10 @@ async function handleOffscreenRequest(
         return { ok: true, type: messageType, data }
       }
       case "SEARCH_PROMPTS": {
-        const data = await searchPrompts(message.payload.query, message.payload.limit)
+        const data = await searchPrompts(
+          message.payload.query,
+          message.payload.limit
+        )
         return { ok: true, type: messageType, data }
       }
       case "CREATE_PROMPT": {
@@ -1226,7 +1292,10 @@ async function handleOffscreenRequest(
         return { ok: true, type: messageType, data }
       }
       case "UPDATE_PROMPT": {
-        const prompt = await updatePrompt(message.payload.id, message.payload.changes)
+        const prompt = await updatePrompt(
+          message.payload.id,
+          message.payload.changes
+        )
         return { ok: true, type: messageType, data: { prompt } }
       }
       case "DELETE_PROMPT": {
@@ -1251,7 +1320,9 @@ async function handleOffscreenRequest(
         const data = await extractPromptsFromLibrary({
           scope: message.payload?.scope,
           limit: message.payload?.limit,
-          distill: config ? (turns) => distillFragments(config, turns) : undefined
+          distill: config
+            ? (turns) => distillFragments(config, turns)
+            : undefined
         })
         return { ok: true, type: messageType, data }
       }
@@ -1352,10 +1423,19 @@ if (chrome?.runtime?.onStartup) {
 // Install/update: the app may already be running with an open pairing
 // window (it opens for 10 minutes at app start) — associate right away.
 if (chrome?.runtime?.onInstalled) {
-  chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.onInstalled.addListener((details) => {
     void runDesktopAutoConnect("installed")
+    void handleOnboardingInstalled(details).catch((error) => {
+      logger.error(
+        "background",
+        "Onboarding install routing failed",
+        error as Error
+      )
+    })
   })
 }
+
+void syncOnboardingPanelBehavior()
 
 // Weekly notification click → open sidepanel with weekly tab.
 if (chrome?.notifications?.onClicked) {
@@ -1370,7 +1450,10 @@ if (chrome?.notifications?.onClicked) {
   })
 }
 
-function openSidepanelForTab(tabId: number, done?: (ok: boolean) => void): void {
+function openSidepanelForTab(
+  tabId: number,
+  done?: (ok: boolean) => void
+): void {
   if (!chrome?.sidePanel?.open) {
     logger.warn("background", "sidePanel API not available")
     done?.(false)
@@ -1388,53 +1471,19 @@ function openSidepanelForTab(tabId: number, done?: (ok: boolean) => void): void 
   chrome.sidePanel.open({ tabId }, () => {
     const lastError = chrome.runtime.lastError
     if (lastError) {
-      logger.warn("background", "sidePanel.open failed", { error: lastError.message })
+      logger.warn("background", "sidePanel.open failed", {
+        error: lastError.message
+      })
     }
     done?.(!lastError)
   })
 }
 
-// Clicking the toolbar icon opens our standalone web UI (the full Dashboard at
-// options.html) in its own tab; if one is already open we focus it instead of
-// piling up duplicates. Tracked in-memory (no "tabs" permission needed) — after
-// a service-worker restart a stale id just falls back to opening a fresh tab.
-let dashboardTabId: number | null = null
-
-function focusOrOpenDashboard(): void {
-  const url = chrome.runtime.getURL("options.html")
-  const openNew = () => {
-    chrome.tabs.create({ url }, (tab) => {
-      void chrome.runtime.lastError
-      dashboardTabId = tab?.id ?? null
-    })
-  }
-  if (dashboardTabId == null) {
-    openNew()
-    return
-  }
-  chrome.tabs.update(dashboardTabId, { active: true }, (tab) => {
-    if (chrome.runtime.lastError || !tab) {
-      dashboardTabId = null
-      openNew()
-      return
-    }
-    if (typeof tab.windowId === "number") {
-      chrome.windows.update(tab.windowId, { focused: true }, () => {
-        void chrome.runtime.lastError
-      })
-    }
-  })
-}
-
-if (chrome?.tabs?.onRemoved) {
-  chrome.tabs.onRemoved.addListener((removedTabId) => {
-    if (removedTabId === dashboardTabId) dashboardTabId = null
-  })
-}
-
+// Before onboarding completes, the action resumes setup or focuses the welcome
+// page. Afterwards Chrome's native openPanelOnActionClick behavior owns the click.
 if (chrome?.action?.onClicked) {
   chrome.action.onClicked.addListener(() => {
-    focusOrOpenDashboard()
+    void handleOnboardingActionClick()
   })
 }
 

@@ -390,7 +390,8 @@ function toConversation(record: ConversationRecord): Conversation {
     updated_at: updatedAt,
     first_captured_at: firstCapturedAt,
     last_captured_at: lastCapturedAt,
-    turn_count: turnCount
+    turn_count: turnCount,
+    isMock: record.isMock === true
   }
 }
 
@@ -820,6 +821,10 @@ function normalizeImportedConversation(
       min: 1
     }),
     is_starred: readImportBoolean(record, "is_starred", path, {
+      optional: true,
+      fallback: false
+    }),
+    isMock: readImportBoolean(record, "isMock", path, {
       optional: true,
       fallback: false
     })
@@ -3020,7 +3025,10 @@ function generateId(prefix: string): string {
 
 // Session CRUD
 
-export async function createExploreSession(title: string): Promise<string> {
+export async function createExploreSession(
+  title: string,
+  systemPrompt?: string
+): Promise<string> {
   await enforceStorageWriteGuard()
 
   const now = Date.now()
@@ -3029,6 +3037,7 @@ export async function createExploreSession(title: string): Promise<string> {
     title: title.slice(0, 100), // Limit title length
     preview: "",
     messageCount: 0,
+    systemPrompt: systemPrompt?.trim().slice(0, 12_000) || undefined,
     createdAt: now,
     updatedAt: now
   }

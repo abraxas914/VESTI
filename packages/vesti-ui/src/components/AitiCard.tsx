@@ -155,7 +155,9 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
   if (!profile || !profile.available) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-10 text-center">
-        <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
+        <h3
+          data-onboarding-target="aiti-card"
+          className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
         <p className="mt-2 max-w-md text-[13px] text-text-tertiary">{labels.insufficient}</p>
         {labels.insufficientHint ? (
           <p className="mt-3 max-w-sm text-[12px] text-text-tertiary/70">{labels.insufficientHint}</p>
@@ -179,7 +181,9 @@ export function AitiCard({ profile, labels, storage, sendToLabels }: AitiCardPro
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
+        <div
+          data-onboarding-target="aiti-card"
+          className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
             <div className="mt-1 flex items-center gap-2 text-[11px] text-text-tertiary">

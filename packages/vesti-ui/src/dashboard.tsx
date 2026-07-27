@@ -38,6 +38,7 @@ type DrawerView = "settings" | "data";
 type ReturnTab = Exclude<Tab, "library">;
 type DashboardNavRequest = {
   tab?: unknown;
+  exploreMode?: unknown;
   view?: unknown;
   noteId?: unknown;
   requestedAt?: unknown;
@@ -966,6 +967,15 @@ export function VestiDashboard({
         applied = true;
       }
       const request = raw as DashboardNavRequest;
+      if (
+        request.exploreMode === "ask" ||
+        request.exploreMode === "aiti" ||
+        request.exploreMode === "learn" ||
+        request.exploreMode === "roundtable"
+      ) {
+        setExploreMode(request.exploreMode);
+        applied = true;
+      }
       const noteId = Number(request.noteId);
       if (
         request.view === "notes" &&
@@ -1240,6 +1250,8 @@ export function VestiDashboard({
         {labels.tabs.library}
       </button>
       <button
+        data-onboarding-target="explore-tab"
+        data-onboarding-action="explore-tab"
         type="button"
         onClick={() => handleSelectTab("explore")}
         className={`inline-flex items-center px-3 py-1.5 text-[14px] leading-none font-mono font-medium uppercase tracking-[0.26em] transition-colors ${
@@ -1353,6 +1365,24 @@ export function VestiDashboard({
                 {(["ask", "aiti", "learn", "roundtable"] as const).map((mode) => (
                   <button
                     key={mode}
+                    data-onboarding-target={
+                      mode === "aiti"
+                        ? "aiti-mode"
+                        : mode === "learn"
+                          ? "learn-mode"
+                        : mode === "roundtable"
+                          ? "roundtable-mode"
+                          : undefined
+                    }
+                    data-onboarding-action={
+                      mode === "aiti"
+                        ? "aiti-mode"
+                        : mode === "learn"
+                          ? "learn-mode"
+                        : mode === "roundtable"
+                          ? "roundtable-mode"
+                          : undefined
+                    }
                     type="button"
                     onClick={() => setExploreMode(mode)}
                     className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${

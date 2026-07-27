@@ -8,6 +8,7 @@ Audience: Engineers, QA, release owners, maintainers
 这个 README 是仓库文档树的根索引。
 
 当前文档结构遵循三层模型：
+
 - `documents/` 根目录：仓库级政策与通用操作文档
 - subsystem canonical directories：长期维护的工程规格、现状与运行契约
 - `documents/archive/`：历史快照、退役阶段材料、已不再作为当前决策入口的旧资料
@@ -19,6 +20,7 @@ Audience: Engineers, QA, release owners, maintainers
 负责 capture / parser / observer / pipeline / archival fidelity 相关文档。
 
 Canonical examples:
+
 - `capture_engine/README.md`
 - `capture_engine/capture_engine_engineering_spec.md`
 - `capture_engine/capture_engine_current_architecture.md`
@@ -29,6 +31,7 @@ Canonical examples:
 负责 reader、export、compression、insights、schema-consumer contract 与时间语义相关文档。
 
 Canonical examples:
+
 - `reader_pipeline/README.md`
 - `reader_pipeline/reader_pipeline_engineering_spec.md`
 - `reader_pipeline/reader_pipeline_current_architecture.md`
@@ -39,6 +42,7 @@ Canonical examples:
 负责跨 sidepanel / web surface 的动态渲染治理、状态门控、过渡纪律与 entity-scoped UI state reset 规则。
 
 Canonical examples:
+
 - `ui_runtime/README.md`
 - `ui_runtime/ui_runtime_dynamic_rendering_contract.md`
 - `ui_runtime/ui_runtime_rendering_governance_checklist.md`
@@ -49,6 +53,7 @@ Canonical examples:
 它不是 canonical spec source of truth，而是把跨子系统的实施任务集中在一起，方便按阶段推进。
 
 Canonical examples:
+
 - `refactor_tasks/README.md`
 - `refactor_tasks/capture_engine_refactor_tasks.md`
 - `refactor_tasks/reader_pipeline_refactor_tasks.md`
@@ -69,6 +74,14 @@ Canonical examples:
 
 负责 floating capsule 文档。
 
+### `onboarding/`
+
+负责浏览器扩展首次启动、匿名身份、工具栏路由、快速开始与可恢复设置向导的状态机和验收契约。
+
+Canonical entry:
+
+- `onboarding/first_run_onboarding_engineering_spec.md`
+
 ### `orchestration/`
 
 负责 feature flag、runtime event 与 multi-agent orchestration 文档。
@@ -82,6 +95,7 @@ Canonical examples:
 负责 dated delivery snapshot 与 handoff context。
 
 重要规则：
+
 - handoff 很有价值
 - 但它不是当前 canonical 规格的首选入口
 - 长期有效的知识应提升到上面的 canonical 目录
@@ -91,6 +105,7 @@ Canonical examples:
 负责保留历史文档、候选草稿、退役阶段材料。
 
 重要规则：
+
 - archive 用来保留历史，而不是作为当前实现决策入口
 - 收口时优先迁档，不做硬删除
 
@@ -99,6 +114,7 @@ Canonical examples:
 只有仓库级政策或工具文档应直接保留在 `documents/` 根目录。
 
 当前保留：
+
 - `README.md`
 - `DEVELOPMENT_GUIDELINES.md` — repo-wide engineering 守则（架构地图、消息路由、i18n、构建校验、已知技术债）
 - `version_control_plan.md`
@@ -115,10 +131,11 @@ Canonical examples:
 4. cross-subsystem rollout backlog / implementation task ledger -> `refactor_tasks/`
 5. web dashboard / library / explore / network surface-specific contract -> `web_dashboard/`
 6. global UI / IA / component system -> `ui_refactor/`
-7. prompt / proxy / model routing -> `prompt_engineering/`
-8. dated handoff -> `engineering_handoffs/`
-9. superseded draft / retired phase material -> `archive/`
-10. repo-wide policy / deployment utility -> `documents/` root
+7. extension first-run / onboarding / guided-tour resume -> `onboarding/`
+8. prompt / proxy / model routing -> `prompt_engineering/`
+9. dated handoff -> `engineering_handoffs/`
+10. superseded draft / retired phase material -> `archive/`
+11. repo-wide policy / deployment utility -> `documents/` root
 
 ## Recommended Reading Order
 
@@ -131,18 +148,21 @@ Canonical examples:
 5. 只有在需要追溯时再看 handoff 与 archive
 
 针对 capture engine：
+
 1. `documents/capture_engine/README.md`
 2. `documents/capture_engine/capture_engine_engineering_spec.md`
 3. `documents/capture_engine/capture_engine_current_architecture.md`
 4. `documents/capture_engine/capture_engine_operational_playbook.md`
 
 针对 reader pipeline：
+
 1. `documents/reader_pipeline/README.md`
 2. `documents/reader_pipeline/reader_pipeline_engineering_spec.md`
 3. `documents/reader_pipeline/reader_pipeline_current_architecture.md`
 4. `documents/reader_pipeline/reader_pipeline_operational_playbook.md`
 
 针对动态渲染治理：
+
 1. `documents/ui_runtime/README.md`
 2. `documents/ui_runtime/ui_runtime_dynamic_rendering_contract.md`
 3. `documents/ui_runtime/ui_runtime_rendering_governance_checklist.md`
@@ -151,6 +171,7 @@ Canonical examples:
 ## Naming Guidance
 
 推荐模式：
+
 - canonical spec: `<topic>_engineering_spec.md`
 - current baseline: `<topic>_current_architecture.md`
 - runtime contract: `<topic>_contract.md`

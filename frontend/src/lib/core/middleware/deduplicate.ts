@@ -199,6 +199,9 @@ export async function deduplicateAndSave(
       const storedSignatures = buildStoredSignatures(existingMessages);
 
       if (signaturesMatch(incomingSignatures, storedSignatures)) {
+        if (conversation.isMock === true && existing.isMock !== true) {
+          await db.conversations.update(existing.id, { isMock: true });
+        }
         return { saved: false, newMessages: 0, conversationId: existing.id };
       }
 
@@ -269,6 +272,7 @@ export async function deduplicateAndSave(
         snippet: cleanMessages[0]?.textContent.slice(0, 100) ?? conversation.snippet,
         source_created_at: mergedSourceCreatedAt,
         first_captured_at: mergedFirstCapturedAt,
+        isMock: existing.isMock === true || conversation.isMock === true,
         origin_at: resolveConversationRecordOriginAt({
           source_created_at: mergedSourceCreatedAt,
           first_captured_at: mergedFirstCapturedAt,

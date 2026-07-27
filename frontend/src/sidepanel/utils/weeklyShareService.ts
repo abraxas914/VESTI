@@ -4,6 +4,65 @@ const EXPORT_EXCLUDE_SELECTOR =
   "[data-weekly-export-exclude], [data-weekly-export-private]";
 const MAX_CANVAS_EDGE = 12000;
 const MAX_CANVAS_AREA = 32_000_000;
+const EXPORT_BOTTOM_BREATHING_ROOM = 24;
+
+export interface WeeklyExportHeightMetrics {
+  scrollHeight: number;
+  rootHeight: number;
+  contentBottom: number | null;
+  bottomInset?: number;
+}
+
+export interface WeeklyExportWidthMetrics {
+  visibleWidth: number;
+  scrollWidth: number;
+}
+
+/**
+ * The share image is a snapshot of the side-panel report, so its horizontal
+ * canvas must stay aligned with the report's visible width. A descendant's
+ * intrinsic width may increase scrollWidth, but using that value would add a
+ * blank strip beside the report instead of matching the side panel.
+ */
+export function resolveWeeklyExportWidth({
+  visibleWidth,
+  scrollWidth,
+}: WeeklyExportWidthMetrics): number {
+  const renderedWidth = Number.isFinite(visibleWidth)
+    ? Math.ceil(visibleWidth)
+    : 0;
+  if (renderedWidth > 0) return renderedWidth;
+  return Math.max(
+    1,
+    Math.ceil(Number.isFinite(scrollWidth) ? scrollWidth : 0)
+  );
+}
+
+/**
+ * Prefer the bottom edge of actual rendered content over a cloned layout's
+ * scrollHeight. Computed min-heights and flex constraints can otherwise turn
+ * into a large blank tail in the exported canvas.
+ */
+export function resolveWeeklyExportHeight({
+  scrollHeight,
+  rootHeight,
+  contentBottom,
+  bottomInset = EXPORT_BOTTOM_BREATHING_ROOM,
+}: WeeklyExportHeightMetrics): number {
+  const layoutHeight = Math.max(
+    1,
+    Math.ceil(Number.isFinite(scrollHeight) ? scrollHeight : 0),
+    Math.ceil(Number.isFinite(rootHeight) ? rootHeight : 0)
+  );
+  if (contentBottom === null || !Number.isFinite(contentBottom)) {
+    return layoutHeight;
+  }
+  const contentHeight = Math.max(
+    1,
+    Math.ceil(contentBottom + Math.max(0, bottomInset))
+  );
+  return Math.min(layoutHeight, contentHeight);
+}
 
 function nextAnimationFrame(): Promise<void> {
   return new Promise((resolve) => {
@@ -51,17 +110,80 @@ function inlineComputedStyles(source: Element, target: Element): void {
   });
 }
 
+const VERTICAL_SIZE_PROPERTIES = [
+  "height",
+  "min-height",
+  "max-height",
+  "block-size",
+  "min-block-size",
+  "max-block-size",
+] as const;
+
+function collectReflowAncestors(
+  root: HTMLElement,
+  elements: Element[]
+): Set<HTMLElement> {
+  const ancestors = new Set<HTMLElement>();
+  for (const element of elements) {
+    let ancestor = element.parentElement;
+    while (ancestor) {
+      ancestors.add(ancestor);
+      if (ancestor === root) break;
+      ancestor = ancestor.parentElement;
+    }
+  }
+  return ancestors;
+}
+
 function removePrivateContent(root: HTMLElement): void {
-  root.querySelectorAll(EXPORT_EXCLUDE_SELECTOR).forEach((element) => {
-    element.remove();
-  });
-  root
-    .querySelectorAll<HTMLElement>(
+  const excluded = Array.from(root.querySelectorAll(EXPORT_EXCLUDE_SELECTOR));
+  const controls = Array.from(
+    root.querySelectorAll<HTMLElement>(
       "input, textarea, select, [contenteditable='true']"
     )
-    .forEach((element) => {
-      element.remove();
+  );
+  const reflowAncestors = collectReflowAncestors(root, [
+    ...excluded,
+    ...controls,
+  ]);
+
+  [...excluded, ...controls].forEach((element) => element.remove());
+
+  // Computed styles are inlined before sanitizing so the foreignObject can be
+  // rendered without the extension stylesheet. Those styles include pixel
+  // heights from the unsanitized UI. Clear only ancestor block sizing so the
+  // remaining report content can close the gaps left by removed controls.
+  reflowAncestors.forEach((element) => {
+    VERTICAL_SIZE_PROPERTIES.forEach((property) => {
+      element.style.removeProperty(property);
     });
+  });
+}
+
+function hasDirectRenderableContent(element: Element): boolean {
+  if (element.matches("img, svg, canvas, video, hr")) return true;
+  return Array.from(element.childNodes).some(
+    (node) =>
+      node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+  );
+}
+
+function measureContentBottom(root: HTMLElement): number | null {
+  const rootRect = root.getBoundingClientRect();
+  let contentBottom: number | null = null;
+  for (const element of root.querySelectorAll<HTMLElement | SVGElement>("*")) {
+    if (!hasDirectRenderableContent(element)) continue;
+    const computed = window.getComputedStyle(element);
+    if (computed.display === "none" || computed.visibility === "hidden") {
+      continue;
+    }
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    const bottom = rect.bottom - rootRect.top;
+    contentBottom =
+      contentBottom === null ? bottom : Math.max(contentBottom, bottom);
+  }
+  return contentBottom;
 }
 
 async function buildSanitizedClone(
@@ -94,7 +216,11 @@ async function buildSanitizedClone(
     : sourceBackground;
   clone.style.boxSizing = "border-box";
   clone.style.height = "auto";
+  clone.style.minHeight = "0";
   clone.style.maxHeight = "none";
+  clone.style.blockSize = "auto";
+  clone.style.minBlockSize = "0";
+  clone.style.maxBlockSize = "none";
   clone.style.overflow = "visible";
   clone.style.pointerEvents = "none";
   clone.style.width = `${Math.ceil(sourceRect.width)}px`;
@@ -111,11 +237,28 @@ async function buildSanitizedClone(
   document.body.appendChild(staging);
 
   try {
-    const width = Math.ceil(Math.max(clone.scrollWidth, sourceRect.width));
-    const height = Math.ceil(clone.scrollHeight);
+    const width = resolveWeeklyExportWidth({
+      visibleWidth: sourceRect.width,
+      scrollWidth: clone.scrollWidth,
+    });
+    const cloneRect = clone.getBoundingClientRect();
+    const computed = window.getComputedStyle(clone);
+    const rootBottomPadding = Number.parseFloat(computed.paddingBottom) || 0;
+    const height = resolveWeeklyExportHeight({
+      scrollHeight: clone.scrollHeight,
+      rootHeight: cloneRect.height,
+      contentBottom: measureContentBottom(clone),
+      bottomInset: Math.max(
+        EXPORT_BOTTOM_BREATHING_ROOM,
+        rootBottomPadding + 2
+      ),
+    });
     if (width < 1 || height < 1) {
       throw new Error("WEEKLY_EXPORT_EMPTY");
     }
+    clone.style.height = `${height}px`;
+    clone.style.minHeight = `${height}px`;
+    clone.style.maxHeight = `${height}px`;
     return { clone, width, height };
   } finally {
     clone.remove();

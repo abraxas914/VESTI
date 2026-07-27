@@ -35,6 +35,75 @@ export const koTranslations = {
     expand: "펼치기",
     collapse: "접기"
   },
+  onboarding: {
+    brandName: "VESTI",
+    eyebrow: "나만의 AI 기억",
+    subtitle: "대화를 모아 오래 남을 지식으로",
+    intro:
+      "VESTI는 AI 대화를 조용히 저장하고 검색 가능한 로컬 우선 지식 흐름으로 정리합니다.",
+    quickStart: "빠른 시작",
+    quickStartWorking: "7일간의 데모 기억을 준비하는 중…",
+    quickStartDescription:
+      "7일 데모 라이브러리를 불러와 VESTI의 핵심 기능을 바로 체험합니다.",
+    quickStartSuccess: "데모 기억이 준비되었습니다. VESTI를 여는 중…",
+    quickStartNoTab:
+      "VESTI가 준비되었습니다. 지원되는 AI 대화를 열어 시작하세요.",
+    quickStartUnavailable:
+      "VESTI는 준비되었지만 현재 대화를 아직 저장할 수 없습니다.",
+    skip: "안내를 건너뛰고 바로 사용 →",
+    privacy:
+      "계정이 필요하지 않습니다. 대화 라이브러리는 이 기기에만 저장됩니다.",
+    supportedPlatforms:
+      "ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi, Yuanbao 지원.",
+    actionFailed: "설정이 중단되었습니다. 다시 시도해 주세요.",
+    setupTitle: "VESTI를 나에게 맞게",
+    setupSubtitle:
+      "세 가지만 선택하면 됩니다. 나중에 언제든 변경할 수 있습니다.",
+    stepOf: "{total}단계 중 {current}단계",
+    captureStepTitle: "대화를 어떻게 수집할까요?",
+    captureStepDescription: "빠른 시작을 직접 누르면 항상 한 번 저장합니다.",
+    captureMirror: "자동 저장",
+    captureMirrorDescription:
+      "지원 사이트의 대화를 진행되는 동안 조용히 저장합니다.",
+    captureSmart: "스마트 필터",
+    captureSmartDescription:
+      "내용이 충분한 대화를 저장하고 짧은 대화는 보류합니다.",
+    captureManual: "수동",
+    captureManualDescription: "직접 보관을 요청한 대화만 저장합니다.",
+    aiStepTitle: "AI 사용 방식 선택",
+    aiStepDescription: "데모는 즉시 사용할 수 있고 개인 키는 선택 사항입니다.",
+    demoMode: "데모 · 권장",
+    demoModeDescription:
+      "설정이나 로그인 없이 VESTI 관리 게이트웨이를 사용합니다.",
+    byokMode: "내 API 키 사용",
+    byokModeDescription: "DashScope 호환 키를 이 기기에만 저장합니다.",
+    apiKeyLabel: "API 키",
+    apiKeyPlaceholder: "sk-...",
+    apiKeyInvalid: "12자 이상의 유효한 키를 입력해 주세요.",
+    connectionTest: "연결 테스트",
+    connectionTesting: "테스트 중…",
+    connectionOptional: "테스트는 선택 사항이며 저장을 막지 않습니다.",
+    preferencesStepTitle: "작업 공간 환경 선택",
+    preferencesStepDescription: "언어, 화면 모드, 플로팅 캡슐을 설정합니다.",
+    languageLabel: "언어",
+    themeLabel: "화면 모드",
+    themeLight: "라이트",
+    themeDark: "다크",
+    capsuleLabel: "플로팅 캡슐",
+    capsuleDescription: "지원되는 AI 사이트에 가벼운 수집 상태를 표시합니다.",
+    back: "이전",
+    next: "계속",
+    finish: "설정 완료",
+    finishing: "완료 중…",
+    resumeHint: "진행 상황은 자동으로 저장됩니다.",
+    saveFailed: "선택 사항을 저장하지 못했습니다. 다시 시도해 주세요.",
+    capturedBanner: "최근 대화를 확인할 수 있습니다.",
+    noTabBanner:
+      "VESTI가 준비되었습니다. 지원되는 AI 대화에서 첫 기억을 저장하세요.",
+    unavailableBanner: "대화가 보이지 않으면 AI 페이지를 새로고침하세요.",
+    dismiss: "닫기"
+  },
+
   pages: {
     threads: "스레드",
     insights: "인사이트",
@@ -43,16 +112,67 @@ export const koTranslations = {
   },
   dock: {
     threads: "스레드",
+    explore: "탐색",
+    aiti: "AITI",
+    roundtable: "AI 라운드테이블",
     insights: "인사이트",
     dataManagement: "데이터 관리",
     settings: "설정",
     openLibrary: "라이브러리 대시보드 열기",
     navigation: "Vesti 내비게이션",
     threadsDesc: "캡처한 모든 대화 — 검색하고 태그를 달아 이어서 진행하세요.",
+    exploreDesc: "로컬 대화 라이브러리 전체에 질문합니다.",
+    aitiDesc: "대화에서 추론한 AI 사용 페르소나를 확인합니다.",
+    roundtableDesc: "서로 다른 세 AI 역할이 하나의 주제를 토론합니다.",
     insightsDesc: "각 대화의 자동 요약과 주간 사고 다이제스트.",
     dataDesc: "라이브러리 백업 및 복원, 각 플랫폼의 과거 대화 가져오기.",
     settingsDesc: "모델, 캡처, 언어, 테마.",
-    openLibraryDesc: "전체 웹 앱 열기 — 라이브러리, 탐색, 지식 그래프, 프롬프트."
+    openLibraryDesc:
+      "전체 웹 앱 열기 — 라이브러리, 탐색, 지식 그래프, 프롬프트."
+  },
+
+  coreFeatures: {
+    dashboard: {
+      mergeSummary: "통합 요약 생성",
+      summaryLabel: "통합 기억 요약",
+      continueFromSummary: "이 요약으로 새 대화 시작",
+      toast: "✨ 기억을 묶어 맥락을 자연스럽게 이어갑니다",
+      summaryError: "선택한 대화를 요약하지 못했습니다.",
+      continuationError: "이어갈 대화를 만들지 못했습니다."
+    },
+    explore: {
+      title: "지식 탐색",
+      description: "이 기기에 저장된 모든 대화를 검색합니다.",
+      contextTitle: "이어가기 맥락",
+      emptyTitle: "지식 고양이가 준비됐어요",
+      emptyDescription:
+        "질문하면 로컬 대화 라이브러리의 전체 내용을 검색합니다.",
+      placeholder: "지식 베이스에 질문...",
+      ask: "지식 베이스에 질문",
+      toast: "고양이가 지식 베이스를 모두 찾아봤어요",
+      error: "지식 베이스를 검색하지 못했습니다."
+    },
+    aiti: {
+      title: "나의 AI 사용 페르소나",
+      description: "저장된 모든 대화의 패턴을 로컬에서 분석합니다.",
+      sample: "{count}개 대화 기반",
+      toast: "AI 사용 페르소나가 준비됐어요",
+      error: "페르소나를 분석하지 못했습니다."
+    },
+    roundtable: {
+      title: "AI 라운드테이블",
+      description: "세 역할이 같은 주제에 동시에 응답합니다.",
+      placeholder: "토론할 주제를 입력하세요...",
+      start: "토론 시작",
+      toast: "세 역할이 모두 앉았습니다. 시작해요!",
+      error: "라운드테이블을 시작하지 못했습니다.",
+      roleFailed: "이 역할은 응답하지 못했습니다. 다시 시도해 주세요.",
+      roles: {
+        domain_expert: "분야 전문가",
+        devils_advocate: "반대 토론자",
+        skeptic: "회의론자"
+      }
+    }
   },
   settings: {
     title: "설정",
@@ -85,7 +205,8 @@ export const koTranslations = {
       title: "모델 액세스",
       description: "BYOK 및 프록시 설정",
       privacyTitle: "기기에서 전송되는 정보",
-      privacyDisclosure: "캡처, 로컬 저장, 키워드 검색은 100% 기기 내에서 이루어집니다. AI 기능(요약, 탐색, 임베딩, 프롬프트 도구, 원탁)은 관련 대화 텍스트를 설정된 모델로 전송합니다 — 기본적으로 Vesti 프록시를 통해 Alibaba Cloud Bailian로. 직접 라우팅하려면 자신의 API 키를 추가하세요.",
+      privacyDisclosure:
+        "캡처, 로컬 저장, 키워드 검색은 100% 기기 내에서 이루어집니다. AI 기능(요약, 탐색, 임베딩, 프롬프트 도구, 원탁)은 관련 대화 텍스트를 설정된 모델로 전송합니다 — 기본적으로 Vesti 프록시를 통해 Alibaba Cloud Bailian로. 직접 라우팅하려면 자신의 API 키를 추가하세요.",
       useCustomApiKey: "사용자 지정 API 키 사용",
       byokDesc: "BYOK - 내 키로 직접 라우팅",
       proxyActive: "프록시 활성화",
@@ -99,7 +220,8 @@ export const koTranslations = {
       modelLabel: "모델",
       whitelistOnly: "화이트리스트 전용",
       proxy: "프록시",
-      proxyDesc: "채팅 요청에는 이 필드가 비어 있지 않을 때만 service-token 헤더가 첨부됩니다. 일부 프록시 배포나 임베딩 경로에서는 이를 요구할 수 있지만, 현재 확인된 채팅 경로에서는 그렇지 않을 수 있습니다.",
+      proxyDesc:
+        "채팅 요청에는 이 필드가 비어 있지 않을 때만 service-token 헤더가 첨부됩니다. 일부 프록시 배포나 임베딩 경로에서는 이를 요구할 수 있지만, 현재 확인된 채팅 경로에서는 그렇지 않을 수 있습니다.",
       proxyChat: "프록시 채팅",
       proxyRoute: "경로",
       proxyBaseUrl: "기본 URL",
@@ -149,7 +271,8 @@ export const koTranslations = {
       archive: "보관",
       archiving: "보관 중...",
       archiveActiveThread: "활성 스레드 보관",
-      archiveHint: "활성 스냅샷이 있는 스마트/수동 모드에서 사용할 수 있습니다.",
+      archiveHint:
+        "활성 스냅샷이 있는 스마트/수동 모드에서 사용할 수 있습니다.",
       saveSettings: "캡처 설정 저장",
       settingsSaved: "캡처 설정을 저장했습니다.",
       archivedSummary: "저장됨 · 메시지 {count}개"
@@ -159,19 +282,25 @@ export const koTranslations = {
       description: "저장된 주석을 한 번에 내보내기",
       oauthConnected: "OAuth 연결됨",
       officialOAuth: "공식 OAuth",
-      connectDesc: "Notion에 연결한 다음, 주석을 한 번에 내보낼 데이터베이스를 선택하세요.",
+      connectDesc:
+        "Notion에 연결한 다음, 주석을 한 번에 내보낼 데이터베이스를 선택하세요.",
       connectBtn: "Notion에 연결",
       connected: "Notion 워크스페이스가 연결되었습니다",
       reconnect: "변경",
       disconnect: "연결 해제",
-      legacyToken: "이전 토큰이 감지되었습니다. 다시 연결하여 공식 OAuth로 업그레이드하세요.",
-      workspaceReady: "워크스페이스가 준비되었습니다. 아래에서 데이터베이스를 선택하세요.",
+      legacyToken:
+        "이전 토큰이 감지되었습니다. 다시 연결하여 공식 OAuth로 업그레이드하세요.",
+      workspaceReady:
+        "워크스페이스가 준비되었습니다. 아래에서 데이터베이스를 선택하세요.",
       oauthFlowDesc: "보안 브라우저 창에서 공식 Notion 인증 절차를 엽니다.",
-      extensionOnly: "OAuth 로그인은 확장 프로그램 빌드에서만 사용할 수 있습니다.",
+      extensionOnly:
+        "OAuth 로그인은 확장 프로그램 빌드에서만 사용할 수 있습니다.",
       targetDatabase: "대상 데이터베이스",
       databasePlaceholder: "공유된 데이터베이스 검색",
-      noDatabases: "공유된 데이터베이스를 아직 찾지 못했습니다. 연동 앱과 데이터베이스를 공유한 후 새로고침하세요.",
-      shareHint: "데이터베이스가 아직 표시되지 않으면 Notion에서 연동 앱과 공유한 후 새로고침하세요.",
+      noDatabases:
+        "공유된 데이터베이스를 아직 찾지 못했습니다. 연동 앱과 데이터베이스를 공유한 후 새로고침하세요.",
+      shareHint:
+        "데이터베이스가 아직 표시되지 않으면 Notion에서 연동 앱과 공유한 후 새로고침하세요.",
       selected: "선택됨",
       chooseDatabase: "데이터베이스를 선택하면 주석 내보내기가 활성화됩니다.",
       connecting: "연결 중...",
@@ -281,8 +410,10 @@ export const koTranslations = {
       selected: "선택됨",
       inCurrentResults: "현재 결과 중",
       toContinue: "계속하려면",
-      deleteDescSingular: "선택한 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
-      deleteDescPlural: "선택한 {count}개의 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
+      deleteDescSingular:
+        "선택한 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
+      deleteDescPlural:
+        "선택한 {count}개의 스레드와 해당 메시지를 로컬 저장소에서 삭제합니다. 입력:",
       exportFormats: {
         md: {
           name: "Markdown",
@@ -320,7 +451,8 @@ export const koTranslations = {
       clipboardFailed: "생성된 내보내기를 클립보드에 복사하지 못했습니다.",
       clipboardHint: "클립보드 권한을 확인하거나 다운로드를 대신 사용하세요.",
       clipboardUnavailable: "복사를 사용할 수 없음",
-      exportPanelDesc: "데이터 화면과 같은 형식 행을 유지한 채 여기에서 내보내기 상세도를 선택하세요."
+      exportPanelDesc:
+        "데이터 화면과 같은 형식 행을 유지한 채 여기에서 내보내기 상세도를 선택하세요."
     }
   },
   exportDialog: {
@@ -353,10 +485,12 @@ export const koTranslations = {
     exportMdDesc: "Markdown - Obsidian 및 노트 도구와 호환",
     exportAction: "내보내기",
     importJson: "JSON 가져오기",
-    importJsonDesc: "복원 가능한 백업을 되돌려 캡처된 데이터 테이블을 교체합니다",
+    importJsonDesc:
+      "복원 가능한 백업을 되돌려 캡처된 데이터 테이블을 교체합니다",
     exportFormatLabel: "내보내기 형식",
     exportedMessage: "{filename} 내보냄",
-    importConfirm: "{filename}을(를) 가져올까요?\n\n로컬 대화, 메시지, 요약, 주간 리포트, 주석, 검색 벡터가 JSON 백업으로 대체됩니다.\nLLM 설정, 노트, 주제, 탐색 세션은 변경되지 않습니다.",
+    importConfirm:
+      "{filename}을(를) 가져올까요?\n\n로컬 대화, 메시지, 요약, 주간 리포트, 주석, 검색 벡터가 JSON 백업으로 대체됩니다.\nLLM 설정, 노트, 주제, 탐색 세션은 변경되지 않습니다.",
     importCancelled: "가져오기를 취소했습니다.",
     importedMessage: "{filename}에서 {summary}을(를) 가져왔습니다",
     importSummary: {
@@ -366,17 +500,23 @@ export const koTranslations = {
       weeklyReports: "주간 리포트 {count}개",
       annotations: "주석 {count}개"
     },
-    clearCacheConfirm: "캐시된 요약과 주간 리포트만 삭제할까요?\n대화와 메시지는 유지됩니다.",
-    cacheClearedMessage: "인사이트 캐시를 삭제했습니다. 대화와 메시지는 유지되었습니다.",
-    clearAllConfirm: "로컬의 모든 대화, 메시지, 요약, 주간 리포트가 삭제됩니다.\n계속하려면 DELETE를 입력하세요:",
+    clearCacheConfirm:
+      "캐시된 요약과 주간 리포트만 삭제할까요?\n대화와 메시지는 유지됩니다.",
+    cacheClearedMessage:
+      "인사이트 캐시를 삭제했습니다. 대화와 메시지는 유지되었습니다.",
+    clearAllConfirm:
+      "로컬의 모든 대화, 메시지, 요약, 주간 리포트가 삭제됩니다.\n계속하려면 DELETE를 입력하세요:",
     clearCancelled: "삭제를 취소했습니다.",
     dataCleared: "로컬 데이터를 삭제했습니다. LLM 설정은 유지됩니다.",
     history: {
       title: "플랫폼 기록 가져오기",
       subtitle: "이 AI 플랫폼의 과거 대화를 가져옵니다",
-      description: "Vesti는 플랫폼 자체 API(현재 로그인 사용)로 기존 대화를 읽어 로컬에 저장합니다. 읽기 전용이며 아무것도 전송하거나 제출하지 않습니다.",
-      supportedNote: "지원: ChatGPT 및 Claude. 더 많은 플랫폼이 추가될 예정입니다.",
-      unsupportedTab: "활성 탭에서 ChatGPT 또는 Claude를 연 다음 돌아와 기록을 가져오세요.",
+      description:
+        "Vesti는 플랫폼 자체 API(현재 로그인 사용)로 기존 대화를 읽어 로컬에 저장합니다. 읽기 전용이며 아무것도 전송하거나 제출하지 않습니다.",
+      supportedNote:
+        "지원: ChatGPT 및 Claude. 더 많은 플랫폼이 추가될 예정입니다.",
+      unsupportedTab:
+        "활성 탭에서 ChatGPT 또는 Claude를 연 다음 돌아와 기록을 가져오세요.",
       notLoggedIn: "먼저 활성 탭에서 {platform}에 로그인한 후 다시 시도하세요.",
       ready: "{platform}에서 가져올 준비가 되었습니다.",
       start: "{platform} 기록 가져오기",
@@ -384,10 +524,12 @@ export const koTranslations = {
       cancel: "취소",
       listing: "대화 찾는 중…",
       running: "가져오는 중… {processed}/{discovered}",
-      doneSummary: "완료. {saved}개 가져옴 · 새 메시지 {newMessages}개 · {skipped}개 건너뜀 · {failed}개 실패.",
+      doneSummary:
+        "완료. {saved}개 가져옴 · 새 메시지 {newMessages}개 · {skipped}개 건너뜀 · {failed}개 실패.",
       cancelledSummary: "취소됨. 지금까지 {saved}개 가져옴.",
       errorSummary: "가져오기 실패: {error}",
-      confirm: "{platform}에서 대화 기록을 가져올까요? Vesti는 플랫폼 자체 API로 대화를 읽어 로컬에 저장합니다. 아무것도 전송하거나 제출하지 않습니다."
+      confirm:
+        "{platform}에서 대화 기록을 가져올까요? Vesti는 플랫폼 자체 API로 대화를 읽어 로컬에 저장합니다. 아무것도 전송하거나 제출하지 않습니다."
     },
     cleanup: "정리",
     cleanupDesc: "요약 캐시를 삭제하거나 모든 로컬 데이터를 지웁니다",
@@ -410,8 +552,10 @@ export const koTranslations = {
     unknown: "알 수 없음",
     softLimitWarning: "소프트 한도 경고",
     writeBlocked: "쓰기 차단됨",
-    storageWarning: "저장 공간이 900MB를 넘었습니다. 곧 오래된 데이터를 내보내거나 지우세요.",
-    storageBlocked: "저장 공간이 1GB에 도달했습니다. 데이터를 내보내거나 지울 때까지 새 쓰기가 차단됩니다.",
+    storageWarning:
+      "저장 공간이 900MB를 넘었습니다. 곧 오래된 데이터를 내보내거나 지우세요.",
+    storageBlocked:
+      "저장 공간이 1GB에 도달했습니다. 데이터를 내보내거나 지울 때까지 새 쓰기가 차단됩니다.",
     advancedStorageDetails: "고급 저장 공간 세부 정보",
     threadsStored: "저장된 스레드",
     indexedDbStore: "IndexedDB 저장소",
@@ -421,11 +565,14 @@ export const koTranslations = {
     dangerZone: "위험 구역",
     clearLocalData: "로컬 데이터 지우기",
     importAction: "가져오기",
-    compactionNote: "압축 지표는 현재 요약 캐시를 기반으로 추정하며, 추후 엄격한 Agent A 압축 계보로 업그레이드할 수 있습니다.",
+    compactionNote:
+      "압축 지표는 현재 요약 캐시를 기반으로 추정하며, 추후 엄격한 Agent A 압축 계보로 업그레이드할 수 있습니다.",
     chromeStorageUsed: "chrome.storage.local 사용량",
     estimatedIndexedDb: "추정 IndexedDB + 기타",
-    clearCacheDesc: "캐시된 스레드 요약과 주간 리포트를 지우면서 대화와 메시지는 유지합니다.",
-    dangerDesc: "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
+    clearCacheDesc:
+      "캐시된 스레드 요약과 주간 리포트를 지우면서 대화와 메시지는 유지합니다.",
+    dangerDesc:
+      "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
     exportAllData: "모든 데이터 내보내기",
     importData: "데이터 가져오기",
     clearAllData: "모든 데이터 지우기",
@@ -514,13 +661,16 @@ export const koTranslations = {
     weeklyGenerationTimeout: "생성 시간이 초과되었습니다. 다시 시도해 주세요.",
     failedToGenerateSummary: "요약 생성에 실패했습니다.",
     notEnoughData: "이번 주 다이제스트를 생성하기에 데이터가 부족합니다.",
-    sub3Hint: "이 범위에는 충실한 요약이 3개 미만입니다. 충분한 구조화된 근거가 확보되면 주간 다이제스트가 자동으로 재개됩니다.",
-    semanticDegradedHint: "충분한 요약을 찾았지만, 신호가 약한 단편을 막기 위해 의미 품질 게이트가 이번 실행을 간소화했습니다.",
+    sub3Hint:
+      "이 범위에는 충실한 요약이 3개 미만입니다. 충분한 구조화된 근거가 확보되면 주간 다이제스트가 자동으로 재개됩니다.",
+    semanticDegradedHint:
+      "충분한 요약을 찾았지만, 신호가 약한 단편을 막기 위해 의미 품질 게이트가 이번 실행을 간소화했습니다.",
     substantialSummaries: "충실한 요약",
     uiPauseOnly: "UI 일시정지만 적용됩니다. 백그라운드 생성은 계속됩니다.",
     modelLabel: "모델",
     generatedLabel: "생성됨",
-    storageLimitError: "저장 공간 한도(1GB)에 도달했습니다. 데이터 탭에서 내보내거나 데이터를 지우세요.",
+    storageLimitError:
+      "저장 공간 한도(1GB)에 도달했습니다. 데이터 탭에서 내보내거나 데이터를 지우세요.",
     unknownError: "알 수 없는 오류.",
     moreThreads: "{count}개 더",
     thread: "스레드",
@@ -611,18 +761,25 @@ export const koTranslations = {
     status: {
       ready: "준비 완료",
       mirrorMode: "미러 모드에서는 수동 보관이 필요하지 않습니다.",
-      unsupported_tab: "활성 탭에서 ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi 또는 Yuanbao 스레드를 여세요.",
+      unsupported_tab:
+        "활성 탭에서 ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi 또는 Yuanbao 스레드를 여세요.",
       no_transient: "활성 스레드 스냅샷이 아직 감지되지 않았습니다.",
-      content_unreachable: "페이지 콘텐츠 스크립트에 연결할 수 없습니다. 페이지를 새로고침하고 다시 시도하세요."
+      content_unreachable:
+        "페이지 콘텐츠 스크립트에 연결할 수 없습니다. 페이지를 새로고침하고 다시 시도하세요."
     },
     errors: {
-      archiveModeDisabled: "수동 보관은 스마트 또는 수동 모드에서만 사용할 수 있습니다.",
-      activeTabUnsupported: "활성 탭이 지원되지 않습니다. ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi 또는 Yuanbao를 여세요.",
+      archiveModeDisabled:
+        "수동 보관은 스마트 또는 수동 모드에서만 사용할 수 있습니다.",
+      activeTabUnsupported:
+        "활성 탭이 지원되지 않습니다. ChatGPT, Claude, Gemini, DeepSeek, Doubao, Qwen, Kimi 또는 Yuanbao를 여세요.",
       activeTabUnavailable: "활성 탭을 찾을 수 없습니다.",
-      transientNotFound: "활성 스레드 스냅샷을 찾을 수 없습니다. 메시지를 하나 보낸 후 다시 시도하세요.",
-      missingConversationId: "현재 URL에 안정적인 대화 ID가 아직 없습니다. 스레드를 이어간 후 다시 시도하세요.",
+      transientNotFound:
+        "활성 스레드 스냅샷을 찾을 수 없습니다. 메시지를 하나 보낸 후 다시 시도하세요.",
+      missingConversationId:
+        "현재 URL에 안정적인 대화 ID가 아직 없습니다. 스레드를 이어간 후 다시 시도하세요.",
       emptyPayload: "보관할 파싱된 메시지가 없습니다.",
-      storageLimit: "저장 공간 하드 한도에 도달했습니다. 보관하기 전에 데이터를 내보내거나 지우세요.",
+      storageLimit:
+        "저장 공간 하드 한도에 도달했습니다. 보관하기 전에 데이터를 내보내거나 지우세요.",
       persistFailed: "보관 쓰기에 실패했습니다. 다시 시도하세요.",
       forceArchiveFailed: "수동 보관에 실패했습니다. 다시 시도하세요."
     }
@@ -657,7 +814,8 @@ export const koTranslations = {
       availableInExtension: "확장 프로그램에서만 사용 가능",
       notionWorkspaceConnected: "Notion 워크스페이스 연결됨",
       connectToNotion: "Notion에 연결",
-      legacyToken: "이전 토큰이 감지되었습니다. 다시 연결하여 공식 OAuth로 업그레이드하세요.",
+      legacyToken:
+        "이전 토큰이 감지되었습니다. 다시 연결하여 공식 OAuth로 업그레이드하세요.",
       oauthFlowDesc: "공식 Notion 인증 절차를 엽니다.",
       connecting: "연결 중...",
       change: "변경",
@@ -674,17 +832,22 @@ export const koTranslations = {
       modelscopeKeyLabel: "ModelScope 키",
       save: "저장",
       notionExportTitle: "Notion 내보내기",
-      notionExportDesc: "Notion에 연결하고 주석 내보내기에 사용할 데이터베이스를 선택하세요.",
-      connectedChooseDatabase: "연결됨. 한 번에 내보낼 데이터베이스를 선택하세요.",
-      oauthUnavailableOutsideExtension: "OAuth 로그인은 확장 프로그램 빌드 외에서는 사용할 수 없습니다.",
+      notionExportDesc:
+        "Notion에 연결하고 주석 내보내기에 사용할 데이터베이스를 선택하세요.",
+      connectedChooseDatabase:
+        "연결됨. 한 번에 내보낼 데이터베이스를 선택하세요.",
+      oauthUnavailableOutsideExtension:
+        "OAuth 로그인은 확장 프로그램 빌드 외에서는 사용할 수 없습니다.",
       disconnect: "연결 해제",
       targetDatabase: "대상 데이터베이스",
       databaseSearchPlaceholder: "공유된 데이터베이스 검색",
       refresh: "새로고침",
-      shareDatabaseHint: "Notion 연동 앱과 데이터베이스를 공유하고, 아직 표시되지 않으면 새로고침하세요.",
+      shareDatabaseHint:
+        "Notion 연동 앱과 데이터베이스를 공유하고, 아직 표시되지 않으면 새로고침하세요.",
       selectedColon: "선택됨: ",
       readyForOneShotExport: "한 번에 내보낼 준비 완료",
-      noSharedDatabasesFound: "공유된 데이터베이스를 아직 찾지 못했습니다. 연동 앱과 데이터베이스를 공유한 후 새로고침하세요.",
+      noSharedDatabasesFound:
+        "공유된 데이터베이스를 아직 찾지 못했습니다. 연동 앱과 데이터베이스를 공유한 후 새로고침하세요.",
       selectedDatabaseMessage: "{title}을 선택했습니다.",
       themeUpdateFailed: "테마 업데이트에 실패했습니다."
     },
@@ -729,7 +892,8 @@ export const koTranslations = {
       analyzed: "분석됨",
       notAnalyzedYet: "아직 분석되지 않음",
       summary: "요약",
-      noSummaryYet: "아직 요약이 없습니다. 하나 생성하면 구조화된 인사이트를 볼 수 있습니다.",
+      noSummaryYet:
+        "아직 요약이 없습니다. 하나 생성하면 구조화된 인사이트를 볼 수 있습니다.",
       generateSummary: "요약 생성",
       regenerate: "다시 생성",
       importToNotes: "노트로 가져오기",
@@ -740,7 +904,8 @@ export const koTranslations = {
       showOriginalMessages: "원본 메시지 표시",
       hideOriginalMessages: "원본 메시지 숨기기",
       loadingOriginalConversation: "원본 대화 불러오는 중...",
-      messagesAvailableButEmpty: "메시지는 있지만 미리보기 텍스트가 비어 있습니다.",
+      messagesAvailableButEmpty:
+        "메시지는 있지만 미리보기 텍스트가 비어 있습니다.",
       openOriginal: "열기",
       splitView: "분할 보기",
       openSplitView: "분할 보기 열기",
@@ -754,7 +919,8 @@ export const koTranslations = {
       open: "열기",
       focusNote: "노트에 집중",
       noNoteLinkedYet: "아직 연결된 노트 없음",
-      startExtractingHint: "리더에서 발췌하거나 대화 노트를 만들어 읽기와 쓰기를 나란히 진행하세요.",
+      startExtractingHint:
+        "리더에서 발췌하거나 대화 노트를 만들어 읽기와 쓰기를 나란히 진행하세요.",
       startWritingPlaceholder: "작성 시작...",
       createConversationNote: "대화 노트 만들기",
       extractedExcerptsPlaceholder: "발췌한 내용과 노트가 여기에 표시됩니다...",
@@ -775,13 +941,17 @@ export const koTranslations = {
       commentsUnavailable: "이 빌드에서는 댓글을 사용할 수 없습니다.",
       couldNotSaveComment: "이 댓글을 저장하지 못했습니다.",
       couldNotDeleteComment: "이 댓글을 삭제하지 못했습니다.",
-      myNotesExportUnavailable: "이 빌드에서는 내 노트로 내보내기를 사용할 수 없습니다.",
+      myNotesExportUnavailable:
+        "이 빌드에서는 내 노트로 내보내기를 사용할 수 없습니다.",
       savedToMyNotes: "내 노트에 저장했습니다.",
       couldNotExportToMyNotes: "이 댓글을 내 노트로 내보내지 못했습니다.",
-      notionExportUnavailable: "이 빌드에서는 Notion 내보내기를 사용할 수 없습니다.",
+      notionExportUnavailable:
+        "이 빌드에서는 Notion 내보내기를 사용할 수 없습니다.",
       sentToNotion: "Notion으로 전송했습니다.",
-      notionSettingsMissing: "내보내기 전에 설정에서 Notion에 연결하고 데이터베이스를 선택하세요.",
-      notionReconnectRequired: "Notion 세션이 만료되었습니다. 설정에서 다시 연결하고 다시 시도하세요.",
+      notionSettingsMissing:
+        "내보내기 전에 설정에서 Notion에 연결하고 데이터베이스를 선택하세요.",
+      notionReconnectRequired:
+        "Notion 세션이 만료되었습니다. 설정에서 다시 연결하고 다시 시도하세요.",
       couldNotExportToNotion: "이 댓글을 Notion으로 내보내지 못했습니다.",
       addedOn: "추가일",
       dayAfter: "일",
@@ -798,23 +968,27 @@ export const koTranslations = {
       unavailable: "사용할 수 없음",
       attachments: "첨부 파일",
       attachmentPreview: "첨부 파일 미리보기",
-      previewAvailableForImages: "미리보기는 가져온 이미지에서 사용할 수 있습니다.",
+      previewAvailableForImages:
+        "미리보기는 가져온 이미지에서 사용할 수 있습니다.",
       useOpenForOtherAttachments: "다른 종류의 첨부 파일은 열기를 사용하세요.",
       importMetadata: "메타데이터 가져오기",
       exportToObsidian: "Obsidian으로 내보내기",
       choosingFolder: "폴더 선택 중...",
       notesWorkspace: "노트 워크스페이스",
       selectNoteToEdit: "편집할 노트를 선택하세요",
-      localNotesAndObsidianShareEditor: "로컬 노트와 가져온 Obsidian 파일을 이제 동일한 Markdown 편집기에서 다룰 수 있습니다.",
+      localNotesAndObsidianShareEditor:
+        "로컬 노트와 가져온 Obsidian 파일을 이제 동일한 Markdown 편집기에서 다룰 수 있습니다.",
       loadingNotes: "노트 불러오는 중...",
-      createLocalNoteHint: "로컬 노트를 만든 다음, 준비되면 언제든 Obsidian 폴더로 내보낼 수 있습니다.",
+      createLocalNoteHint:
+        "로컬 노트를 만든 다음, 준비되면 언제든 Obsidian 폴더로 내보낼 수 있습니다.",
       createNote: "노트 만들기",
       localNotes: "로컬 노트",
       noLocalNotesYet: "아직 로컬 노트가 없습니다.",
       weeklyKnowledge: "주간 지식",
       weeklyKnowledgeNote: "주간 지식 노트",
       generatedFromWeeklyReport: "성장 리포트에서 생성됨",
-      noWeeklyKnowledgeYet: "성장 리포트를 노트로 저장해 주간 지식 아카이브를 만들어 보세요.",
+      noWeeklyKnowledgeYet:
+        "성장 리포트를 노트로 저장해 주간 지식 아카이브를 만들어 보세요.",
       importedVaults: "가져온 Vault",
       renameNote: "노트 이름 변경",
       updateNoteTitle: "이 노트의 제목을 업데이트합니다.",
@@ -839,15 +1013,18 @@ export const koTranslations = {
       daysAgo: "일 전",
       monthsAgo: "개월 전",
       yearsAgo: "년 전",
-      sourceFileChangedAfterEdits: "로컬에서 편집한 후 소스 파일이 변경되었습니다. 이 노트를 덮어쓰지 않도록 다시 가져오기를 건너뛰었습니다.",
+      sourceFileChangedAfterEdits:
+        "로컬에서 편집한 후 소스 파일이 변경되었습니다. 이 노트를 덮어쓰지 않도록 다시 가져오기를 건너뛰었습니다.",
       dateUnknown: "날짜 알 수 없음",
       frontmatter: "프런트매터",
-      directoryExportNotSupported: "이 브라우저 환경은 로컬 디렉터리 내보내기를 지원하지 않습니다.",
+      directoryExportNotSupported:
+        "이 브라우저 환경은 로컬 디렉터리 내보내기를 지원하지 않습니다.",
       directorySelectionCancelled: "디렉터리 선택이 취소되었습니다.",
       saveBeforeExport: "내보내기 전에 현재 노트를 저장하세요.",
       exportFailed: "이 노트를 Obsidian으로 내보낼 수 없습니다.",
       chooseConversationsTitle: "대화 선택",
-      chooseConversationsDesc: "에이전트가 사용할 수 있는 대화를 검색하고 미리보고 선택하세요.",
+      chooseConversationsDesc:
+        "에이전트가 사용할 수 있는 대화를 검색하고 미리보고 선택하세요.",
       applySelected: "선택 적용",
       useAll: "전체 사용",
       noSearchResults: "이 검색과 일치하는 대화가 없습니다.",
@@ -868,8 +1045,8 @@ export const koTranslations = {
         emotionalTone: "감정 톤: ",
         depth: "깊이: ",
         nextSteps: "다음 단계",
-        fallback: "일반 텍스트 대체",
-      },
+        fallback: "일반 텍스트 대체"
+      }
     },
     explore: {
       modeAgent: "에이전트",
@@ -891,7 +1068,8 @@ export const koTranslations = {
       savingSelection: "저장 중...",
       saveDraft: "저장",
       chooseConversationsTitle: "대화 선택",
-      chooseConversationsDesc: "에이전트가 사용할 수 있는 대화를 검색하고 미리보고 선택하세요.",
+      chooseConversationsDesc:
+        "에이전트가 사용할 수 있는 대화를 검색하고 미리보고 선택하세요.",
       applySelected: "선택 적용",
       useAll: "전체 사용",
       noSearchResults: "이 검색과 일치하는 대화가 없습니다.",
@@ -939,27 +1117,34 @@ export const koTranslations = {
       allConversations: "모든 대화",
       send: "보내기",
       starterPrompts: "스타터 프롬프트",
-      choosePromptHint: "하나를 선택하면 작성 칸에 채워지며, 보내기 전에 편집할 수 있습니다.",
+      choosePromptHint:
+        "하나를 선택하면 작성 칸에 채워지며, 보내기 전에 편집할 수 있습니다.",
       loadingStarterIdeas: "스타터 아이디어 불러오는 중",
       starterDeckReady: "스타터 덱 준비 완료",
       cardsUpdateHint: "카드는 새 채팅마다 업데이트됩니다.",
-      askPlaceholder: "지식 베이스에 질문하거나, 한 주를 요약하거나, 의사결정 흐름을 추적하세요...",
+      askPlaceholder:
+        "지식 베이스에 질문하거나, 한 주를 요약하거나, 의사결정 흐름을 추적하세요...",
       askAgentPlaceholder: "지식 베이스에 질문 (에이전트 모드)...",
       askClassicPlaceholder: "지식 베이스에 질문 (클래식 모드)...",
-      agentModeDesc: "에이전트 모드는 플래너 경로, 도구 호출, 출처 제어, 편집 가능한 컨텍스트 초안을 보여줍니다.",
-      classicModeDesc: "클래식 모드는 기록을 검색해 출처에 근거한 간결한 답변을 반환합니다.",
+      agentModeDesc:
+        "에이전트 모드는 플래너 경로, 도구 호출, 출처 제어, 편집 가능한 컨텍스트 초안을 보여줍니다.",
+      classicModeDesc:
+        "클래식 모드는 기록을 검색해 출처에 근거한 간결한 답변을 반환합니다.",
       newChatPrefill: "새 채팅 (미리 채우기)",
       searchByTitlePlaceholder: "제목 또는 발췌로 검색...",
       fillComposer: "작성 칸 채우기",
       starterDeck1Eyebrow: "작업으로 시작하기",
       starterDeck1Title: "더 가볍게 라이브러리를 탐색해 보세요.",
-      starterDeck1Description: "초점을 맞춘 질문을 하면 Explore가 검색하고 요약해 필요한 최소한의 컨텍스트만 엮어 줍니다.",
+      starterDeck1Description:
+        "초점을 맞춘 질문을 하면 Explore가 검색하고 요약해 필요한 최소한의 컨텍스트만 엮어 줍니다.",
       starterDeck2Eyebrow: "기본은 프라이빗",
       starterDeck2Title: "전체 기록이 아니라 작업의 윤곽을 물어보세요.",
-      starterDeck2Description: "Explore는 라이브러리를 직접 확인할 수 있는 좁고 신뢰할 만한 답변으로 압축할 때 가장 유용합니다.",
+      starterDeck2Description:
+        "Explore는 라이브러리를 직접 확인할 수 있는 좁고 신뢰할 만한 답변으로 압축할 때 가장 유용합니다.",
       starterDeck3Eyebrow: "단계적으로 작업하기",
       starterDeck3Title: "넓게 시작한 다음 중요한 출처로 좁혀 가세요.",
-      starterDeck3Description: "스타터 프롬프트로 간결한 답변을 얻은 다음, 검증이 필요하면 원본 대화를 확인하세요.",
+      starterDeck3Description:
+        "스타터 프롬프트로 간결한 답변을 얻은 다음, 검증이 필요하면 원본 대화를 확인하세요.",
       modeStages: {
         agent: [
           "경로를 계획하는 중...",
@@ -978,28 +1163,37 @@ export const koTranslations = {
         {
           eyebrow: "작업으로 시작하기",
           title: "더 가볍게 라이브러리를 탐색해 보세요.",
-          description: "초점을 맞춘 질문을 하면 Explore가 검색하고 요약해 필요한 최소한의 컨텍스트만 엮어 줍니다.",
-          privacyTip: "프롬프트를 좁게 유지하세요. 원본 기록 대신 테마, 결정, 또는 하나의 기간을 물어보세요.",
-          capabilityHint: "요약, 주간 다이제스트, 출처에 근거한 답변을 모두 여기에서 사용할 수 있습니다.",
+          description:
+            "초점을 맞춘 질문을 하면 Explore가 검색하고 요약해 필요한 최소한의 컨텍스트만 엮어 줍니다.",
+          privacyTip:
+            "프롬프트를 좁게 유지하세요. 원본 기록 대신 테마, 결정, 또는 하나의 기간을 물어보세요.",
+          capabilityHint:
+            "요약, 주간 다이제스트, 출처에 근거한 답변을 모두 여기에서 사용할 수 있습니다.",
           prompts: [
             {
               title: "이번 주 요약",
-              prompt: "이번 주에 작업한 내용을 요약하고 주요 결정을 강조해 주세요.",
+              prompt:
+                "이번 주에 작업한 내용을 요약하고 주요 결정을 강조해 주세요.",
               detail: "최근 대화 묶음을 간결한 리뷰로 정리하기에 좋습니다."
             },
             {
               title: "의사결정 흐름 찾기",
-              prompt: "최종 결정에 어떻게 도달했는지 설명하는 대화를 보여 주세요.",
-              detail: "결론만이 아니라 그 배경이 되는 맥락이 필요할 때 사용하세요."
+              prompt:
+                "최종 결정에 어떻게 도달했는지 설명하는 대화를 보여 주세요.",
+              detail:
+                "결론만이 아니라 그 배경이 되는 맥락이 필요할 때 사용하세요."
             },
             {
               title: "관련 스레드 묶기",
-              prompt: "이 주제에 관해 가장 관련 있는 대화를 묶고 왜 함께 묶이는지 설명해 주세요.",
-              detail: "전체 원본 대화 기록을 노출하지 않고 주제를 군집화하는 데 유용합니다."
+              prompt:
+                "이 주제에 관해 가장 관련 있는 대화를 묶고 왜 함께 묶이는지 설명해 주세요.",
+              detail:
+                "전체 원본 대화 기록을 노출하지 않고 주제를 군집화하는 데 유용합니다."
             },
             {
               title: "빠른 브리프 만들기",
-              prompt: "가장 관련 있는 대화로 짧은 브리프를 만들고 출처에 근거를 두세요.",
+              prompt:
+                "가장 관련 있는 대화로 짧은 브리프를 만들고 출처에 근거를 두세요.",
               detail: "깔끔한 인계나 요약 노트를 원할 때의 간결한 출발점입니다."
             }
           ]
@@ -1007,28 +1201,36 @@ export const koTranslations = {
         {
           eyebrow: "기본은 프라이빗",
           title: "전체 기록이 아니라 작업의 윤곽을 물어보세요.",
-          description: "Explore는 라이브러리를 직접 확인할 수 있는 좁고 신뢰할 만한 답변으로 압축할 때 가장 유용합니다.",
-          privacyTip: "테마, 막힘, 결과 같은 표현을 우선하세요. 한 번에 모든 것을 요청하지 마세요.",
-          capabilityHint: "모든 대화 또는 선택한 일부를 가로질러 검색한 다음 나중에 출처를 다듬을 수 있습니다.",
+          description:
+            "Explore는 라이브러리를 직접 확인할 수 있는 좁고 신뢰할 만한 답변으로 압축할 때 가장 유용합니다.",
+          privacyTip:
+            "테마, 막힘, 결과 같은 표현을 우선하세요. 한 번에 모든 것을 요청하지 마세요.",
+          capabilityHint:
+            "모든 대화 또는 선택한 일부를 가로질러 검색한 다음 나중에 출처를 다듬을 수 있습니다.",
           prompts: [
             {
               title: "무엇이 바뀌었나?",
               prompt: "지난 한 주 동안 내 대화에서 무엇이 바뀌었나요?",
-              detail: "필요 이상으로 끌어오지 않고 진행 상황을 드러내는 안전한 방법입니다."
+              detail:
+                "필요 이상으로 끌어오지 않고 진행 상황을 드러내는 안전한 방법입니다."
             },
             {
               title: "막힘 군집화",
-              prompt: "내 대화에서 반복되는 막힘이나 미해결 질문을 군집화해 주세요.",
-              detail: "반복되는 고충과 논의가 계속 맴돌던 지점을 드러내는 데 도움이 됩니다."
+              prompt:
+                "내 대화에서 반복되는 막힘이나 미해결 질문을 군집화해 주세요.",
+              detail:
+                "반복되는 고충과 논의가 계속 맴돌던 지점을 드러내는 데 도움이 됩니다."
             },
             {
               title: "하나의 주제 추적",
-              prompt: "프라이버시 또는 검색에 관한 주요 논의를 추적하고 그 흐름을 요약해 주세요.",
+              prompt:
+                "프라이버시 또는 검색에 관한 주요 논의를 추적하고 그 흐름을 요약해 주세요.",
               detail: "여러 대화에 걸친 하나의 줄기를 따라가기에 좋습니다."
             },
             {
               title: "다음 단계 드러내기",
-              prompt: "가장 관련 있는 대화가 시사하는 다음 행동을 드러내 주세요.",
+              prompt:
+                "가장 관련 있는 대화가 시사하는 다음 행동을 드러내 주세요.",
               detail: "흩어진 논의를 실용적인 후속 작업 목록으로 바꿉니다."
             }
           ]
@@ -1036,24 +1238,33 @@ export const koTranslations = {
         {
           eyebrow: "단계적으로 작업하기",
           title: "넓게 시작한 다음 중요한 출처로 좁혀 가세요.",
-          description: "스타터 프롬프트로 간결한 답변을 얻은 다음, 검증이 필요하면 원본 대화를 확인하세요.",
-          privacyTip: "짧은 프롬프트는 상세한 요청보다 노출이 적어 탐색의 초점을 유지하는 데 도움이 됩니다.",
-          capabilityHint: "주간 요약, 대화를 넘나드는 테마, 또는 직접 확인할 수 있는 출처 목록을 요청하세요.",
+          description:
+            "스타터 프롬프트로 간결한 답변을 얻은 다음, 검증이 필요하면 원본 대화를 확인하세요.",
+          privacyTip:
+            "짧은 프롬프트는 상세한 요청보다 노출이 적어 탐색의 초점을 유지하는 데 도움이 됩니다.",
+          capabilityHint:
+            "주간 요약, 대화를 넘나드는 테마, 또는 직접 확인할 수 있는 출처 목록을 요청하세요.",
           prompts: [
             {
               title: "주간 정리",
-              prompt: "주요 테마와 후속 작업이 담긴 간결한 주간 정리를 만들어 주세요.",
-              detail: "간결하면서도 유용한 주간 다이제스트를 위해 설계되었습니다."
+              prompt:
+                "주요 테마와 후속 작업이 담긴 간결한 주간 정리를 만들어 주세요.",
+              detail:
+                "간결하면서도 유용한 주간 다이제스트를 위해 설계되었습니다."
             },
             {
               title: "테마 맵",
-              prompt: "아키텍처와 도구에 관한 내 대화의 주요 테마를 매핑해 주세요.",
-              detail: "먼저 라이브러리를 높은 수준에서 이해하고 싶을 때 유용합니다."
+              prompt:
+                "아키텍처와 도구에 관한 내 대화의 주요 테마를 매핑해 주세요.",
+              detail:
+                "먼저 라이브러리를 높은 수준에서 이해하고 싶을 때 유용합니다."
             },
             {
               title: "근거 먼저",
-              prompt: "이 주제에 가장 관련 있는 대화를 나열하고 각각을 간략히 요약해 주세요.",
-              detail: "출처에 뒷받침된 답변을 원할 때 검색과 검토를 잇는 좋은 다리입니다."
+              prompt:
+                "이 주제에 가장 관련 있는 대화를 나열하고 각각을 간략히 요약해 주세요.",
+              detail:
+                "출처에 뒷받침된 답변을 원할 때 검색과 검토를 잇는 좋은 다리입니다."
             },
             {
               title: "결정 요약",
@@ -1064,9 +1275,11 @@ export const koTranslations = {
         }
       ],
       libraryStarter: {
-        titleTemplate: "\"{cue}\" 이어가기",
-        promptTemplate: "\"{cue}\"를 이어가고, 핵심을 요약하기 전에 관련 컨텍스트를 검색해 주세요.",
-        detail: "가벼운 제목과 발췌 컨텍스트만 사용해 최근 라이브러리 단서로부터 생성되었습니다."
+        titleTemplate: '"{cue}" 이어가기',
+        promptTemplate:
+          '"{cue}"를 이어가고, 핵심을 요약하기 전에 관련 컨텍스트를 검색해 주세요.',
+        detail:
+          "가벼운 제목과 발췌 컨텍스트만 사용해 최근 라이브러리 단서로부터 생성되었습니다."
       },
       toolLabels: {
         intent_planner: "의도 플래너",
@@ -1079,14 +1292,22 @@ export const koTranslations = {
         answer_synthesizer: "답변 합성기"
       },
       toolExplanations: {
-        intent_planner: "사용자가 무엇을 요청하는지, 어떤 경로를 실행할지, 시간 범위가 필요한지를 모델로 판단합니다.",
-        time_scope_resolver: "'이번 주' 같은 표현을 구체적인 날짜 범위로 바꿔 답변을 검증 가능하게 합니다.",
-        weekly_summary_tool: "해당 기간의 대화를 찾은 다음, 주 단위 다이제스트를 재사용하거나 생성합니다.",
-        query_planner: "이전 Explore 파이프라인에서 남은 구버전의 고정 계획 단계입니다.",
-        search_rag: "의미적 유사도로 지식 베이스를 검색해 가장 관련 있는 대화를 가져옵니다.",
-        summary_tool: "누락된 대화 요약을 채워 여러 출처의 답변을 더 쉽게 종합하고 확인하게 합니다.",
-        context_compiler: "드로어에 표시되는 편집 가능한 컨텍스트 초안과 출처 집합을 구성합니다.",
-        answer_synthesizer: "수집된 근거로부터 최종 답변을 생성하고, 결과를 확인할 수 있는 위치를 사용자에게 알려 줍니다."
+        intent_planner:
+          "사용자가 무엇을 요청하는지, 어떤 경로를 실행할지, 시간 범위가 필요한지를 모델로 판단합니다.",
+        time_scope_resolver:
+          "'이번 주' 같은 표현을 구체적인 날짜 범위로 바꿔 답변을 검증 가능하게 합니다.",
+        weekly_summary_tool:
+          "해당 기간의 대화를 찾은 다음, 주 단위 다이제스트를 재사용하거나 생성합니다.",
+        query_planner:
+          "이전 Explore 파이프라인에서 남은 구버전의 고정 계획 단계입니다.",
+        search_rag:
+          "의미적 유사도로 지식 베이스를 검색해 가장 관련 있는 대화를 가져옵니다.",
+        summary_tool:
+          "누락된 대화 요약을 채워 여러 출처의 답변을 더 쉽게 종합하고 확인하게 합니다.",
+        context_compiler:
+          "드로어에 표시되는 편집 가능한 컨텍스트 초안과 출처 집합을 구성합니다.",
+        answer_synthesizer:
+          "수집된 근거로부터 최종 답변을 생성하고, 결과를 확인할 수 있는 위치를 사용자에게 알려 줍니다."
       },
       intentLabels: {
         fact_lookup: "사실 조회",
@@ -1130,18 +1351,21 @@ export const koTranslations = {
       open: "열기",
       failedToLoadConversations: "대화를 불러오지 못했습니다.",
       exploreUnavailable: "현재 환경에서는 Explore를 사용할 수 없습니다.",
-      chooseAtLeastOne: "선택됨 범위를 사용하기 전에 대화를 하나 이상 선택하세요.",
+      chooseAtLeastOne:
+        "선택됨 범위를 사용하기 전에 대화를 하나 이상 선택하세요.",
       failedToRetrieveAnswer: "답변을 가져오지 못했습니다.",
       deleteConversationConfirm: "이 대화를 삭제할까요?",
       contextDraftSaved: "컨텍스트 초안을 저장했습니다.",
-      savedLocally: "이 보기용으로 로컬에 저장했습니다 (저장소 어댑터를 사용할 수 없음).",
+      savedLocally:
+        "이 보기용으로 로컬에 저장했습니다 (저장소 어댑터를 사용할 수 없음).",
       failedToSaveContext: "컨텍스트 초안 저장에 실패했습니다.",
       copiedToClipboard: "클립보드에 복사했습니다.",
       clipboardUnavailable: "이 환경에서는 클립보드를 사용할 수 없습니다.",
       downloaded: "{filename}을 다운로드했습니다.",
       selectAtLeastOneSource: "다시 생성하기 전에 출처를 하나 이상 선택하세요.",
       couldNotDetermineQuery: "이 답변에 해당하는 쿼리를 확인하지 못했습니다.",
-      regeneratedNotice: "선택한 출처 {count}개를 사용해 새로운 턴으로 다시 생성했습니다.",
+      regeneratedNotice:
+        "선택한 출처 {count}개를 사용해 새로운 턴으로 다시 생성했습니다.",
       failedToRegenerate: "답변 재생성에 실패했습니다.",
       dismiss: "닫기",
       untitledSession: "제목 없음",
@@ -1162,7 +1386,8 @@ export const koTranslations = {
       goalPrefix: "목표:",
       clarificationPrefix: "확인:",
       plannedTools: "계획된 도구",
-      plannerFootnote: "플래너는 모델을 사용해 상위 수준 경로를 선택합니다. 도구 실행은 앱 내에서 범위가 제한되고 확인 가능한 상태로 유지됩니다.",
+      plannerFootnote:
+        "플래너는 모델을 사용해 상위 수준 경로를 선택합니다. 도구 실행은 앱 내에서 범위가 제한되고 확인 가능한 상태로 유지됩니다.",
       noPlannerMetadata: "이 답변에는 플래너 메타데이터가 기록되지 않았습니다.",
       noToolCallsRecorded: "이 답변에는 도구 호출이 기록되지 않았습니다.",
       activeQuery: "현재 쿼리",
@@ -1171,7 +1396,8 @@ export const koTranslations = {
       noContextCandidates: "이 답변에는 컨텍스트 후보가 없습니다.",
       saving: "저장 중...",
       openDraft: "초안 열기",
-      regenerationFootnote: "재생성은 선택한 대화만 사용해 새로운 턴을 추가합니다.",
+      regenerationFootnote:
+        "재생성은 선택한 대화만 사용해 새로운 턴을 추가합니다.",
       draftEditable: "초안 (편집 가능)",
       save: "저장",
       copy: "복사",
@@ -1180,15 +1406,18 @@ export const koTranslations = {
     data: {
       title: "데이터 관리",
       unavailableTitle: "데이터 작업을 사용할 수 없음",
-      unavailableDesc: "이 환경은 내보내기/지우기/저장소 API를 제공하지 않습니다.",
+      unavailableDesc:
+        "이 환경은 내보내기/지우기/저장소 API를 제공하지 않습니다.",
       usedAppLimit: "사용량 / 앱 한도 (1GB)",
       unknown: "알 수 없음",
       browserQuota: "브라우저 할당량",
       healthy: "정상",
       softLimitWarning: "소프트 한도 경고",
       writeBlocked: "쓰기 차단됨",
-      storageWarning: "저장 공간이 900MB를 넘었습니다. 곧 오래된 데이터를 내보내거나 지우세요.",
-      storageBlocked: "저장 공간이 1GB에 도달했습니다. 데이터를 내보내거나 지울 때까지 새 쓰기가 차단됩니다.",
+      storageWarning:
+        "저장 공간이 900MB를 넘었습니다. 곧 오래된 데이터를 내보내거나 지우세요.",
+      storageBlocked:
+        "저장 공간이 1GB에 도달했습니다. 데이터를 내보내거나 지울 때까지 새 쓰기가 차단됩니다.",
       advancedStorageDetails: "고급 저장 공간 세부 정보 (Chrome)",
       chromeStorageUsed: "chrome.storage.local 사용량",
       estimatedIndexedDb: "추정 IndexedDB + 기타",
@@ -1198,11 +1427,14 @@ export const koTranslations = {
       disabled: "사용 안 함",
       exportLocalData: "로컬 데이터 내보내기",
       exportFormat: "{format} 내보내기",
-      exportHint: "JSON은 복원 가능하며 요약과 주간 캐시를 포함합니다. TXT/MD는 사람이 읽을 수 있는 내보내기입니다.",
+      exportHint:
+        "JSON은 복원 가능하며 요약과 주간 캐시를 포함합니다. TXT/MD는 사람이 읽을 수 있는 내보내기입니다.",
       dangerZone: "위험 구역",
-      dangerDesc: "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
+      dangerDesc:
+        "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
       clearLocalData: "로컬 데이터 지우기",
-      clearPrompt: "이 작업은 모든 로컬 대화와 캐시된 인사이트를 지웁니다.\\n계속하려면 DELETE를 입력하세요:",
+      clearPrompt:
+        "이 작업은 모든 로컬 대화와 캐시된 인사이트를 지웁니다.\\n계속하려면 DELETE를 입력하세요:",
       clearCancelled: "지우기를 취소했습니다.",
       localDataCleared: "로컬 데이터를 지웠습니다. LLM 설정은 유지됩니다.",
       exportedFile: "{filename}을 내보냈습니다",
@@ -1211,18 +1443,23 @@ export const koTranslations = {
     },
     network: {
       emptyTitle: "시간순 네트워크가 여기에 표시됩니다.",
-      emptyDesc: "AI 채팅 사이트에서 캡처한 대화가 자동으로 여기에 표시됩니다. 몇 개만 캡처하면 플랫폼/주제별로 묶인 그래프가 자라나고, 유사도 인덱싱이 완료되면 시맨틱 링크도 나타납니다.",
+      emptyDesc:
+        "AI 채팅 사이트에서 캡처한 대화가 자동으로 여기에 표시됩니다. 몇 개만 캡처하면 플랫폼/주제별로 묶인 그래프가 자라나고, 유사도 인덱싱이 완료되면 시맨틱 링크도 나타납니다.",
       noConversationsYet: "아직 캡처된 대화가 없습니다.",
-      replayInfo: "이 재생은 모든 것이 오늘 캡처된 경우에도 전체 타임라인을 8초 만에 재생합니다.",
+      replayInfo:
+        "이 재생은 모든 것이 오늘 캡처된 경우에도 전체 타임라인을 8초 만에 재생합니다.",
       newConversationOn: "+ {platform}의 새 대화",
       conversationOn: "+ {label} · {platform}",
       buildingGraph: "그래프 구축 중...",
       trendLabel: "추세 · 일별 신규 대화",
-      noSemanticLinks: "아직 시맨틱 링크가 없습니다. 재생에서는 대화가 시간에 따라 어떻게 쌓였는지 계속 보여 줍니다.",
+      noSemanticLinks:
+        "아직 시맨틱 링크가 없습니다. 재생에서는 대화가 시간에 따라 어떻게 쌓였는지 계속 보여 줍니다.",
       dragHint: "추세선을 드래그하면 특정 시점에서 멈출 수 있습니다.",
       replay: "다시 재생",
-      edgeLoadingUnavailable: "이 환경에서는 시맨틱 엣지 불러오기를 사용할 수 없습니다.",
-      edgePlaybackUnavailable: "시맨틱 엣지 재생을 일시적으로 사용할 수 없습니다.",
+      edgeLoadingUnavailable:
+        "이 환경에서는 시맨틱 엣지 불러오기를 사용할 수 없습니다.",
+      edgePlaybackUnavailable:
+        "시맨틱 엣지 재생을 일시적으로 사용할 수 없습니다.",
       close: "닫기",
       started: "시작",
       messages: "메시지",
@@ -1241,10 +1478,12 @@ export const koTranslations = {
       conversationN: "대화 {id}",
       thinkingMapView: "사고 지도",
       conversationMapView: "대화 그래프",
-      thinkingMapEmpty: "이 보기는 요약으로 만들어집니다. 먼저 라이브러리에서 요약을 생성하면 사고 지도가 핵심 주제의 흐름을 그려 줍니다.",
+      thinkingMapEmpty:
+        "이 보기는 요약으로 만들어집니다. 먼저 라이브러리에서 요약을 생성하면 사고 지도가 핵심 주제의 흐름을 그려 줍니다.",
       loadingThinkingMap: "사고 지도를 만드는 중...",
       gapInsightTitle: "아직 연결하지 않은 흐름",
-      gapInsightTemplate: "{a} 와(과) {b} 를(을) 탐색했지만 아직 연결하지 않았어요",
+      gapInsightTemplate:
+        "{a} 와(과) {b} 를(을) 탐색했지만 아직 연결하지 않았어요",
       conceptMentionedIn: "{count}개의 대화에 등장",
       relatedConversations: "관련 대화",
       groupByLabel: "그룹",
@@ -1252,7 +1491,7 @@ export const koTranslations = {
       groupByTopic: "주제별",
       groupByProject: "프로젝트별",
       groupOther: "그룹 없음",
-      clusterConversationCount: "대화 {count}개",
+      clusterConversationCount: "대화 {count}개"
     },
     prompts: {
       title: "자주 쓰는 프롬프트",
@@ -1270,7 +1509,8 @@ export const koTranslations = {
       loading: "프롬프트 불러오는 중…",
       emptyNone: "아직 프롬프트가 없습니다.",
       emptyFiltered: "현재 필터와 일치하는 프롬프트가 없습니다.",
-      emptyHint: "캡처한 대화에서 재사용 가능한 프롬프트를 추출하거나 직접 추가하세요.",
+      emptyHint:
+        "캡처한 대화에서 재사용 가능한 프롬프트를 추출하거나 직접 추가하세요.",
       retry: "다시 시도",
       favorite: "즐겨찾기 추가",
       unfavorite: "즐겨찾기 해제",
@@ -1282,8 +1522,10 @@ export const koTranslations = {
       fieldTitle: "트리거",
       titlePlaceholder: "이 프롬프트를 불러올 짧은 트리거(선택)",
       fieldBody: "프롬프트",
-      bodyPlaceholder: "재사용 가능한 프롬프트를 작성하세요. 자리 표시자에는 {{variables}}를 사용합니다.",
-      improveTooltip: "이 초안을 더 강력한 프롬프트로 다시 작성합니다(설정된 LLM 사용)",
+      bodyPlaceholder:
+        "재사용 가능한 프롬프트를 작성하세요. 자리 표시자에는 {{variables}}를 사용합니다.",
+      improveTooltip:
+        "이 초안을 더 강력한 프롬프트로 다시 작성합니다(설정된 LLM 사용)",
       improving: "개선 중…",
       improveWithAI: "AI로 개선",
       fieldCategory: "카테고리",
@@ -1310,9 +1552,11 @@ export const koTranslations = {
       toastCopied: "클립보드에 복사했습니다.",
       toastClipboard: "클립보드를 사용할 수 없습니다.",
       toastImproved: "AI로 프롬프트를 개선했습니다.",
-      toastNoLlm: "LLM이 설정되지 않았습니다 — 설정에서 구성하면 AI 재작성을 사용할 수 있습니다.",
+      toastNoLlm:
+        "LLM이 설정되지 않았습니다 — 설정에서 구성하면 AI 재작성을 사용할 수 있습니다.",
       toastImproveFailed: "AI 완성에 실패했습니다.",
-      toastExtract: "{candidates}개 후보에서 새 프롬프트 {created}개를 보관했습니다.",
+      toastExtract:
+        "{candidates}개 후보에서 새 프롬프트 {created}개를 보관했습니다.",
       unavailable: "이 빌드에서는 프롬프트 관리를 사용할 수 없습니다.",
       exportLabel: "내보내기",
       importLabel: "가져오기",
@@ -1331,7 +1575,8 @@ export const koTranslations = {
       plazaUse: "사용",
       plazaSourcePrefix: "출처: ",
       supermarketTitle: "프롬프트 마켓",
-      supermarketSubtitle: "카테고리별로 더 많은 고품질 프롬프트를 둘러보고 광장에 추가하세요.",
+      supermarketSubtitle:
+        "카테고리별로 더 많은 고품질 프롬프트를 둘러보고 광장에 추가하세요.",
       myPlaza: "내 광장",
       myPlazaEmpty: "아래 마켓에서 프롬프트를 추가해 나만의 광장을 만드세요.",
       adopt: "추가",
@@ -1346,9 +1591,12 @@ export const koTranslations = {
       modeAiti: "AITI",
       modeRoundtable: "원탁",
       title: "당신의 AITI — 사고의 강점",
-      subtitle: "당신의 대화에서 로컬로 계산됩니다. 판정이 아니라 강점의 반영입니다.",
-      insufficient: "아직 분석된 대화가 충분하지 않습니다 — 대화를 이어가면 당신의 초상이 완성됩니다.",
-      insufficientHint: "2개 이상의 대화가 있으면 AITI가 예비 초상을 보여줍니다.",
+      subtitle:
+        "당신의 대화에서 로컬로 계산됩니다. 판정이 아니라 강점의 반영입니다.",
+      insufficient:
+        "아직 분석된 대화가 충분하지 않습니다 — 대화를 이어가면 당신의 초상이 완성됩니다.",
+      insufficientHint:
+        "2개 이상의 대화가 있으면 AITI가 예비 초상을 보여줍니다.",
       sample: "당신의 대화 {n}개에서 도출",
       confidenceLabel: "신뢰도",
       confidenceLow: "예비",
@@ -1363,33 +1611,41 @@ export const koTranslations = {
       axisDepthLabel: "폭 ↔ 깊이",
       axisDepthLeft: "탐험가",
       axisDepthRight: "발굴가",
-      axisDepthLeftStrength: "폭넓게 탐구하며 여러 분야의 아이디어를 연결합니다.",
+      axisDepthLeftStrength:
+        "폭넓게 탐구하며 여러 분야의 아이디어를 연결합니다.",
       axisDepthRightStrength: "깊이 파고들어 복잡한 것을 철저히 익힙니다.",
       axisMakerLabel: "이론 ↔ 실천",
       axisMakerLeft: "이론가",
       axisMakerRight: "실행가",
       axisMakerLeftStrength: "원리와 모델로 사고하며 기초를 정확히 다집니다.",
-      axisMakerRightStrength: "실행 지향적이며 아이디어를 빠르게 실제 성과로 전환합니다.",
+      axisMakerRightStrength:
+        "실행 지향적이며 아이디어를 빠르게 실제 성과로 전환합니다.",
       axisFocusLabel: "수렴 ↔ 발산",
       axisFocusLeft: "수렴형",
       axisFocusRight: "발산형",
       axisFocusLeftStrength: "집중을 유지하며 중요한 답으로 수렴합니다.",
-      axisFocusRightStrength: "호기심을 따라 탐색하며 예상치 못한 가능성을 엽니다.",
+      axisFocusRightStrength:
+        "호기심을 따라 탐색하며 예상치 못한 가능성을 엽니다.",
       axisAffectLabel: "냉철 ↔ 열정",
       axisAffectLeft: "냉철형",
       axisAffectRight: "열정형",
-      axisAffectLeftStrength: "복잡한 상황에서도 침착함을 유지하며 명확하게 판단합니다.",
+      axisAffectLeftStrength:
+        "복잡한 상황에서도 침착함을 유지하며 명확하게 판단합니다.",
       axisAffectRightStrength: "탐구하는 대상에 강한 감정적 몰입을 발휘합니다.",
       axisCuriosityLabel: "안정 ↔ 호기심",
       axisCuriosityLeft: "안정형",
       axisCuriosityRight: "호기심형",
-      axisCuriosityLeftStrength: "효율적으로 답을 얻고 간결한 해결을 선호합니다.",
-      axisCuriosityRightStrength: "자유롭게 질문하고 단서를 따라 어디까지나 탐구합니다.",
+      axisCuriosityLeftStrength:
+        "효율적으로 답을 얻고 간결한 해결을 선호합니다.",
+      axisCuriosityRightStrength:
+        "자유롭게 질문하고 단서를 따라 어디까지나 탐구합니다.",
       axisInterdisciplinaryLabel: "집중 ↔ 학제",
       axisInterdisciplinaryLeft: "집중형",
       axisInterdisciplinaryRight: "학제형",
-      axisInterdisciplinaryLeftStrength: "특정 영역에 깊이 파고들어 전문성을 쌓습니다.",
-      axisInterdisciplinaryRightStrength: "영역을 넘나들며 아이디어를 연결하고 먼 분야를 엮습니다.",
+      axisInterdisciplinaryLeftStrength:
+        "특정 영역에 깊이 파고들어 전문성을 쌓습니다.",
+      axisInterdisciplinaryRightStrength:
+        "영역을 넘나들며 아이디어를 연결하고 먼 분야를 엮습니다.",
       trendsTitle: "최근 방향",
       trendRising: "상승",
       trendFalling: "하락",
@@ -1398,9 +1654,12 @@ export const koTranslations = {
     learn: {
       modeLearn: "학습",
       title: "당신이 배워온 것",
-      subtitle: "당신의 대화를 개인 커리큘럼으로 정리합니다. 로컬에서 계산됩니다.",
-      insufficient: "아직 대화가 충분하지 않습니다 — 대화를 이어가면 학습 지도가 채워집니다.",
-      insufficientHint: "1–2개의 대화로 시작하면 Learn이 영역, 용어, 미해결 질문을 표시합니다.",
+      subtitle:
+        "당신의 대화를 개인 커리큘럼으로 정리합니다. 로컬에서 계산됩니다.",
+      insufficient:
+        "아직 대화가 충분하지 않습니다 — 대화를 이어가면 학습 지도가 채워집니다.",
+      insufficientHint:
+        "1–2개의 대화로 시작하면 Learn이 영역, 용어, 미해결 질문을 표시합니다.",
       sample: "분석된 대화 {n}개에서",
       confidenceLabel: "신뢰도",
       confidenceLow: "예비",
@@ -1425,15 +1684,20 @@ export const koTranslations = {
       learningPathExpandTitle: "{domains} 연결하기",
       learningPathApplyTitle: "풀리지 않은 질문 다루기",
       learningPathSynthesizeTitle: "지식 지도 통합하기",
-      learningPathFoundationDesc: "대화에서 가장 자주 등장하는 핵심 개념을 확실히 합니다.",
-      learningPathExpandDesc: "핵심 주제와 인접 영역을 연결해 더 풍부한 지도를 만듭니다.",
-      learningPathApplyDesc: "배운 것을 활용해 대화에 남은 미해결 실마리를 해결합니다.",
-      learningPathSynthesizeDesc: "한 걸음 물러서서 영역과 용어를 넘나드는 점들을 선으로 잇습니다.",
-      learningGoalDeepen: "{domain} 깊이 파기",
+      learningPathFoundationDesc:
+        "대화에서 가장 자주 등장하는 핵심 개념을 확실히 합니다.",
+      learningPathExpandDesc:
+        "핵심 주제와 인접 영역을 연결해 더 풍부한 지도를 만듭니다.",
+      learningPathApplyDesc:
+        "배운 것을 활용해 대화에 남은 미해결 실마리를 해결합니다.",
+      learningPathSynthesizeDesc:
+        "한 걸음 물러서서 영역과 용어를 넘나드는 점들을 선으로 잇습니다.",
+      learningGoalDeepen: "{domain} 깊이 파기"
     },
     roundtable: {
       title: "AI 원탁회의",
-      subtitle: "당신의 질문에 대해 다양한 관점의 패널을 소집하고, 사회자가 종합합니다.",
+      subtitle:
+        "당신의 질문에 대해 다양한 관점의 패널을 소집하고, 사회자가 종합합니다.",
       questionPlaceholder: "논의할 판단이 필요한 질문을 입력…",
       personasLabel: "패널(최대 3명)",
       run: "패널 소집",
@@ -1498,17 +1762,24 @@ export const koTranslations = {
       undefinedVariables: "변수가 정의되지 않음"
     },
     suggestion: {
-      tooShort: "세부 정보를 추가하세요: 작업, 맥락, 좋은 답변의 모습을 설명하세요.",
-      pureQuestion: "지시문으로 바꾸세요: 작업, 답할 대상, 제약 조건을 명시하세요.",
-      noInstructionVerb: "명확한 동작 동사로 시작하세요(작성, 분석, 리팩터링, 요약…).",
-      noRole: "역할이나 전문성을 지정하세요. 예: \"당신은 시니어 TypeScript 엔지니어입니다…\".",
+      tooShort:
+        "세부 정보를 추가하세요: 작업, 맥락, 좋은 답변의 모습을 설명하세요.",
+      pureQuestion:
+        "지시문으로 바꾸세요: 작업, 답할 대상, 제약 조건을 명시하세요.",
+      noInstructionVerb:
+        "명확한 동작 동사로 시작하세요(작성, 분석, 리팩터링, 요약…).",
+      noRole:
+        '역할이나 전문성을 지정하세요. 예: "당신은 시니어 TypeScript 엔지니어입니다…".',
       noFormat: "원하는 출력 형식을 설명하세요(항목 목록, 표, JSON, 글자 수).",
-      noConstraints: "제약 조건을 추가하세요: 포함할 것, 피할 것, 길이, 톤, 대상 독자.",
+      noConstraints:
+        "제약 조건을 추가하세요: 포함할 것, 피할 것, 길이, 톤, 대상 독자.",
       noExample: "기대하는 입력 및/또는 출력의 짧은 예시를 제시하세요.",
       noContext: "모델에 필요한 배경을 추가하세요: 대상 독자, 목표, 이전 맥락.",
-      vagueScope: "범위를 좁히세요: 구체적인 사항, 입력, 정확한 결과물을 제시하세요.",
+      vagueScope:
+        "범위를 좁히세요: 구체적인 사항, 입력, 정확한 결과물을 제시하세요.",
       noStructure: "번호가 매겨진 단계나 항목으로 나누세요.",
-      undefinedVariables: "각 {{variable}}를 정의하세요: 무엇을 나타내는지 설명하고 예시 값을 제시하세요."
+      undefinedVariables:
+        "각 {{variable}}를 정의하세요: 무엇을 나타내는지 설명하고 예시 값을 제시하세요."
     },
     actions: {
       optimize: "AI로 최적화",
@@ -1537,4 +1808,4 @@ export const koTranslations = {
       allClear: "문제가 없습니다 — 깔끔합니다."
     }
   }
-};
+}

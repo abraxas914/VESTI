@@ -91,7 +91,9 @@ export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePan
   };
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
+    <div
+      data-onboarding-target="roundtable-card"
+      className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
         <h3 className="flex items-center gap-2 text-[15px] font-medium text-text-primary">
           <Users className="h-4 w-4" strokeWidth={1.8} />
@@ -101,6 +103,8 @@ export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePan
 
         {/* Question */}
         <textarea
+          data-onboarding-target="roundtable-input"
+          data-onboarding-action="roundtable-input"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={labels.questionPlaceholder}
@@ -140,6 +144,8 @@ export function RoundtablePanel({ storage, labels, sendToLabels }: RoundtablePan
 
         <div className="mt-3 flex items-center gap-3">
           <button
+            data-onboarding-target="roundtable-send"
+            data-onboarding-action="roundtable-send"
             type="button"
             onClick={() => void run()}
             disabled={loading || selected.length === 0}

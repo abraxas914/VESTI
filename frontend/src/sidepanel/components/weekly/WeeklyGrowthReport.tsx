@@ -4,6 +4,7 @@ import {
   FilePlus2,
   ImageDown,
   Link2,
+  MapPin,
   RefreshCw,
   Sparkles,
   X,
@@ -11,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { useI18n } from "~lib/i18n";
+import { getLocaleDateTag } from "~lib/i18n/locales";
 import {
   getWeeklyPushSettings,
   setWeeklyPushSettings,
@@ -23,7 +25,6 @@ import type {
   WeeklyGrowthSeriesPoint,
   WeeklyGrowthTag,
   WeeklyMetricComparison,
-  WeeklyMostInsight,
   WeeklyRecapStyle,
 } from "~lib/types";
 import type { WeeklyGrowthData } from "~lib/types/insightsPresentation";
@@ -58,7 +59,10 @@ const COPY = {
     tags: "Topic cloud",
     newTags: "New",
     hotTags: "Trending",
-    mosts: "Your week in superlatives",
+    mostConcerned: "The topic you cared about most this week was",
+    latestQuestionPrefix: "Your latest question this week was at ",
+    latestQuestionSuffix: ", when you asked",
+    footprint: "Footprint summary",
     noData: "No data yet",
     open: "Open original conversation",
   },
@@ -76,7 +80,10 @@ const COPY = {
     tags: "话题标签云",
     newTags: "本周新增",
     hotTags: "本周热门",
-    mosts: "你最 XX",
+    mostConcerned: "本周你最关心的话题为",
+    latestQuestionPrefix: "本周最晚在 ",
+    latestQuestionSuffix: " 提问，提的问题为",
+    footprint: "足迹总结",
     noData: "暂无数据",
     open: "打开原对话",
   },
@@ -94,7 +101,10 @@ const COPY = {
     tags: "トピッククラウド",
     newTags: "新規",
     hotTags: "人気",
-    mosts: "今週の一番",
+    mostConcerned: "今週もっとも関心を寄せた話題は",
+    latestQuestionPrefix: "今週最後に質問したのは",
+    latestQuestionSuffix: "で、質問内容は",
+    footprint: "足跡まとめ",
     noData: "データはまだありません",
     open: "元の会話を開く",
   },
@@ -112,7 +122,10 @@ const COPY = {
     tags: "주제 태그 클라우드",
     newTags: "신규",
     hotTags: "인기",
-    mosts: "이번 주의 최고",
+    mostConcerned: "이번 주 가장 관심을 둔 주제는",
+    latestQuestionPrefix: "이번 주 가장 늦게 질문한 시각은 ",
+    latestQuestionSuffix: "이며, 질문은",
+    footprint: "활동 발자취 요약",
     noData: "아직 데이터가 없습니다",
     open: "원본 대화 열기",
   },
@@ -316,16 +329,29 @@ function GrowthCurve({ points = [] }: { points?: WeeklyGrowthSeriesPoint[] }) {
   );
 }
 
-function MostItem({ value }: { value?: WeeklyMostInsight | null }) {
-  if (!value?.label) return null;
-  return (
-    <article className="rounded-md bg-bg-tertiary px-3 py-2">
-      <p className="text-vesti-xs font-medium text-text-primary">{value.label}</p>
-      {value.detail ? (
-        <p className="mt-1 text-[11px] text-text-tertiary">{value.detail}</p>
-      ) : null}
-    </article>
-  );
+function formatLatestQuestionTime(
+  timestamp: number | null | undefined,
+  locale: keyof typeof COPY,
+  timezone?: string
+): string {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return "";
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+  if (timezone) options.timeZone = timezone;
+  try {
+    return new Intl.DateTimeFormat(getLocaleDateTag(locale), options).format(
+      new Date(timestamp)
+    );
+  } catch {
+    delete options.timeZone;
+    return new Intl.DateTimeFormat(getLocaleDateTag(locale), options).format(
+      new Date(timestamp)
+    );
+  }
 }
 
 async function copyTextToClipboard(value: string): Promise<void> {
@@ -393,7 +419,12 @@ export function WeeklyGrowthReport({
   const rhythm = report.energy?.rhythmHealth;
   const breadth = report.energy?.topicBreadth;
   const identity = report.identity;
-  const mosts = report.mosts;
+  const footprint = report.footprintSummary;
+  const latestQuestionTime = formatLatestQuestionTime(
+    footprint?.latestChatAt,
+    locale,
+    report.period?.timezone
+  );
   const reportElementRef = useRef<HTMLDivElement | null>(null);
   const [style, setStyle] = useState<WeeklyRecapStyle>("professional");
   const [shareStatus, setShareStatus] = useState("");
@@ -531,9 +562,13 @@ export function WeeklyGrowthReport({
         : ACTION_COPY[locale].saveNote;
 
   return (
-    <div ref={reportElementRef} className="ins-week-ready-shell">
+    <div
+      ref={reportElementRef}
+      data-weekly-report-root
+      className="ins-week-ready-shell"
+    >
       <section className="rounded-xl border border-border-subtle bg-surface-card p-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="weekly-report-header flex items-center justify-between gap-2">
           <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
             {copy.title}
           </p>
@@ -661,7 +696,7 @@ export function WeeklyGrowthReport({
             <p className="mb-2 text-vesti-xs font-semibold text-text-primary">
               {copy.energy}
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="weekly-report-score-grid grid gap-2">
               <ScoreCard
                 label={copy.focus}
                 score={focus?.score}
@@ -679,6 +714,28 @@ export function WeeklyGrowthReport({
               />
             </div>
           </section>
+
+          {footprint?.summary ? (
+            <section
+              data-weekly-export-private
+              className="rounded-xl border border-accent-primary/20 bg-accent-primary-light p-4"
+            >
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-accent-primary" />
+                <p className="text-vesti-xs font-semibold text-text-primary">
+                  {copy.footprint}
+                </p>
+              </div>
+              <p className="mt-3 text-vesti-sm leading-relaxed text-text-secondary">
+                {footprint.summary}
+              </p>
+              {footprint.encouragement ? (
+                <p className="mt-3 rounded-lg bg-surface-card px-3 py-2.5 text-vesti-xs font-medium leading-relaxed text-text-primary">
+                  {footprint.encouragement}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="rounded-lg border border-border-subtle bg-surface-card p-3">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -758,7 +815,7 @@ export function WeeklyGrowthReport({
             </section>
           ) : null}
 
-          <section className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3 rounded-lg border border-border-subtle bg-surface-card p-3">
+          <section className="weekly-report-content-grid grid gap-3 rounded-lg border border-border-subtle bg-surface-card p-3">
             <div>
               <p className="mb-2 text-vesti-xs font-semibold text-text-primary">
                 {copy.contribution}
@@ -798,18 +855,36 @@ export function WeeklyGrowthReport({
             </div>
           </section>
 
-          {mosts ? (
-            <section data-weekly-export-private>
-              <p className="mb-2 text-vesti-xs font-semibold text-text-primary">
-                {copy.mosts}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <MostItem value={mosts.latestConversation} />
-                <MostItem value={mosts.topTopic} />
-                <MostItem value={mosts.longestConversation} />
-                <MostItem value={mosts.unexpectedConversation} />
-                <MostItem value={mosts.mentionedEntity} />
-              </div>
+          {footprint?.topDirection ||
+          (latestQuestionTime && footprint?.latestQuestion) ? (
+            <section
+              data-weekly-export-private
+              className="weekly-report-summary-grid grid gap-2"
+            >
+              {footprint?.topDirection ? (
+                <article className="rounded-lg bg-bg-tertiary px-3 py-3">
+                  <p className="text-[11px] text-text-tertiary">
+                    {copy.mostConcerned}
+                  </p>
+                  <p className="mt-1.5 text-vesti-sm font-semibold leading-relaxed text-text-primary">
+                    “{footprint.topDirection}”
+                  </p>
+                </article>
+              ) : null}
+              {latestQuestionTime && footprint?.latestQuestion ? (
+                <article className="rounded-lg bg-bg-tertiary px-3 py-3">
+                  <p className="text-[11px] leading-relaxed text-text-tertiary">
+                    {copy.latestQuestionPrefix}
+                    <strong className="font-semibold text-text-secondary">
+                      {latestQuestionTime}
+                    </strong>
+                    {copy.latestQuestionSuffix}
+                  </p>
+                  <p className="mt-1.5 text-vesti-sm font-semibold leading-relaxed text-text-primary">
+                    “{footprint.latestQuestion}”
+                  </p>
+                </article>
+              ) : null}
             </section>
           ) : null}
 

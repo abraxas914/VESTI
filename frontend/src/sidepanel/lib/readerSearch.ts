@@ -732,4 +732,3 @@ function sanitizeLanguageLeakage(nodes: AstNode[]): AstNode[] {
 
   return result;
 }
-

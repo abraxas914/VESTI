@@ -53,7 +53,9 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
 
   if (!profile || !profile.available) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-10 text-center">
+      <div
+        data-onboarding-target="learn-card"
+        className="flex h-full flex-col items-center justify-center p-10 text-center">
         <h3 className="text-[15px] font-medium text-text-primary">{labels.title}</h3>
         <p className="mt-2 max-w-md text-[13px] text-text-tertiary">{labels.insufficient}</p>
         {labels.insufficientHint ? (
@@ -64,7 +66,9 @@ export function LearnCard({ profile, labels, onOpenConversation, storage, sendTo
   }
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
+    <div
+      data-onboarding-target="learn-card"
+      className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>

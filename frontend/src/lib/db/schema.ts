@@ -103,6 +103,7 @@ export interface ExploreSessionRecord {
   title: string;
   preview: string; // Last message preview for list display
   messageCount: number;
+  systemPrompt?: string;
   createdAt: number;
   updatedAt: number;
 }

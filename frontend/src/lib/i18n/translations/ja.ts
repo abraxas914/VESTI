@@ -35,6 +35,76 @@ export const jaTranslations = {
     expand: "展開",
     collapse: "折りたたむ"
   },
+  onboarding: {
+    brandName: "VESTI",
+    eyebrow: "あなた専用の AI メモリー",
+    subtitle: "会話を残し、知識を育てる",
+    intro:
+      "VESTI は AI との会話を静かに保存し、検索できるローカル優先の知識の軌跡に変えます。",
+    quickStart: "クイックスタート",
+    quickStartWorking: "7 日分のデモ記憶を準備しています…",
+    quickStartDescription:
+      "7 日分のデモライブラリを読み込み、VESTI をすぐに体験します。",
+    quickStartSuccess: "デモ記憶の準備ができました。VESTI を開いています…",
+    quickStartNoTab:
+      "VESTI の準備ができました。対応する AI 会話を開いて始めましょう。",
+    quickStartUnavailable:
+      "VESTI の準備は完了しましたが、現在の会話はまだ保存できませんでした。",
+    skip: "案内をスキップして使い始める →",
+    privacy: "アカウントは不要です。会話ライブラリはこの端末に保存されます。",
+    supportedPlatforms:
+      "ChatGPT、Claude、Gemini、DeepSeek、Doubao、Qwen、Kimi、Yuanbao に対応。",
+    actionFailed: "設定が中断されました。もう一度お試しください。",
+    setupTitle: "VESTI を自分好みに",
+    setupSubtitle: "3 つの選択だけ。後からいつでも変更できます。",
+    stepOf: "ステップ {current}/{total}",
+    captureStepTitle: "会話をどのように保存しますか？",
+    captureStepDescription:
+      "クイックスタートを選んだ場合は、常に一度保存します。",
+    captureMirror: "自動保存",
+    captureMirrorDescription:
+      "対応サイトの会話を進行に合わせて静かに保存します。",
+    captureSmart: "スマートフィルター",
+    captureSmartDescription:
+      "内容のある会話を保存し、短い会話などは保留します。",
+    captureManual: "手動",
+    captureManualDescription: "明示的にアーカイブした会話だけを保存します。",
+    aiStepTitle: "AI アクセスを選択",
+    aiStepDescription: "デモはすぐ使えます。個人キーは任意です。",
+    demoMode: "デモ · 推奨",
+    demoModeDescription:
+      "設定やログインなしで VESTI の管理ゲートウェイを使います。",
+    byokMode: "自分の API キーを使う",
+    byokModeDescription: "DashScope 互換キーをこの端末内だけに保存します。",
+    apiKeyLabel: "API キー",
+    apiKeyPlaceholder: "sk-...",
+    apiKeyInvalid: "12 文字以上の有効なキーを入力してください。",
+    connectionTest: "接続をテスト",
+    connectionTesting: "テスト中…",
+    connectionOptional: "テストは任意で、保存を妨げません。",
+    preferencesStepTitle: "ワークスペースを選択",
+    preferencesStepDescription:
+      "言語、外観、フローティングカプセルを設定します。",
+    languageLabel: "言語",
+    themeLabel: "外観",
+    themeLight: "ライト",
+    themeDark: "ダーク",
+    capsuleLabel: "フローティングカプセル",
+    capsuleDescription: "対応 AI サイトに軽量な保存状態を表示します。",
+    back: "戻る",
+    next: "続ける",
+    finish: "設定を完了",
+    finishing: "完了しています…",
+    resumeHint: "進行状況は自動保存されます。",
+    saveFailed: "選択内容を保存できませんでした。再試行してください。",
+    capturedBanner: "最新の会話を表示できます。",
+    noTabBanner:
+      "VESTI の準備ができました。対応する AI 会話で最初の記憶を保存しましょう。",
+    unavailableBanner:
+      "会話が表示されない場合は AI ページを再読み込みしてください。",
+    dismiss: "閉じる"
+  },
+
   pages: {
     threads: "スレッド",
     insights: "インサイト",
@@ -43,16 +113,69 @@ export const jaTranslations = {
   },
   dock: {
     threads: "スレッド",
+    explore: "探索",
+    aiti: "AITI",
+    roundtable: "円卓会議",
     insights: "インサイト",
     dataManagement: "データ管理",
     settings: "設定",
     openLibrary: "ライブラリダッシュボードを開く",
     navigation: "Vesti ナビゲーション",
-    threadsDesc: "キャプチャしたすべての会話 — 検索・タグ付けして、続きから再開できます。",
+    threadsDesc:
+      "キャプチャしたすべての会話 — 検索・タグ付けして、続きから再開できます。",
+    exploreDesc: "ローカルの会話ライブラリ全体に質問します。",
+    aitiDesc: "会話から推定した AI 利用ペルソナを表示します。",
+    roundtableDesc: "対照的な 3 つの AI 役割で話題を議論します。",
     insightsDesc: "各会話の自動要約と、思考の週次ダイジェスト。",
-    dataDesc: "ライブラリのバックアップと復元、各プラットフォームからの過去の会話のインポート。",
+    dataDesc:
+      "ライブラリのバックアップと復元、各プラットフォームからの過去の会話のインポート。",
     settingsDesc: "モデル・キャプチャ・言語・テーマ。",
-    openLibraryDesc: "フル Web アプリを開く — ライブラリ・探索・ナレッジグラフ・プロンプト。"
+    openLibraryDesc:
+      "フル Web アプリを開く — ライブラリ・探索・ナレッジグラフ・プロンプト。"
+  },
+
+  coreFeatures: {
+    dashboard: {
+      mergeSummary: "統合要約を生成",
+      summaryLabel: "統合メモリー要約",
+      continueFromSummary: "この要約から新しい会話を開始",
+      toast: "✨ 記憶をまとめ、文脈をシームレスに継続しました",
+      summaryError: "選択した会話を要約できませんでした。",
+      continuationError: "継続会話を作成できませんでした。"
+    },
+    explore: {
+      title: "ナレッジ探索",
+      description: "この端末に保存されたすべての会話を横断検索します。",
+      contextTitle: "継続コンテキスト",
+      emptyTitle: "知識ネコの準備ができました",
+      emptyDescription:
+        "質問すると、ローカル会話ライブラリの全文を検索します。",
+      placeholder: "ナレッジベースに質問...",
+      ask: "ナレッジベースに質問",
+      toast: "ネコがナレッジベースを探しました",
+      error: "ナレッジベースを検索できませんでした。"
+    },
+    aiti: {
+      title: "あなたの AI 利用ペルソナ",
+      description: "保存された会話全体の傾向をローカルで分析します。",
+      sample: "{count} 件の会話に基づく分析",
+      toast: "AI 利用ペルソナができました",
+      error: "ペルソナを分析できませんでした。"
+    },
+    roundtable: {
+      title: "AI 円卓会議",
+      description: "3 つの役割が同じ話題に並行して回答します。",
+      placeholder: "議論する話題を入力...",
+      start: "議論を開始",
+      toast: "3 人の役割が着席しました。始めましょう！",
+      error: "円卓会議を開始できませんでした。",
+      roleFailed: "この役割は回答できませんでした。再試行してください。",
+      roles: {
+        domain_expert: "分野の専門家",
+        devils_advocate: "反対論者",
+        skeptic: "懐疑論者"
+      }
+    }
   },
   settings: {
     title: "設定",
@@ -85,7 +208,8 @@ export const jaTranslations = {
       title: "モデルアクセス",
       description: "BYOK とプロキシの設定",
       privacyTitle: "デバイスから送信される情報",
-      privacyDisclosure: "キャプチャ・ローカル保存・キーワード検索は 100% デバイス内で完結します。AI 機能（要約・探索・埋め込み・プロンプトツール・円卓）は、関連する会話テキストを設定済みのモデルに送信します（既定では Vesti のプロキシ経由で Alibaba Cloud Bailian へ）。独自の API キーを追加すると直接ルーティングできます。",
+      privacyDisclosure:
+        "キャプチャ・ローカル保存・キーワード検索は 100% デバイス内で完結します。AI 機能（要約・探索・埋め込み・プロンプトツール・円卓）は、関連する会話テキストを設定済みのモデルに送信します（既定では Vesti のプロキシ経由で Alibaba Cloud Bailian へ）。独自の API キーを追加すると直接ルーティングできます。",
       useCustomApiKey: "カスタム API キーを使用",
       byokDesc: "BYOK - 自分のキーで直接ルーティング",
       proxyActive: "プロキシ有効",
@@ -99,7 +223,8 @@ export const jaTranslations = {
       modelLabel: "モデル",
       whitelistOnly: "ホワイトリストのみ",
       proxy: "プロキシ",
-      proxyDesc: "チャットリクエストに service-token ヘッダーが付与されるのは、この欄が空でない場合のみです。一部のプロキシ構成や埋め込みルートでは必須となることがありますが、現在検出されているチャットルートでは不要な場合があります。",
+      proxyDesc:
+        "チャットリクエストに service-token ヘッダーが付与されるのは、この欄が空でない場合のみです。一部のプロキシ構成や埋め込みルートでは必須となることがありますが、現在検出されているチャットルートでは不要な場合があります。",
       proxyChat: "プロキシチャット",
       proxyRoute: "ルート",
       proxyBaseUrl: "ベース URL",
@@ -137,8 +262,10 @@ export const jaTranslations = {
       minTurnsLabel: "最小ターン数（1〜20）",
       blacklistLabel: "ブラックリストのキーワード（カンマ区切り）",
       blacklistPlaceholder: "翻訳, 下書き",
-      manualModeHint: "手動モードでは、アーカイブするまで自動書き込みは行われません。",
-      captureHint: "安定した会話 URL の ID が取得できてから書き込みが行われます。",
+      manualModeHint:
+        "手動モードでは、アーカイブするまで自動書き込みは行われません。",
+      captureHint:
+        "安定した会話 URL の ID が取得できてから書き込みが行われます。",
       activeThread: "アクティブなスレッド",
       snapshot: "スナップショット",
       lastUpdate: "最終更新",
@@ -149,7 +276,8 @@ export const jaTranslations = {
       archive: "アーカイブ",
       archiving: "アーカイブ中...",
       archiveActiveThread: "アクティブなスレッドをアーカイブ",
-      archiveHint: "スマート／手動モードでアクティブなスナップショットがある場合に利用できます。",
+      archiveHint:
+        "スマート／手動モードでアクティブなスナップショットがある場合に利用できます。",
       saveSettings: "キャプチャ設定を保存",
       settingsSaved: "キャプチャ設定を保存しました。",
       archivedSummary: "保存済み · {count} 件のメッセージ"
@@ -159,21 +287,28 @@ export const jaTranslations = {
       description: "保存した注釈をワンショットでエクスポート",
       oauthConnected: "OAuth 接続済み",
       officialOAuth: "公式 OAuth",
-      connectDesc: "Notion に接続し、注釈のワンショットエクスポートに使うデータベースを選択してください。",
+      connectDesc:
+        "Notion に接続し、注釈のワンショットエクスポートに使うデータベースを選択してください。",
       connectBtn: "Notion に接続",
       connected: "Notion ワークスペースに接続しました",
       reconnect: "変更",
       disconnect: "切断",
-      legacyToken: "旧式のトークンを検出しました。再接続して公式 OAuth にアップグレードしてください。",
-      workspaceReady: "ワークスペースの準備が整いました。下からデータベースを選択してください。",
-      oauthFlowDesc: "安全なブラウザウィンドウで公式 Notion の認可フローを開きます。",
+      legacyToken:
+        "旧式のトークンを検出しました。再接続して公式 OAuth にアップグレードしてください。",
+      workspaceReady:
+        "ワークスペースの準備が整いました。下からデータベースを選択してください。",
+      oauthFlowDesc:
+        "安全なブラウザウィンドウで公式 Notion の認可フローを開きます。",
       extensionOnly: "OAuth ログインは拡張機能ビルドでのみ利用できます。",
       targetDatabase: "対象データベース",
       databasePlaceholder: "共有データベースを検索",
-      noDatabases: "共有データベースがまだ見つかりません。Notion でデータベースを連携アプリと共有してから更新してください。",
-      shareHint: "データベースがまだ表示されない場合は、Notion で連携アプリと共有してから更新してください。",
+      noDatabases:
+        "共有データベースがまだ見つかりません。Notion でデータベースを連携アプリと共有してから更新してください。",
+      shareHint:
+        "データベースがまだ表示されない場合は、Notion で連携アプリと共有してから更新してください。",
       selected: "選択済み",
-      chooseDatabase: "データベースを選択すると注釈のエクスポートが有効になります。",
+      chooseDatabase:
+        "データベースを選択すると注釈のエクスポートが有効になります。",
       connecting: "接続中...",
       connectedMsg: "Notion に接続しました。",
       disconnectedMsg: "Notion を切断しました。"
@@ -182,13 +317,15 @@ export const jaTranslations = {
       title: "データ管理",
       description: "ストレージ、エクスポート、クリーンアップ。",
       dataToolsDesc: "データツールは「データ」タブで利用できます。",
-      dataToolsHint: "ストレージの概要、エクスポート、クリーンアップに使用できます。",
+      dataToolsHint:
+        "ストレージの概要、エクスポート、クリーンアップに使用できます。",
       openDataTab: "データ管理を開く"
     },
     support: {
       docsHelp: "ドキュメントとヘルプ",
       sendFeedback: "フィードバックを送る",
-      contactHint: "直接お問い合わせいただくか、GitHub で Issue を作成してください。",
+      contactHint:
+        "直接お問い合わせいただくか、GitHub で Issue を作成してください。",
       copyEmail: "コピー",
       copied: "コピーしました",
       retry: "再試行",
@@ -281,8 +418,10 @@ export const jaTranslations = {
       selected: "選択済み",
       inCurrentResults: "現在の結果のうち",
       toContinue: "で続行",
-      deleteDescSingular: "選択したスレッドとそのメッセージをローカルストレージから削除します。入力：",
-      deleteDescPlural: "選択した {count} 件のスレッドとそのメッセージをローカルストレージから削除します。入力：",
+      deleteDescSingular:
+        "選択したスレッドとそのメッセージをローカルストレージから削除します。入力：",
+      deleteDescPlural:
+        "選択した {count} 件のスレッドとそのメッセージをローカルストレージから削除します。入力：",
       exportFormats: {
         md: {
           name: "Markdown",
@@ -314,13 +453,17 @@ export const jaTranslations = {
       copyExport: "エクスポートをコピー",
       downloadExport: "エクスポートをダウンロード",
       copiedToClipboard: "エクスポートをクリップボードにコピーしました。",
-      copiedFormatToClipboard: "{format} エクスポートをクリップボードにコピーしました。",
+      copiedFormatToClipboard:
+        "{format} エクスポートをクリップボードにコピーしました。",
       savedAs: "{filename} として保存しました。",
       exported: "{filename} をエクスポートしました",
-      clipboardFailed: "生成したエクスポートをクリップボードにコピーできませんでした。",
-      clipboardHint: "クリップボードの権限を確認するか、代わりにダウンロードを使用してください。",
+      clipboardFailed:
+        "生成したエクスポートをクリップボードにコピーできませんでした。",
+      clipboardHint:
+        "クリップボードの権限を確認するか、代わりにダウンロードを使用してください。",
       clipboardUnavailable: "コピーは利用できません",
-      exportPanelDesc: "データ画面と同じ形式の行を保ったまま、ここでエクスポートの詳細度を選べます。"
+      exportPanelDesc:
+        "データ画面と同じ形式の行を保ったまま、ここでエクスポートの詳細度を選べます。"
     }
   },
   exportDialog: {
@@ -353,10 +496,12 @@ export const jaTranslations = {
     exportMdDesc: "Markdown - Obsidian やノートツールと互換",
     exportAction: "エクスポート",
     importJson: "JSON をインポート",
-    importJsonDesc: "復元可能なバックアップから戻し、キャプチャ済みのデータテーブルを置き換えます",
+    importJsonDesc:
+      "復元可能なバックアップから戻し、キャプチャ済みのデータテーブルを置き換えます",
     exportFormatLabel: "エクスポート形式",
     exportedMessage: "{filename} をエクスポートしました",
-    importConfirm: "{filename} をインポートしますか？\n\nローカルの会話・メッセージ・要約・週次レポート・注釈・検索ベクトルが JSON バックアップで置き換えられます。\nLLM 設定・ノート・トピック・探索セッションは変更されません。",
+    importConfirm:
+      "{filename} をインポートしますか？\n\nローカルの会話・メッセージ・要約・週次レポート・注釈・検索ベクトルが JSON バックアップで置き換えられます。\nLLM 設定・ノート・トピック・探索セッションは変更されません。",
     importCancelled: "インポートをキャンセルしました。",
     importedMessage: "{filename} から {summary} をインポートしました",
     importSummary: {
@@ -366,31 +511,42 @@ export const jaTranslations = {
       weeklyReports: "{count} 件の週次レポート",
       annotations: "{count} 件の注釈"
     },
-    clearCacheConfirm: "キャッシュされた要約と週次レポートのみを削除しますか？\n会話とメッセージは保持されます。",
-    cacheClearedMessage: "インサイトのキャッシュを削除しました。会話とメッセージは保持されました。",
-    clearAllConfirm: "ローカルのすべての会話・メッセージ・要約・週次レポートが削除されます。\n続行するには DELETE と入力してください：",
+    clearCacheConfirm:
+      "キャッシュされた要約と週次レポートのみを削除しますか？\n会話とメッセージは保持されます。",
+    cacheClearedMessage:
+      "インサイトのキャッシュを削除しました。会話とメッセージは保持されました。",
+    clearAllConfirm:
+      "ローカルのすべての会話・メッセージ・要約・週次レポートが削除されます。\n続行するには DELETE と入力してください：",
     clearCancelled: "削除をキャンセルしました。",
     dataCleared: "ローカルデータを削除しました。LLM 設定は保持されます。",
     history: {
       title: "プラットフォーム履歴をインポート",
       subtitle: "この AI プラットフォームの過去の会話を取り込みます",
-      description: "Vesti はプラットフォーム自身の API（現在のログインを使用）で既存の会話を読み取り、ローカルに保存します。読み取り専用で、送信や投稿は一切行いません。",
-      supportedNote: "対応：ChatGPT と Claude。他のプラットフォームも順次対応予定。",
-      unsupportedTab: "アクティブなタブで ChatGPT または Claude を開いてから、戻って履歴をインポートしてください。",
-      notLoggedIn: "先にアクティブなタブで {platform} にログインしてから再試行してください。",
+      description:
+        "Vesti はプラットフォーム自身の API（現在のログインを使用）で既存の会話を読み取り、ローカルに保存します。読み取り専用で、送信や投稿は一切行いません。",
+      supportedNote:
+        "対応：ChatGPT と Claude。他のプラットフォームも順次対応予定。",
+      unsupportedTab:
+        "アクティブなタブで ChatGPT または Claude を開いてから、戻って履歴をインポートしてください。",
+      notLoggedIn:
+        "先にアクティブなタブで {platform} にログインしてから再試行してください。",
       ready: "{platform} からインポートする準備ができました。",
       start: "{platform} の履歴をインポート",
       starting: "開始中…",
       cancel: "キャンセル",
       listing: "会話を検索中…",
       running: "インポート中… {processed}/{discovered}",
-      doneSummary: "完了。{saved} 件インポート · 新規メッセージ {newMessages} 件 · {skipped} 件スキップ · {failed} 件失敗。",
-      cancelledSummary: "キャンセルしました。これまでに {saved} 件インポート済み。",
+      doneSummary:
+        "完了。{saved} 件インポート · 新規メッセージ {newMessages} 件 · {skipped} 件スキップ · {failed} 件失敗。",
+      cancelledSummary:
+        "キャンセルしました。これまでに {saved} 件インポート済み。",
       errorSummary: "インポートに失敗しました：{error}",
-      confirm: "{platform} から会話履歴をインポートしますか？Vesti はプラットフォーム自身の API で会話を読み取り、ローカルに保存します。送信や投稿は一切行いません。"
+      confirm:
+        "{platform} から会話履歴をインポートしますか？Vesti はプラットフォーム自身の API で会話を読み取り、ローカルに保存します。送信や投稿は一切行いません。"
     },
     cleanup: "クリーンアップ",
-    cleanupDesc: "サマリーキャッシュを削除するか、ローカルデータをすべて消去します",
+    cleanupDesc:
+      "サマリーキャッシュを削除するか、ローカルデータをすべて消去します",
     dashboard: "ダッシュボード",
     dashboardDesc: "利用傾向とコンパクション分析",
     overview: "概要",
@@ -410,8 +566,10 @@ export const jaTranslations = {
     unknown: "不明",
     softLimitWarning: "ソフト上限の警告",
     writeBlocked: "書き込みブロック中",
-    storageWarning: "ストレージが 900MB を超えました。早めに古いデータをエクスポートまたは消去してください。",
-    storageBlocked: "ストレージが 1GB に達しました。エクスポートまたは消去するまで新規の書き込みはブロックされます。",
+    storageWarning:
+      "ストレージが 900MB を超えました。早めに古いデータをエクスポートまたは消去してください。",
+    storageBlocked:
+      "ストレージが 1GB に達しました。エクスポートまたは消去するまで新規の書き込みはブロックされます。",
     advancedStorageDetails: "ストレージの詳細",
     threadsStored: "保存済みスレッド",
     indexedDbStore: "IndexedDB ストア",
@@ -421,11 +579,14 @@ export const jaTranslations = {
     dangerZone: "危険な操作",
     clearLocalData: "ローカルデータを消去",
     importAction: "インポート",
-    compactionNote: "コンパクション指標は現在サマリーキャッシュをもとに推定しており、後ほど厳密な Agent A コンパクション系列にアップグレードできます。",
+    compactionNote:
+      "コンパクション指標は現在サマリーキャッシュをもとに推定しており、後ほど厳密な Agent A コンパクション系列にアップグレードできます。",
     chromeStorageUsed: "chrome.storage.local の使用量",
     estimatedIndexedDb: "推定 IndexedDB + その他",
-    clearCacheDesc: "キャッシュされたスレッドサマリーと週次レポートを消去しつつ、会話とメッセージは保持します。",
-    dangerDesc: "すべての会話、メッセージ、キャッシュ済みサマリー、週次レポートを消去します。LLM の設定はそのまま残ります。",
+    clearCacheDesc:
+      "キャッシュされたスレッドサマリーと週次レポートを消去しつつ、会話とメッセージは保持します。",
+    dangerDesc:
+      "すべての会話、メッセージ、キャッシュ済みサマリー、週次レポートを消去します。LLM の設定はそのまま残ります。",
     exportAllData: "すべてのデータをエクスポート",
     importData: "データをインポート",
     clearAllData: "すべてのデータを消去",
@@ -451,8 +612,10 @@ export const jaTranslations = {
     generate: "生成",
     generating: "生成中...",
     noThreadSelected: "スレッドが選択されていません",
-    selectThread: "タイムラインからスレッドを選択するとサマリーを生成できます。",
-    selectThreadHint: "「スレッド」からスレッドを選択するとサマリーを生成できます。",
+    selectThread:
+      "タイムラインからスレッドを選択するとサマリーを生成できます。",
+    selectThreadHint:
+      "「スレッド」からスレッドを選択するとサマリーを生成できます。",
     summaryReady: "サマリーの準備完了",
     summaryError: "サマリーの生成に失敗しました",
     weeklyReady: "週次ダイジェストの準備完了",
@@ -467,11 +630,13 @@ export const jaTranslations = {
     pause: "一時停止",
     resumeProgress: "進捗表示を再開",
     pauseProgress: "進捗表示を一時停止",
-    pausedResumeHint: "一時停止中です。再開すると進捗アニメーションが続きます。",
+    pausedResumeHint:
+      "一時停止中です。再開すると進捗アニメーションが続きます。",
     regenerate: "再生成",
     generateSummary: "サマリーを生成",
     generateDigest: "今週のダイジェストを生成",
-    noSummaryYet: "まだサマリーがありません。「サマリーを生成」をクリックして始めましょう。",
+    noSummaryYet:
+      "まだサマリーがありません。「サマリーを生成」をクリックして始めましょう。",
     noThreadsThisWeek: "今週開始されたスレッドはまだありません。",
     threadInRange: "件のスレッド",
     threadsInRange: "件のスレッド",
@@ -484,7 +649,8 @@ export const jaTranslations = {
     unresolvedThreads: "未解決のスレッド",
     nextSteps: "次のステップ",
     metaObservations: "メタ的な気づき",
-    reasoningNodes: "実世界の手がかりが {count} 個の推論ノードをカバーしています。",
+    reasoningNodes:
+      "実世界の手がかりが {count} 個の推論ノードをカバーしています。",
     highlights: "ハイライト",
     recurringQuestions: "繰り返し現れる問い",
     crossDomainEcho: "領域をまたぐ共鳴",
@@ -511,16 +677,20 @@ export const jaTranslations = {
     },
     latestRegenerationFailed: "直近の再生成に失敗しました。",
     failedToGenerateWeekly: "週次ダイジェストの生成に失敗しました。",
-    weeklyGenerationTimeout: "生成がタイムアウトしました。もう一度お試しください。",
+    weeklyGenerationTimeout:
+      "生成がタイムアウトしました。もう一度お試しください。",
     failedToGenerateSummary: "サマリーの生成に失敗しました。",
     notEnoughData: "今週のダイジェストを生成するにはデータが不足しています。",
-    sub3Hint: "この範囲には十分なサマリーが 3 件未満です。構造化された証拠が十分に揃うと、週次ダイジェストは自動的に再開されます。",
-    semanticDegradedHint: "十分なサマリーは見つかりましたが、価値の低い断片を防ぐため、セマンティック品質ゲートが今回の処理を簡易化しました。",
+    sub3Hint:
+      "この範囲には十分なサマリーが 3 件未満です。構造化された証拠が十分に揃うと、週次ダイジェストは自動的に再開されます。",
+    semanticDegradedHint:
+      "十分なサマリーは見つかりましたが、価値の低い断片を防ぐため、セマンティック品質ゲートが今回の処理を簡易化しました。",
     substantialSummaries: "有効なサマリー",
     uiPauseOnly: "UI の一時停止のみです。バックグラウンドでの生成は続きます。",
     modelLabel: "モデル",
     generatedLabel: "生成日時",
-    storageLimitError: "ストレージ上限（1GB）に達しました。「データ」タブでエクスポートまたは消去してください。",
+    storageLimitError:
+      "ストレージ上限（1GB）に達しました。「データ」タブでエクスポートまたは消去してください。",
     unknownError: "不明なエラー。",
     moreThreads: "他 {count} 件",
     thread: "スレッド",
@@ -611,18 +781,26 @@ export const jaTranslations = {
     status: {
       ready: "準備完了",
       mirrorMode: "ミラーモードでは手動アーカイブは不要です。",
-      unsupported_tab: "アクティブなタブで ChatGPT、Claude、Gemini、DeepSeek、Doubao、Qwen、Kimi、Yuanbao のいずれかのスレッドを開いてください。",
-      no_transient: "アクティブなスレッドのスナップショットはまだ検出されていません。",
-      content_unreachable: "ページのコンテンツスクリプトに接続できません。ページを更新して再試行してください。"
+      unsupported_tab:
+        "アクティブなタブで ChatGPT、Claude、Gemini、DeepSeek、Doubao、Qwen、Kimi、Yuanbao のいずれかのスレッドを開いてください。",
+      no_transient:
+        "アクティブなスレッドのスナップショットはまだ検出されていません。",
+      content_unreachable:
+        "ページのコンテンツスクリプトに接続できません。ページを更新して再試行してください。"
     },
     errors: {
-      archiveModeDisabled: "手動アーカイブはスマートモードまたは手動モードでのみ利用できます。",
-      activeTabUnsupported: "アクティブなタブは未対応です。ChatGPT、Claude、Gemini、DeepSeek、Doubao、Qwen、Kimi、Yuanbao のいずれかを開いてください。",
+      archiveModeDisabled:
+        "手動アーカイブはスマートモードまたは手動モードでのみ利用できます。",
+      activeTabUnsupported:
+        "アクティブなタブは未対応です。ChatGPT、Claude、Gemini、DeepSeek、Doubao、Qwen、Kimi、Yuanbao のいずれかを開いてください。",
       activeTabUnavailable: "アクティブなタブが見つかりません。",
-      transientNotFound: "アクティブなスレッドのスナップショットが見つかりません。メッセージを 1 件送信してから再試行してください。",
-      missingConversationId: "現在の URL にはまだ安定した会話 ID がありません。スレッドを続けてから再試行してください。",
+      transientNotFound:
+        "アクティブなスレッドのスナップショットが見つかりません。メッセージを 1 件送信してから再試行してください。",
+      missingConversationId:
+        "現在の URL にはまだ安定した会話 ID がありません。スレッドを続けてから再試行してください。",
       emptyPayload: "アーカイブできる解析済みメッセージがありません。",
-      storageLimit: "ストレージのハード上限に達しました。アーカイブする前にデータをエクスポートまたは消去してください。",
+      storageLimit:
+        "ストレージのハード上限に達しました。アーカイブする前にデータをエクスポートまたは消去してください。",
       persistFailed: "アーカイブの書き込みに失敗しました。再試行してください。",
       forceArchiveFailed: "手動アーカイブに失敗しました。再試行してください。"
     }
@@ -657,7 +835,8 @@ export const jaTranslations = {
       availableInExtension: "拡張機能でのみ利用可能",
       notionWorkspaceConnected: "Notion ワークスペースに接続済み",
       connectToNotion: "Notion に接続",
-      legacyToken: "旧式のトークンを検出しました。再接続して公式 OAuth にアップグレードしてください。",
+      legacyToken:
+        "旧式のトークンを検出しました。再接続して公式 OAuth にアップグレードしてください。",
       oauthFlowDesc: "公式 Notion の認可フローを開きます。",
       connecting: "接続中...",
       change: "変更",
@@ -674,17 +853,22 @@ export const jaTranslations = {
       modelscopeKeyLabel: "ModelScope キー",
       save: "保存",
       notionExportTitle: "Notion エクスポート",
-      notionExportDesc: "Notion に接続し、注釈のエクスポートに使うデータベースを選択します。",
-      connectedChooseDatabase: "接続済み。ワンショットエクスポートに使うデータベースを選択してください。",
-      oauthUnavailableOutsideExtension: "OAuth ログインは拡張機能ビルド以外では利用できません。",
+      notionExportDesc:
+        "Notion に接続し、注釈のエクスポートに使うデータベースを選択します。",
+      connectedChooseDatabase:
+        "接続済み。ワンショットエクスポートに使うデータベースを選択してください。",
+      oauthUnavailableOutsideExtension:
+        "OAuth ログインは拡張機能ビルド以外では利用できません。",
       disconnect: "切断",
       targetDatabase: "対象データベース",
       databaseSearchPlaceholder: "共有データベースを検索",
       refresh: "更新",
-      shareDatabaseHint: "データベースを Notion の連携アプリと共有し、表示されない場合は更新してください。",
+      shareDatabaseHint:
+        "データベースを Notion の連携アプリと共有し、表示されない場合は更新してください。",
       selectedColon: "選択中：",
       readyForOneShotExport: "ワンショットエクスポートの準備完了",
-      noSharedDatabasesFound: "共有データベースがまだ見つかりません。Notion でデータベースを連携アプリと共有してから更新してください。",
+      noSharedDatabasesFound:
+        "共有データベースがまだ見つかりません。Notion でデータベースを連携アプリと共有してから更新してください。",
       selectedDatabaseMessage: "{title} を選択しました。",
       themeUpdateFailed: "テーマの更新に失敗しました。"
     },
@@ -729,7 +913,8 @@ export const jaTranslations = {
       analyzed: "分析済み",
       notAnalyzedYet: "まだ分析されていません",
       summary: "サマリー",
-      noSummaryYet: "まだサマリーがありません。生成すると構造化されたインサイトを確認できます。",
+      noSummaryYet:
+        "まだサマリーがありません。生成すると構造化されたインサイトを確認できます。",
       generateSummary: "サマリーを生成",
       regenerate: "再生成",
       importToNotes: "ノートに取り込む",
@@ -740,7 +925,8 @@ export const jaTranslations = {
       showOriginalMessages: "元のメッセージを表示",
       hideOriginalMessages: "元のメッセージを非表示",
       loadingOriginalConversation: "元の会話を読み込み中...",
-      messagesAvailableButEmpty: "メッセージはありますが、プレビューのテキストが空です。",
+      messagesAvailableButEmpty:
+        "メッセージはありますが、プレビューのテキストが空です。",
       openOriginal: "開く",
       splitView: "分割表示",
       openSplitView: "分割表示を開く",
@@ -754,10 +940,12 @@ export const jaTranslations = {
       open: "開く",
       focusNote: "ノートにフォーカス",
       noNoteLinkedYet: "まだノートがリンクされていません",
-      startExtractingHint: "リーダーから抜き出すか、会話ノートを作成して、読みと書きを並べて進めましょう。",
+      startExtractingHint:
+        "リーダーから抜き出すか、会話ノートを作成して、読みと書きを並べて進めましょう。",
       startWritingPlaceholder: "書き始める...",
       createConversationNote: "会話ノートを作成",
-      extractedExcerptsPlaceholder: "抜き出した引用とノートがここに表示されます...",
+      extractedExcerptsPlaceholder:
+        "抜き出した引用とノートがここに表示されます...",
       relatedConversations: "関連する会話",
       findingRelated: "関連する会話を検索中...",
       noRelatedConversations: "関連する会話はまだありません。",
@@ -775,14 +963,20 @@ export const jaTranslations = {
       commentsUnavailable: "このビルドではコメントは利用できません。",
       couldNotSaveComment: "このコメントを保存できませんでした。",
       couldNotDeleteComment: "このコメントを削除できませんでした。",
-      myNotesExportUnavailable: "このビルドではマイノートへのエクスポートは利用できません。",
+      myNotesExportUnavailable:
+        "このビルドではマイノートへのエクスポートは利用できません。",
       savedToMyNotes: "マイノートに保存しました。",
-      couldNotExportToMyNotes: "このコメントをマイノートにエクスポートできませんでした。",
-      notionExportUnavailable: "このビルドでは Notion エクスポートは利用できません。",
+      couldNotExportToMyNotes:
+        "このコメントをマイノートにエクスポートできませんでした。",
+      notionExportUnavailable:
+        "このビルドでは Notion エクスポートは利用できません。",
       sentToNotion: "Notion に送信しました。",
-      notionSettingsMissing: "エクスポートの前に、設定で Notion に接続してデータベースを選択してください。",
-      notionReconnectRequired: "Notion のセッションが期限切れです。設定で再接続して再試行してください。",
-      couldNotExportToNotion: "このコメントを Notion にエクスポートできませんでした。",
+      notionSettingsMissing:
+        "エクスポートの前に、設定で Notion に接続してデータベースを選択してください。",
+      notionReconnectRequired:
+        "Notion のセッションが期限切れです。設定で再接続して再試行してください。",
+      couldNotExportToNotion:
+        "このコメントを Notion にエクスポートできませんでした。",
       addedOn: "追加日",
       dayAfter: "日",
       daysAfter: "日",
@@ -798,23 +992,28 @@ export const jaTranslations = {
       unavailable: "利用不可",
       attachments: "添付ファイル",
       attachmentPreview: "添付ファイルのプレビュー",
-      previewAvailableForImages: "プレビューはインポートした画像で利用できます。",
-      useOpenForOtherAttachments: "他の種類の添付ファイルは「開く」を使用してください。",
+      previewAvailableForImages:
+        "プレビューはインポートした画像で利用できます。",
+      useOpenForOtherAttachments:
+        "他の種類の添付ファイルは「開く」を使用してください。",
       importMetadata: "メタデータをインポート",
       exportToObsidian: "Obsidian にエクスポート",
       choosingFolder: "フォルダを選択中...",
       notesWorkspace: "ノートのワークスペース",
       selectNoteToEdit: "編集するノートを選択してください",
-      localNotesAndObsidianShareEditor: "ローカルノートとインポートした Obsidian ファイルは、同じ Markdown エディタ上で扱えるようになりました。",
+      localNotesAndObsidianShareEditor:
+        "ローカルノートとインポートした Obsidian ファイルは、同じ Markdown エディタ上で扱えるようになりました。",
       loadingNotes: "ノートを読み込み中...",
-      createLocalNoteHint: "ローカルノートを作成し、準備ができたら Obsidian フォルダにエクスポートできます。",
+      createLocalNoteHint:
+        "ローカルノートを作成し、準備ができたら Obsidian フォルダにエクスポートできます。",
       createNote: "ノートを作成",
       localNotes: "ローカルノート",
       noLocalNotesYet: "ローカルノートはまだありません。",
       weeklyKnowledge: "週間ナレッジ",
       weeklyKnowledgeNote: "週間ナレッジ",
       generatedFromWeeklyReport: "成長レポートから生成",
-      noWeeklyKnowledgeYet: "成長レポートをノートに保存して、週間ナレッジを蓄積しましょう。",
+      noWeeklyKnowledgeYet:
+        "成長レポートをノートに保存して、週間ナレッジを蓄積しましょう。",
       importedVaults: "インポートした Vault",
       renameNote: "ノートの名前を変更",
       updateNoteTitle: "このノートのタイトルを更新します。",
@@ -839,15 +1038,18 @@ export const jaTranslations = {
       daysAgo: "日前",
       monthsAgo: "か月前",
       yearsAgo: "年前",
-      sourceFileChangedAfterEdits: "ローカルで編集した後にソースファイルが変更されました。このノートの上書きを避けるため、再インポートはスキップされました。",
+      sourceFileChangedAfterEdits:
+        "ローカルで編集した後にソースファイルが変更されました。このノートの上書きを避けるため、再インポートはスキップされました。",
       dateUnknown: "日付不明",
       frontmatter: "フロントマター",
-      directoryExportNotSupported: "このブラウザ環境はローカルディレクトリへのエクスポートに対応していません。",
+      directoryExportNotSupported:
+        "このブラウザ環境はローカルディレクトリへのエクスポートに対応していません。",
       directorySelectionCancelled: "ディレクトリの選択がキャンセルされました。",
       saveBeforeExport: "エクスポートする前に現在のノートを保存してください。",
       exportFailed: "このノートを Obsidian にエクスポートできませんでした。",
       chooseConversationsTitle: "会話を選択",
-      chooseConversationsDesc: "エージェントが利用できる会話を検索・プレビューして選択します。",
+      chooseConversationsDesc:
+        "エージェントが利用できる会話を検索・プレビューして選択します。",
       applySelected: "選択を適用",
       useAll: "すべて使用",
       noSearchResults: "この検索に一致する会話はありません。",
@@ -868,8 +1070,8 @@ export const jaTranslations = {
         emotionalTone: "感情トーン：",
         depth: "深さ：",
         nextSteps: "次のステップ",
-        fallback: "プレーンテキスト fallback",
-      },
+        fallback: "プレーンテキスト fallback"
+      }
     },
     explore: {
       modeAgent: "エージェント",
@@ -891,7 +1093,8 @@ export const jaTranslations = {
       savingSelection: "保存中...",
       saveDraft: "保存",
       chooseConversationsTitle: "会話を選択",
-      chooseConversationsDesc: "エージェントが利用できる会話を検索・プレビューして選択します。",
+      chooseConversationsDesc:
+        "エージェントが利用できる会話を検索・プレビューして選択します。",
       applySelected: "選択を適用",
       useAll: "すべて使用",
       noSearchResults: "この検索に一致する会話はありません。",
@@ -939,27 +1142,34 @@ export const jaTranslations = {
       allConversations: "すべての会話",
       send: "送信",
       starterPrompts: "スタータープロンプト",
-      choosePromptHint: "1 つ選ぶと入力欄に挿入されます。送信前に編集できます。",
+      choosePromptHint:
+        "1 つ選ぶと入力欄に挿入されます。送信前に編集できます。",
       loadingStarterIdeas: "スターターアイデアを読み込み中",
       starterDeckReady: "スターターデッキの準備完了",
       cardsUpdateHint: "カードは新規チャットのたびに更新されます。",
-      askPlaceholder: "ナレッジベースに質問したり、1 週間を要約したり、意思決定の流れをたどったり...",
+      askPlaceholder:
+        "ナレッジベースに質問したり、1 週間を要約したり、意思決定の流れをたどったり...",
       askAgentPlaceholder: "ナレッジベースに質問（エージェントモード）...",
       askClassicPlaceholder: "ナレッジベースに質問（クラシックモード）...",
-      agentModeDesc: "エージェントモードでは、プランナーのルート、ツール呼び出し、ソースの制御、編集可能なコンテキスト下書きが表示されます。",
-      classicModeDesc: "クラシックモードは履歴を検索し、ソースに基づく簡潔な回答を返します。",
+      agentModeDesc:
+        "エージェントモードでは、プランナーのルート、ツール呼び出し、ソースの制御、編集可能なコンテキスト下書きが表示されます。",
+      classicModeDesc:
+        "クラシックモードは履歴を検索し、ソースに基づく簡潔な回答を返します。",
       newChatPrefill: "新規チャット（事前入力）",
       searchByTitlePlaceholder: "タイトルや抜粋で検索...",
       fillComposer: "入力欄に挿入",
       starterDeck1Eyebrow: "タスクから始める",
       starterDeck1Title: "もっと軽やかにライブラリを探索しましょう。",
-      starterDeck1Description: "焦点を絞った質問をすれば、Explore が検索・要約し、必要最小限のコンテキストだけをつなぎ合わせます。",
+      starterDeck1Description:
+        "焦点を絞った質問をすれば、Explore が検索・要約し、必要最小限のコンテキストだけをつなぎ合わせます。",
       starterDeck2Eyebrow: "デフォルトでプライベート",
       starterDeck2Title: "全文ではなく、仕事の輪郭を尋ねましょう。",
-      starterDeck2Description: "Explore は、ライブラリを絞り込んだ信頼できる回答に圧縮し、その内容を確認できるときに最も役立ちます。",
+      starterDeck2Description:
+        "Explore は、ライブラリを絞り込んだ信頼できる回答に圧縮し、その内容を確認できるときに最も役立ちます。",
       starterDeck3Eyebrow: "段階的に進める",
       starterDeck3Title: "まず広く始め、重要なソースへ絞り込みましょう。",
-      starterDeck3Description: "スタータープロンプトで簡潔な回答を得てから、検証が必要なら元の会話を確認します。",
+      starterDeck3Description:
+        "スタータープロンプトで簡潔な回答を得てから、検証が必要なら元の会話を確認します。",
       modeStages: {
         agent: [
           "ルートを計画中...",
@@ -978,82 +1188,110 @@ export const jaTranslations = {
         {
           eyebrow: "タスクから始める",
           title: "もっと軽やかにライブラリを探索しましょう。",
-          description: "焦点を絞った質問をすれば、Explore が検索・要約し、必要最小限のコンテキストだけをつなぎ合わせます。",
-          privacyTip: "プロンプトは絞り込みましょう。生の会話ではなく、テーマ・決定・特定の期間を尋ねてください。",
-          capabilityHint: "サマリー、週次ダイジェスト、ソースに基づく回答がすべてここで使えます。",
+          description:
+            "焦点を絞った質問をすれば、Explore が検索・要約し、必要最小限のコンテキストだけをつなぎ合わせます。",
+          privacyTip:
+            "プロンプトは絞り込みましょう。生の会話ではなく、テーマ・決定・特定の期間を尋ねてください。",
+          capabilityHint:
+            "サマリー、週次ダイジェスト、ソースに基づく回答がすべてここで使えます。",
           prompts: [
             {
               title: "今週を要約",
-              prompt: "今週取り組んだことを要約し、主な意思決定を強調してください。",
-              detail: "最近の会話のまとまりを簡潔なレビューにまとめるのに最適です。"
+              prompt:
+                "今週取り組んだことを要約し、主な意思決定を強調してください。",
+              detail:
+                "最近の会話のまとまりを簡潔なレビューにまとめるのに最適です。"
             },
             {
               title: "意思決定の流れを探す",
-              prompt: "最終的な決定に至った経緯を説明する会話を表示してください。",
-              detail: "結論だけでなく、その背景となるコンテキストが欲しいときに使います。"
+              prompt:
+                "最終的な決定に至った経緯を説明する会話を表示してください。",
+              detail:
+                "結論だけでなく、その背景となるコンテキストが欲しいときに使います。"
             },
             {
               title: "関連スレッドをまとめる",
-              prompt: "このトピックについて最も関連する会話をまとめ、なぜ同じグループになるのか説明してください。",
-              detail: "生の会話履歴をすべて見せずに、トピックをクラスタリングするのに便利です。"
+              prompt:
+                "このトピックについて最も関連する会話をまとめ、なぜ同じグループになるのか説明してください。",
+              detail:
+                "生の会話履歴をすべて見せずに、トピックをクラスタリングするのに便利です。"
             },
             {
               title: "手早くブリーフを作成",
-              prompt: "最も関連する会話から短いブリーフを作成し、ソースに基づいた内容にしてください。",
-              detail: "きれいな引き継ぎやサマリーノートが欲しいときの、コンパクトな出発点です。"
+              prompt:
+                "最も関連する会話から短いブリーフを作成し、ソースに基づいた内容にしてください。",
+              detail:
+                "きれいな引き継ぎやサマリーノートが欲しいときの、コンパクトな出発点です。"
             }
           ]
         },
         {
           eyebrow: "デフォルトでプライベート",
           title: "全文ではなく、仕事の輪郭を尋ねましょう。",
-          description: "Explore は、ライブラリを絞り込んだ信頼できる回答に圧縮し、その内容を確認できるときに最も役立ちます。",
-          privacyTip: "テーマ・行き詰まり・成果といった言葉を優先しましょう。一度にすべてを求めないでください。",
-          capabilityHint: "すべての会話または選択した一部を横断して検索し、あとからソースを絞り込めます。",
+          description:
+            "Explore は、ライブラリを絞り込んだ信頼できる回答に圧縮し、その内容を確認できるときに最も役立ちます。",
+          privacyTip:
+            "テーマ・行き詰まり・成果といった言葉を優先しましょう。一度にすべてを求めないでください。",
+          capabilityHint:
+            "すべての会話または選択した一部を横断して検索し、あとからソースを絞り込めます。",
           prompts: [
             {
               title: "何が変わった？",
               prompt: "過去 1 週間で、私の会話を通じて何が変わりましたか？",
-              detail: "必要以上に取り込まずに進捗を浮かび上がらせる、安全な方法です。"
+              detail:
+                "必要以上に取り込まずに進捗を浮かび上がらせる、安全な方法です。"
             },
             {
               title: "行き詰まりをまとめる",
-              prompt: "私の会話で繰り返し現れる行き詰まりや未解決の問いをまとめてください。",
-              detail: "繰り返し現れる悩みどころや、議論が何度も戻る場所を明らかにするのに役立ちます。"
+              prompt:
+                "私の会話で繰り返し現れる行き詰まりや未解決の問いをまとめてください。",
+              detail:
+                "繰り返し現れる悩みどころや、議論が何度も戻る場所を明らかにするのに役立ちます。"
             },
             {
               title: "1 つのトピックをたどる",
-              prompt: "プライバシーまたは検索に関する主な議論をたどり、その流れを要約してください。",
+              prompt:
+                "プライバシーまたは検索に関する主な議論をたどり、その流れを要約してください。",
               detail: "複数の会話にまたがる 1 本の筋を追うのに適しています。"
             },
             {
               title: "次のステップを浮かび上がらせる",
-              prompt: "最も関連する会話が示唆する次のアクションを浮かび上がらせてください。",
-              detail: "散らばった議論を、実践的なフォローアップのリストに変えます。"
+              prompt:
+                "最も関連する会話が示唆する次のアクションを浮かび上がらせてください。",
+              detail:
+                "散らばった議論を、実践的なフォローアップのリストに変えます。"
             }
           ]
         },
         {
           eyebrow: "段階的に進める",
           title: "まず広く始め、重要なソースへ絞り込みましょう。",
-          description: "スタータープロンプトで簡潔な回答を得てから、検証が必要なら元の会話を確認します。",
-          privacyTip: "短いプロンプトは詳細な依頼よりも露出が少なく、探索の焦点を保ちやすくなります。",
-          capabilityHint: "週次サマリー、会話をまたぐテーマ、自分で確認できるソース一覧などを求められます。",
+          description:
+            "スタータープロンプトで簡潔な回答を得てから、検証が必要なら元の会話を確認します。",
+          privacyTip:
+            "短いプロンプトは詳細な依頼よりも露出が少なく、探索の焦点を保ちやすくなります。",
+          capabilityHint:
+            "週次サマリー、会話をまたぐテーマ、自分で確認できるソース一覧などを求められます。",
           prompts: [
             {
               title: "週次のおさらい",
-              prompt: "主なテーマとフォローアップを含む、コンパクトな週次のおさらいをください。",
-              detail: "簡潔さを保ちつつ役立つ週次ダイジェスト向けに設計されています。"
+              prompt:
+                "主なテーマとフォローアップを含む、コンパクトな週次のおさらいをください。",
+              detail:
+                "簡潔さを保ちつつ役立つ週次ダイジェスト向けに設計されています。"
             },
             {
               title: "テーママップ",
-              prompt: "アーキテクチャとツールに関する私の会話の主なテーマをマッピングしてください。",
+              prompt:
+                "アーキテクチャとツールに関する私の会話の主なテーマをマッピングしてください。",
               detail: "まずライブラリを高い視点から理解したいときに便利です。"
             },
             {
               title: "まず根拠から",
-              prompt: "このトピックに最も関連する会話を挙げ、それぞれを簡潔に要約してください。",
-              detail: "ソースに裏付けられた回答が欲しいときに、検索とレビューをつなぐよい橋渡しです。"
+              prompt:
+                "このトピックに最も関連する会話を挙げ、それぞれを簡潔に要約してください。",
+              detail:
+                "ソースに裏付けられた回答が欲しいときに、検索とレビューをつなぐよい橋渡しです。"
             },
             {
               title: "意思決定のサマリー",
@@ -1065,8 +1303,10 @@ export const jaTranslations = {
       ],
       libraryStarter: {
         titleTemplate: "「{cue}」を続ける",
-        promptTemplate: "「{cue}」を続け、要点をまとめる前に関連するコンテキストを検索してください。",
-        detail: "軽量なタイトルと抜粋のコンテキストのみを使って、最近のライブラリの手がかりから生成されています。"
+        promptTemplate:
+          "「{cue}」を続け、要点をまとめる前に関連するコンテキストを検索してください。",
+        detail:
+          "軽量なタイトルと抜粋のコンテキストのみを使って、最近のライブラリの手がかりから生成されています。"
       },
       toolLabels: {
         intent_planner: "意図プランナー",
@@ -1079,14 +1319,22 @@ export const jaTranslations = {
         answer_synthesizer: "回答シンセサイザー"
       },
       toolExplanations: {
-        intent_planner: "ユーザーが何を求めているか、どのルートを実行するか、時間範囲が必要かどうかをモデルで判断します。",
-        time_scope_resolver: "「今週」などの表現を具体的な日付範囲に変換し、回答を検証可能にします。",
-        weekly_summary_tool: "その期間の会話を見つけ、週単位のダイジェストを再利用または生成します。",
-        query_planner: "以前の Explore パイプラインから残る、旧式の固定的な計画ステップです。",
-        search_rag: "セマンティックな類似度でナレッジベースを検索し、最も関連する会話を取得します。",
-        summary_tool: "不足している会話サマリーを補い、複数ソースの回答を組み立てて確認しやすくします。",
-        context_compiler: "ドロワーに表示される、編集可能なコンテキスト下書きとソースセットを構築します。",
-        answer_synthesizer: "収集した根拠から最終的な回答を生成し、結果を確認できる場所をユーザーに伝えます。"
+        intent_planner:
+          "ユーザーが何を求めているか、どのルートを実行するか、時間範囲が必要かどうかをモデルで判断します。",
+        time_scope_resolver:
+          "「今週」などの表現を具体的な日付範囲に変換し、回答を検証可能にします。",
+        weekly_summary_tool:
+          "その期間の会話を見つけ、週単位のダイジェストを再利用または生成します。",
+        query_planner:
+          "以前の Explore パイプラインから残る、旧式の固定的な計画ステップです。",
+        search_rag:
+          "セマンティックな類似度でナレッジベースを検索し、最も関連する会話を取得します。",
+        summary_tool:
+          "不足している会話サマリーを補い、複数ソースの回答を組み立てて確認しやすくします。",
+        context_compiler:
+          "ドロワーに表示される、編集可能なコンテキスト下書きとソースセットを構築します。",
+        answer_synthesizer:
+          "収集した根拠から最終的な回答を生成し、結果を確認できる場所をユーザーに伝えます。"
       },
       intentLabels: {
         fact_lookup: "事実の確認",
@@ -1110,7 +1358,8 @@ export const jaTranslations = {
       unavailable: "利用不可",
       noToolCalls: "ツール呼び出しなし",
       toolCallsSummary: "{count} ステップ · {seconds}秒",
-      toolCallsSummaryFailed: "{count} ステップ · {failed} 件失敗 · {seconds}秒",
+      toolCallsSummaryFailed:
+        "{count} ステップ · {failed} 件失敗 · {seconds}秒",
       stepsLabel: "ステップ",
       failedLabel: "失敗",
       untitled: "無題",
@@ -1130,18 +1379,23 @@ export const jaTranslations = {
       open: "開く",
       failedToLoadConversations: "会話の読み込みに失敗しました。",
       exploreUnavailable: "現在の環境では Explore は利用できません。",
-      chooseAtLeastOne: "「選択済み」の範囲を使う前に、会話を 1 件以上選択してください。",
+      chooseAtLeastOne:
+        "「選択済み」の範囲を使う前に、会話を 1 件以上選択してください。",
       failedToRetrieveAnswer: "回答の取得に失敗しました。",
       deleteConversationConfirm: "この会話を削除しますか？",
       contextDraftSaved: "コンテキスト下書きを保存しました。",
-      savedLocally: "このビュー用にローカル保存しました（ストレージアダプターが利用できません）。",
+      savedLocally:
+        "このビュー用にローカル保存しました（ストレージアダプターが利用できません）。",
       failedToSaveContext: "コンテキスト下書きの保存に失敗しました。",
       copiedToClipboard: "クリップボードにコピーしました。",
       clipboardUnavailable: "この環境ではクリップボードを利用できません。",
       downloaded: "{filename} をダウンロードしました。",
-      selectAtLeastOneSource: "再生成する前に、ソースを 1 つ以上選択してください。",
-      couldNotDetermineQuery: "この回答に対応するクエリを特定できませんでした。",
-      regeneratedNotice: "選択した {count} 件のソースを使って、新しいターンとして再生成しました。",
+      selectAtLeastOneSource:
+        "再生成する前に、ソースを 1 つ以上選択してください。",
+      couldNotDetermineQuery:
+        "この回答に対応するクエリを特定できませんでした。",
+      regeneratedNotice:
+        "選択した {count} 件のソースを使って、新しいターンとして再生成しました。",
       failedToRegenerate: "回答の再生成に失敗しました。",
       dismiss: "閉じる",
       untitledSession: "無題",
@@ -1162,8 +1416,10 @@ export const jaTranslations = {
       goalPrefix: "目標：",
       clarificationPrefix: "確認：",
       plannedTools: "計画されたツール",
-      plannerFootnote: "プランナーはモデルを使って上位のルートを選びます。ツールの実行はアプリ内で範囲が限定され、確認可能なままです。",
-      noPlannerMetadata: "この回答にはプランナーのメタデータが記録されていません。",
+      plannerFootnote:
+        "プランナーはモデルを使って上位のルートを選びます。ツールの実行はアプリ内で範囲が限定され、確認可能なままです。",
+      noPlannerMetadata:
+        "この回答にはプランナーのメタデータが記録されていません。",
       noToolCallsRecorded: "この回答にはツール呼び出しが記録されていません。",
       activeQuery: "現在のクエリ",
       selectedSourcesPrefix: "選択中のソース：",
@@ -1171,7 +1427,8 @@ export const jaTranslations = {
       noContextCandidates: "この回答にはコンテキスト候補がありません。",
       saving: "保存中...",
       openDraft: "下書きを開く",
-      regenerationFootnote: "再生成では、選択した会話だけを使って新しいターンを追加します。",
+      regenerationFootnote:
+        "再生成では、選択した会話だけを使って新しいターンを追加します。",
       draftEditable: "下書き（編集可能）",
       save: "保存",
       copy: "コピー",
@@ -1180,15 +1437,18 @@ export const jaTranslations = {
     data: {
       title: "データ管理",
       unavailableTitle: "データ操作は利用できません",
-      unavailableDesc: "この環境はエクスポート／消去／ストレージの API を提供していません。",
+      unavailableDesc:
+        "この環境はエクスポート／消去／ストレージの API を提供していません。",
       usedAppLimit: "使用量 / アプリ上限（1GB）",
       unknown: "不明",
       browserQuota: "ブラウザの上限",
       healthy: "正常",
       softLimitWarning: "ソフト上限の警告",
       writeBlocked: "書き込みブロック中",
-      storageWarning: "ストレージが 900MB を超えました。早めに古いデータをエクスポートまたは消去してください。",
-      storageBlocked: "ストレージが 1GB に達しました。エクスポートまたは消去するまで新規の書き込みはブロックされます。",
+      storageWarning:
+        "ストレージが 900MB を超えました。早めに古いデータをエクスポートまたは消去してください。",
+      storageBlocked:
+        "ストレージが 1GB に達しました。エクスポートまたは消去するまで新規の書き込みはブロックされます。",
       advancedStorageDetails: "ストレージの詳細（Chrome）",
       chromeStorageUsed: "chrome.storage.local の使用量",
       estimatedIndexedDb: "推定 IndexedDB + その他",
@@ -1198,31 +1458,40 @@ export const jaTranslations = {
       disabled: "無効",
       exportLocalData: "ローカルデータをエクスポート",
       exportFormat: "{format} をエクスポート",
-      exportHint: "JSON は復元可能で、サマリーと週次キャッシュを含みます。TXT/MD は人が読めるエクスポートです。",
+      exportHint:
+        "JSON は復元可能で、サマリーと週次キャッシュを含みます。TXT/MD は人が読めるエクスポートです。",
       dangerZone: "危険な操作",
-      dangerDesc: "すべての会話、メッセージ、キャッシュ済みサマリー、週次レポートを消去します。LLM の設定はそのまま残ります。",
+      dangerDesc:
+        "すべての会話、メッセージ、キャッシュ済みサマリー、週次レポートを消去します。LLM の設定はそのまま残ります。",
       clearLocalData: "ローカルデータを消去",
-      clearPrompt: "これによりすべてのローカル会話とキャッシュ済みインサイトが消去されます。\\n続行するには DELETE と入力してください：",
+      clearPrompt:
+        "これによりすべてのローカル会話とキャッシュ済みインサイトが消去されます。\\n続行するには DELETE と入力してください：",
       clearCancelled: "消去をキャンセルしました。",
-      localDataCleared: "ローカルデータを消去しました。LLM の設定は保持されています。",
+      localDataCleared:
+        "ローカルデータを消去しました。LLM の設定は保持されています。",
       exportedFile: "{filename} をエクスポートしました",
       runningDataAction: "データ操作を実行中...",
       refreshingStorage: "ストレージを更新中..."
     },
     network: {
       emptyTitle: "時系列ネットワークがここに表示されます。",
-      emptyDesc: "AIチャットサイトでキャプチャした会話は自動的にここに現れます。いくつかキャプチャすれば、プラットフォーム/トピックごとに色分けされたグラフが育ち、類似度インデックスの完了とともにセマンティックリンクも表示されます。",
+      emptyDesc:
+        "AIチャットサイトでキャプチャした会話は自動的にここに現れます。いくつかキャプチャすれば、プラットフォーム/トピックごとに色分けされたグラフが育ち、類似度インデックスの完了とともにセマンティックリンクも表示されます。",
       noConversationsYet: "まだ会話がキャプチャされていません。",
-      replayInfo: "このリプレイは、すべてが今日キャプチャされた場合でも、タイムライン全体を 8 秒で再生します。",
+      replayInfo:
+        "このリプレイは、すべてが今日キャプチャされた場合でも、タイムライン全体を 8 秒で再生します。",
       newConversationOn: "+ {platform} の新しい会話",
       conversationOn: "+ {label} · {platform}",
       buildingGraph: "グラフを構築中...",
       trendLabel: "トレンド · 日ごとの新規会話",
-      noSemanticLinks: "セマンティックリンクはまだありません。再生では会話がどのように積み重なってきたかを引き続き確認できます。",
+      noSemanticLinks:
+        "セマンティックリンクはまだありません。再生では会話がどのように積み重なってきたかを引き続き確認できます。",
       dragHint: "トレンドラインをドラッグすると、その時点で一時停止できます。",
       replay: "リプレイ",
-      edgeLoadingUnavailable: "この環境ではセマンティックエッジの読み込みは利用できません。",
-      edgePlaybackUnavailable: "セマンティックエッジの再生は一時的に利用できません。",
+      edgeLoadingUnavailable:
+        "この環境ではセマンティックエッジの読み込みは利用できません。",
+      edgePlaybackUnavailable:
+        "セマンティックエッジの再生は一時的に利用できません。",
       close: "閉じる",
       started: "開始",
       messages: "メッセージ",
@@ -1230,7 +1499,8 @@ export const jaTranslations = {
       noPreviewSnippet: "この会話のプレビュー抜粋はまだありません。",
       tags: "タグ",
       connectedConversations: "つながっている会話",
-      noSemanticLinksForNode: "このノードのセマンティックリンクはまだありません。",
+      noSemanticLinksForNode:
+        "このノードのセマンティックリンクはまだありません。",
       viewInLibrary: "ライブラリで表示",
       edgeSemanticSimilarity: "エッジ = セマンティックな類似度",
       trendScrubberAriaLabel: "会話トレンドのスクラバー",
@@ -1241,10 +1511,12 @@ export const jaTranslations = {
       conversationN: "会話 {id}",
       thinkingMapView: "思考マップ",
       conversationMapView: "会話グラフ",
-      thinkingMapEmpty: "このビューは要約から生成されます。まずライブラリで要約を作成すると、思考マップがキートピックの推移を描きます。",
+      thinkingMapEmpty:
+        "このビューは要約から生成されます。まずライブラリで要約を作成すると、思考マップがキートピックの推移を描きます。",
       loadingThinkingMap: "思考マップを構築しています...",
       gapInsightTitle: "まだつながっていない思考",
-      gapInsightTemplate: "{a} と {b} を掘り下げましたが、まだ結びつけていません",
+      gapInsightTemplate:
+        "{a} と {b} を掘り下げましたが、まだ結びつけていません",
       conceptMentionedIn: "{count} 件の会話に登場",
       relatedConversations: "関連する会話",
       groupByLabel: "グループ",
@@ -1252,7 +1524,7 @@ export const jaTranslations = {
       groupByTopic: "トピック別",
       groupByProject: "プロジェクト別",
       groupOther: "未分類",
-      clusterConversationCount: "{count} 件の会話",
+      clusterConversationCount: "{count} 件の会話"
     },
     prompts: {
       title: "よく使うプロンプト",
@@ -1270,7 +1542,8 @@ export const jaTranslations = {
       loading: "プロンプトを読み込み中…",
       emptyNone: "まだプロンプトがありません。",
       emptyFiltered: "現在のフィルタに一致するプロンプトはありません。",
-      emptyHint: "キャプチャした会話から再利用可能なプロンプトを抽出するか、手動で追加してください。",
+      emptyHint:
+        "キャプチャした会話から再利用可能なプロンプトを抽出するか、手動で追加してください。",
       retry: "再試行",
       favorite: "お気に入りに追加",
       unfavorite: "お気に入りを解除",
@@ -1282,8 +1555,10 @@ export const jaTranslations = {
       fieldTitle: "トリガー",
       titlePlaceholder: "このプロンプトを呼び出す短いトリガー（任意）",
       fieldBody: "プロンプト",
-      bodyPlaceholder: "再利用可能なプロンプトを入力します。プレースホルダーには {{variables}} を使用します。",
-      improveTooltip: "この草稿をより強力なプロンプトに書き換えます（設定済みの LLM を使用）",
+      bodyPlaceholder:
+        "再利用可能なプロンプトを入力します。プレースホルダーには {{variables}} を使用します。",
+      improveTooltip:
+        "この草稿をより強力なプロンプトに書き換えます（設定済みの LLM を使用）",
       improving: "改善中…",
       improveWithAI: "AI で改善",
       fieldCategory: "カテゴリ",
@@ -1310,16 +1585,20 @@ export const jaTranslations = {
       toastCopied: "クリップボードにコピーしました。",
       toastClipboard: "クリップボードを利用できません。",
       toastImproved: "AI でプロンプトを改善しました。",
-      toastNoLlm: "LLM が未設定です — 設定で LLM を構成すると AI 書き換えが有効になります。",
+      toastNoLlm:
+        "LLM が未設定です — 設定で LLM を構成すると AI 書き換えが有効になります。",
       toastImproveFailed: "AI 補完に失敗しました。",
-      toastExtract: "{candidates} 件の候補から {created} 件の新しいプロンプトを保存しました。",
+      toastExtract:
+        "{candidates} 件の候補から {created} 件の新しいプロンプトを保存しました。",
       unavailable: "このビルドではプロンプト管理を利用できません。",
       exportLabel: "エクスポート",
       importLabel: "インポート",
       importBackup: "プロンプトのバックアップをインポート",
       toastExported: "{n} 件のプロンプトをエクスポートしました。",
-      toastImported: "{n} 件のプロンプトをインポートしました（{skipped} 件スキップ）。",
-      importFailed: "インポートに失敗しました — 無効なバックアップファイルです。",
+      toastImported:
+        "{n} 件のプロンプトをインポートしました（{skipped} 件スキップ）。",
+      importFailed:
+        "インポートに失敗しました — 無効なバックアップファイルです。",
       loadFailed: "プロンプトの読み込みに失敗しました。",
       draftFirst: "まず改善する草稿を入力してください。",
       extractFailed: "抽出に失敗しました。",
@@ -1331,9 +1610,11 @@ export const jaTranslations = {
       plazaUse: "使う",
       plazaSourcePrefix: "出典：",
       supermarketTitle: "プロンプトスーパー",
-      supermarketSubtitle: "カテゴリ別に高品質なプロンプトを探して、広場に追加できます。",
+      supermarketSubtitle:
+        "カテゴリ別に高品質なプロンプトを探して、広場に追加できます。",
       myPlaza: "マイ広場",
-      myPlazaEmpty: "下のスーパーからプロンプトを追加して、あなたの広場を作りましょう。",
+      myPlazaEmpty:
+        "下のスーパーからプロンプトを追加して、あなたの広場を作りましょう。",
       adopt: "追加",
       adopted: "追加済み",
       selectAria: "プロンプトを選択",
@@ -1346,9 +1627,12 @@ export const jaTranslations = {
       modeAiti: "AITI",
       modeRoundtable: "円卓",
       title: "あなたの AITI — 思考の強み",
-      subtitle: "あなた自身の会話からローカルで算出。評価ではなく、強みの反映です。",
-      insufficient: "分析した会話がまだ足りません — 会話を続けると、あなたの人物像が形になります。",
-      insufficientHint: "2 件以上の会話があれば、AITI は予備的な人物像を表示します。",
+      subtitle:
+        "あなた自身の会話からローカルで算出。評価ではなく、強みの反映です。",
+      insufficient:
+        "分析した会話がまだ足りません — 会話を続けると、あなたの人物像が形になります。",
+      insufficientHint:
+        "2 件以上の会話があれば、AITI は予備的な人物像を表示します。",
       sample: "{n} 件の会話から導出",
       confidenceLabel: "信頼度",
       confidenceLow: "予備的",
@@ -1363,33 +1647,41 @@ export const jaTranslations = {
       axisDepthLabel: "広さ ↔ 深さ",
       axisDepthLeft: "エクスプローラー",
       axisDepthRight: "探究者",
-      axisDepthLeftStrength: "幅広く探究し、多くの分野のアイデアを結びつけます。",
+      axisDepthLeftStrength:
+        "幅広く探究し、多くの分野のアイデアを結びつけます。",
       axisDepthRightStrength: "深く掘り下げ、複雑な事柄を徹底的に習得します。",
       axisMakerLabel: "理論 ↔ 実践",
       axisMakerLeft: "理論派",
       axisMakerRight: "実践派",
       axisMakerLeftStrength: "原理とモデルで考え、基礎を正確に押さえます。",
-      axisMakerRightStrength: "行動志向で、アイデアを素早く実際の成果に変えます。",
+      axisMakerRightStrength:
+        "行動志向で、アイデアを素早く実際の成果に変えます。",
       axisFocusLabel: "収束 ↔ 発散",
       axisFocusLeft: "収束型",
       axisFocusRight: "発散型",
       axisFocusLeftStrength: "焦点を保ち、重要な答えへ収束します。",
-      axisFocusRightStrength: "好奇心のままに探索し、予想外の可能性を切り開きます。",
+      axisFocusRightStrength:
+        "好奇心のままに探索し、予想外の可能性を切り開きます。",
       axisAffectLabel: "冷静 ↔ 情熱",
       axisAffectLeft: "冷静型",
       axisAffectRight: "情熱型",
-      axisAffectLeftStrength: "複雑な状況でも冷静さを保ち、明晰な判断を維持します。",
+      axisAffectLeftStrength:
+        "複雑な状況でも冷静さを保ち、明晰な判断を維持します。",
       axisAffectRightStrength: "探究する対象に強い情熱を注ぎます。",
       axisCuriosityLabel: "落ち着き ↔ 好奇心",
       axisCuriosityLeft: "落ち着き型",
       axisCuriosityRight: "好奇型",
-      axisCuriosityLeftStrength: "効率的に答えを得ようとし、簡潔な解決を好みます。",
-      axisCuriosityRightStrength: "自由に質問し、手がかりを辿ってどこまでも探求します。",
+      axisCuriosityLeftStrength:
+        "効率的に答えを得ようとし、簡潔な解決を好みます。",
+      axisCuriosityRightStrength:
+        "自由に質問し、手がかりを辿ってどこまでも探求します。",
       axisInterdisciplinaryLabel: "専門 ↔ 学際",
       axisInterdisciplinaryLeft: "専門型",
       axisInterdisciplinaryRight: "学際型",
-      axisInterdisciplinaryLeftStrength: "特定領域に深く掘り下げ、専門性を積み上げます。",
-      axisInterdisciplinaryRightStrength: "領域を横断してアイデアを結びつけ、遠い分野を織り交ぜます。",
+      axisInterdisciplinaryLeftStrength:
+        "特定領域に深く掘り下げ、専門性を積み上げます。",
+      axisInterdisciplinaryRightStrength:
+        "領域を横断してアイデアを結びつけ、遠い分野を織り交ぜます。",
       trendsTitle: "最近の傾向",
       trendRising: "上昇",
       trendFalling: "下降",
@@ -1398,9 +1690,12 @@ export const jaTranslations = {
     learn: {
       modeLearn: "学習",
       title: "あなたが学んできたこと",
-      subtitle: "あなたの会話を、パーソナルなカリキュラムとして整理。ローカルで算出します。",
-      insufficient: "会話がまだ足りません — 会話を続けると、学習マップが埋まっていきます。",
-      insufficientHint: "1–2 件の会話から始めると、Learn は領域、用語、未解決の問いを表示します。",
+      subtitle:
+        "あなたの会話を、パーソナルなカリキュラムとして整理。ローカルで算出します。",
+      insufficient:
+        "会話がまだ足りません — 会話を続けると、学習マップが埋まっていきます。",
+      insufficientHint:
+        "1–2 件の会話から始めると、Learn は領域、用語、未解決の問いを表示します。",
       sample: "分析した {n} 件の会話から",
       confidenceLabel: "信頼度",
       confidenceLow: "予備的",
@@ -1426,14 +1721,18 @@ export const jaTranslations = {
       learningPathApplyTitle: "未解決の問いに取り組む",
       learningPathSynthesizeTitle: "知識マップを統合する",
       learningPathFoundationDesc: "会話によく出てくる核心概念を定着させます。",
-      learningPathExpandDesc: "核心トピックと隣接領域を橋渡しし、より豊かなマップを作ります。",
-      learningPathApplyDesc: "学んだことを使って、会話に残った未解決の糸口に取り組みます。",
-      learningPathSynthesizeDesc: "一歩引いて、領域や用語を横断して点を線で結びます。",
-      learningGoalDeepen: "{domain} を深める",
+      learningPathExpandDesc:
+        "核心トピックと隣接領域を橋渡しし、より豊かなマップを作ります。",
+      learningPathApplyDesc:
+        "学んだことを使って、会話に残った未解決の糸口に取り組みます。",
+      learningPathSynthesizeDesc:
+        "一歩引いて、領域や用語を横断して点を線で結びます。",
+      learningGoalDeepen: "{domain} を深める"
     },
     roundtable: {
       title: "AI 円卓会議",
-      subtitle: "あなたの質問について多様な視点のパネルを招集し、司会付きで総括します。",
+      subtitle:
+        "あなたの質問について多様な視点のパネルを招集し、司会付きで総括します。",
       questionPlaceholder: "議論したい判断が必要な質問を入力…",
       personasLabel: "パネリスト（最大 3 名）",
       run: "パネルを招集",
@@ -1499,16 +1798,23 @@ export const jaTranslations = {
     },
     suggestion: {
       tooShort: "詳細を追加：タスク・背景・良い回答の条件を記述しましょう。",
-      pureQuestion: "指示に書き換えましょう：タスク・回答者・制約を明記します。",
-      noInstructionVerb: "明確な動作動詞で始めましょう（書く・分析する・リファクタする・要約する…）。",
-      noRole: "役割や専門性を指定しましょう。例：「あなたはシニア TypeScript エンジニアです…」。",
-      noFormat: "希望する出力形式を記述しましょう（箇条書き・表・JSON・文字数）。",
-      noConstraints: "制約を追加：含めるもの・避けるもの・長さ・トーン・対象読者を指定します。",
+      pureQuestion:
+        "指示に書き換えましょう：タスク・回答者・制約を明記します。",
+      noInstructionVerb:
+        "明確な動作動詞で始めましょう（書く・分析する・リファクタする・要約する…）。",
+      noRole:
+        "役割や専門性を指定しましょう。例：「あなたはシニア TypeScript エンジニアです…」。",
+      noFormat:
+        "希望する出力形式を記述しましょう（箇条書き・表・JSON・文字数）。",
+      noConstraints:
+        "制約を追加：含めるもの・避けるもの・長さ・トーン・対象読者を指定します。",
       noExample: "期待する入力・出力の短い例を示しましょう。",
       noContext: "モデルに必要な背景を追加：対象読者・目的・これまでの文脈。",
-      vagueScope: "範囲を絞りましょう：具体的な詳細・入力・成果物を明示します。",
+      vagueScope:
+        "範囲を絞りましょう：具体的な詳細・入力・成果物を明示します。",
       noStructure: "番号付きの手順や箇条書きに分けましょう。",
-      undefinedVariables: "各 {{variable}} を定義しましょう：意味と例の値を示します。"
+      undefinedVariables:
+        "各 {{variable}} を定義しましょう：意味と例の値を示します。"
     },
     actions: {
       optimize: "AI で最適化",
@@ -1537,4 +1843,4 @@ export const jaTranslations = {
       allClear: "問題は見つかりませんでした。"
     }
   }
-};
+}

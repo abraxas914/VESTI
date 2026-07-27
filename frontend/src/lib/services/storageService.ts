@@ -549,11 +549,14 @@ export async function runRoundtable(
 }
 
 // Explore Session APIs
-export async function createExploreSession(title: string): Promise<string> {
+export async function createExploreSession(
+  title: string,
+  systemPrompt?: string
+): Promise<string> {
   const result = (await sendRequest({
     type: "CREATE_EXPLORE_SESSION",
     target: "offscreen",
-    payload: { title }
+    payload: { title, systemPrompt }
   })) as { sessionId: string }
   return result.sessionId
 }

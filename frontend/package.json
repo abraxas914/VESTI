@@ -10,6 +10,7 @@
     "dev:verbose": "pnpm exec plasmo dev --verbose",
     "prebuild": "pnpm -C ../packages/vesti-content-package build && pnpm -C ../packages/vesti-ui build && pnpm -C .. install --frozen-lockfile",
     "build": "plasmo build",
+    "postbuild": "node ./scripts/ensure-onboarding-entry.mjs",
     "package": "node -e \"console.error('Local packaging is disabled. Use CI workflow extension-package or run pnpm -C frontend package:safe.'); process.exit(1)\"",
     "package:ci": "pnpm run build && plasmo package",
     "package:safe": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/safe-package.ps1 -Overwrite",
