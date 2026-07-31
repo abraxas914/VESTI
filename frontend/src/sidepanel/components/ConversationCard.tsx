@@ -1,24 +1,36 @@
 ﻿import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
-import {
   Check,
   CheckSquare,
   Copy,
   ExternalLink,
   FolderOpen,
-  MoreHorizontal,
   MessageSquare,
+  MoreHorizontal,
   Pencil,
   Star,
-  Trash2,
-} from "lucide-react";
-import { useI18n } from "~lib/i18n";
+  Trash2
+} from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode
+} from "react"
+
+import { resolveTurnCount } from "~lib/capture/turn-metrics"
+import {
+  getConversationCaptureFreshnessAt,
+  getConversationOriginAt
+} from "~lib/conversations/timestamps"
+import { useI18n } from "~lib/i18n"
+import { updateConversationAndSync } from "~lib/services/syncActions"
+import type { Conversation, SearchMatchSurface } from "~lib/types"
+import { getSearchMatchHintLabel } from "~lib/utils/messageSearchProjection"
+
+import { splitWithHighlight } from "../lib/highlight"
+import { PlatformTag } from "./PlatformTag"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,52 +39,47 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { resolveTurnCount } from "~lib/capture/turn-metrics";
-import {
-  getConversationCaptureFreshnessAt,
-  getConversationOriginAt,
-} from "~lib/conversations/timestamps";
-import type { Conversation, SearchMatchSurface } from "~lib/types";
-import { updateConversationAndSync } from "~lib/services/syncActions";
-import { PlatformTag } from "./PlatformTag";
-import { splitWithHighlight } from "../lib/highlight";
-import { getSearchMatchHintLabel } from "~lib/utils/messageSearchProjection";
+  DropdownMenuTrigger
+} from "./ui/dropdown-menu"
 
-const TOOLTIP_DELAY_MS = 200;
-const COPY_FEEDBACK_MS = 1500;
-const MAX_TITLE_LENGTH = 120;
+const TOOLTIP_DELAY_MS = 200
+const COPY_FEEDBACK_MS = 1500
+const MAX_TITLE_LENGTH = 120
 const THREADS_OVERFLOW_CONTENT_CLASS =
-  "w-44 max-h-64 overflow-y-auto rounded-lg border border-border-subtle bg-bg-primary/92 p-1 shadow-paper";
+  "w-44 max-h-64 overflow-y-auto rounded-lg border border-border-subtle bg-bg-primary/92 p-1 shadow-paper"
 const THREADS_OVERFLOW_ITEM_CLASS =
-  "min-h-8 rounded-md px-2.5 py-1.5 text-vesti-base font-medium text-text-primary focus:!bg-bg-secondary focus:!text-text-primary data-[highlighted]:!bg-bg-secondary data-[highlighted]:!text-text-primary [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-text-secondary";
-const THREADS_OVERFLOW_SUBTRIGGER_CLASS =
-  `${THREADS_OVERFLOW_ITEM_CLASS} data-[state=open]:!bg-bg-secondary data-[state=open]:!text-text-primary [&>svg:last-child]:h-3.5 [&>svg:last-child]:w-3.5 [&>svg:last-child]:text-text-tertiary`;
-const THREADS_OVERFLOW_SEPARATOR_CLASS = "-mx-0 my-1 bg-border-subtle";
+  "min-h-8 rounded-md px-2.5 py-1.5 text-vesti-base font-medium text-text-primary focus:!bg-bg-secondary focus:!text-text-primary data-[highlighted]:!bg-bg-secondary data-[highlighted]:!text-text-primary [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:text-text-secondary"
+const THREADS_OVERFLOW_SUBTRIGGER_CLASS = `${THREADS_OVERFLOW_ITEM_CLASS} data-[state=open]:!bg-bg-secondary data-[state=open]:!text-text-primary [&>svg:last-child]:h-3.5 [&>svg:last-child]:w-3.5 [&>svg:last-child]:text-text-tertiary`
+const THREADS_OVERFLOW_SEPARATOR_CLASS = "-mx-0 my-1 bg-border-subtle"
 
 function formatRelativeTime(
   timestamp: number,
-  labels: { justNow: string; minutesAgo: string; hoursAgo: string; daysAgo: string; monthsAgo: string }
+  labels: {
+    justNow: string
+    minutesAgo: string
+    hoursAgo: string
+    daysAgo: string
+    monthsAgo: string
+  }
 ): string {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return labels.justNow;
-  if (minutes < 60) return `${minutes}${labels.minutesAgo}`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}${labels.hoursAgo}`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}${labels.daysAgo}`;
-  const months = Math.floor(days / 30);
-  return `${months}${labels.monthsAgo}`;
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return labels.justNow
+  if (minutes < 60) return `${minutes}${labels.minutesAgo}`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}${labels.hoursAgo}`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}${labels.daysAgo}`
+  const months = Math.floor(days / 30)
+  return `${months}${labels.monthsAgo}`
 }
 
 interface ActionIconButtonProps {
-  label: string;
-  icon: ReactNode;
-  disabled?: boolean;
-  tone?: "default" | "danger";
-  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  label: string
+  icon: ReactNode
+  disabled?: boolean
+  tone?: "default" | "danger"
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
 function ActionIconButton({
@@ -80,41 +87,41 @@ function ActionIconButton({
   icon,
   disabled = false,
   tone = "default",
-  onClick,
+  onClick
 }: ActionIconButtonProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const timerRef = useRef<number | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false)
+  const timerRef = useRef<number | null>(null)
 
   useEffect(() => {
     return () => {
       if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
+        window.clearTimeout(timerRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const startTooltip = () => {
-    if (disabled) return;
+    if (disabled) return
     if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
+      window.clearTimeout(timerRef.current)
     }
     timerRef.current = window.setTimeout(() => {
-      setShowTooltip(true);
-    }, TOOLTIP_DELAY_MS);
-  };
+      setShowTooltip(true)
+    }, TOOLTIP_DELAY_MS)
+  }
 
   const stopTooltip = () => {
     if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
     }
-    setShowTooltip(false);
-  };
+    setShowTooltip(false)
+  }
 
   const toneClass =
     tone === "danger"
       ? "hover:bg-danger/10 hover:text-danger"
-      : "hover:bg-accent-primary-light hover:text-accent-primary";
+      : "hover:bg-accent-primary-light hover:text-accent-primary"
 
   return (
     <div className="relative flex items-center">
@@ -132,8 +139,7 @@ function ActionIconButton({
           disabled
             ? "cursor-not-allowed opacity-35"
             : `opacity-60 group-hover:opacity-100 hover:opacity-100 focus-visible:opacity-100 ${toneClass}`
-        }`}
-      >
+        }`}>
         {icon}
       </button>
       {showTooltip && (
@@ -142,30 +148,30 @@ function ActionIconButton({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 interface ConversationCardProps {
-  conversation: Conversation;
-  onClick: () => void;
-  onCopyFullText?: (conversation: Conversation) => Promise<boolean>;
-  onOpenSource?: (conversation: Conversation) => void;
-  onDelete?: (id: number) => Promise<void> | void;
-  onRenameTitle?: (id: number, title: string) => Promise<boolean>;
-  topicOptions?: { id: number; label: string }[];
-  onConversationUpdated?: (conversation: Conversation) => void;
-  matchedInMessagesOnly?: boolean;
-  searchQuery?: string;
-  messageExcerpt?: string | null;
-  messageMatchSurface?: SearchMatchSurface | null;
+  conversation: Conversation
+  onClick: () => void
+  onCopyFullText?: (conversation: Conversation) => Promise<boolean>
+  onOpenSource?: (conversation: Conversation) => void
+  onDelete?: (id: number) => Promise<void> | void
+  onRenameTitle?: (id: number, title: string) => Promise<boolean>
+  topicOptions?: { id: number; label: string }[]
+  onConversationUpdated?: (conversation: Conversation) => void
+  matchedInMessagesOnly?: boolean
+  searchQuery?: string
+  messageExcerpt?: string | null
+  messageMatchSurface?: SearchMatchSurface | null
   // Which time to surface on the card: the conversation's own time ("origin")
   // or when Vesti last captured it ("capture"). Mirrors the list sort mode.
-  sortMode?: "origin" | "capture";
+  sortMode?: "origin" | "capture"
   // Batch selection support
-  isBatchMode?: boolean;
-  isSelected?: boolean;
-  onToggleSelect?: () => void;
-  onSelectFromMenu?: () => void;
+  isBatchMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: () => void
+  onSelectFromMenu?: () => void
 }
 
 export function ConversationCard({
@@ -185,155 +191,154 @@ export function ConversationCard({
   isBatchMode = false,
   isSelected = false,
   onToggleSelect,
-  onSelectFromMenu,
+  onSelectFromMenu
 }: ConversationCardProps) {
-  const { t } = useI18n();
-  const [isHovered, setIsHovered] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(conversation.title);
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
-  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
-  const copyFeedbackTimerRef = useRef<number | null>(null);
-  const titleInputRef = useRef<HTMLInputElement | null>(null);
-  const skipBlurSaveRef = useRef(false);
-  const saveInFlightRef = useRef(false);
-  const suppressCardActivationRef = useRef(false);
-  const suppressCardActivationTimerRef = useRef<number | null>(null);
-  const hasSourceUrl = conversation.url.trim().length > 0;
+  const { t } = useI18n()
+  const [isHovered, setIsHovered] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [draftTitle, setDraftTitle] = useState(conversation.title)
+  const [isSavingTitle, setIsSavingTitle] = useState(false)
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false)
+  const copyFeedbackTimerRef = useRef<number | null>(null)
+  const titleInputRef = useRef<HTMLInputElement | null>(null)
+  const skipBlurSaveRef = useRef(false)
+  const saveInFlightRef = useRef(false)
+  const suppressCardActivationRef = useRef(false)
+  const suppressCardActivationTimerRef = useRef<number | null>(null)
+  const hasSourceUrl = conversation.url.trim().length > 0
   const turnCount = resolveTurnCount(
     conversation.turn_count,
     conversation.message_count
-  );
+  )
   const snippetText =
     matchedInMessagesOnly && messageExcerpt
       ? messageExcerpt
-      : conversation.snippet;
+      : conversation.snippet
   const messageMatchHint = matchedInMessagesOnly
     ? getSearchMatchHintLabel(messageMatchSurface ?? "body")
-    : null;
+    : null
 
   const renderHighlightedText = (text: string) => {
-    const segments = splitWithHighlight(text, searchQuery);
+    const segments = splitWithHighlight(text, searchQuery)
     if (segments.length === 1 && !segments[0].highlight) {
-      return segments[0].text;
+      return segments[0].text
     }
     return segments.map((segment, index) =>
       segment.highlight ? (
         <mark
           key={`hl-${index}`}
-          className="rounded-xs bg-accent-primary-light px-0.5 text-text-primary ring-1 ring-border-focus"
-        >
+          className="rounded-xs bg-accent-primary-light px-0.5 text-text-primary ring-1 ring-border-focus">
           {segment.text}
         </mark>
       ) : (
         <span key={`tx-${index}`}>{segment.text}</span>
       )
-    );
-  };
+    )
+  }
 
-  const canRename = Boolean(onRenameTitle) && !isSavingTitle;
+  const canRename = Boolean(onRenameTitle) && !isSavingTitle
 
   useEffect(() => {
     return () => {
       if (copyFeedbackTimerRef.current !== null) {
-        window.clearTimeout(copyFeedbackTimerRef.current);
+        window.clearTimeout(copyFeedbackTimerRef.current)
       }
       if (suppressCardActivationTimerRef.current !== null) {
-        window.clearTimeout(suppressCardActivationTimerRef.current);
+        window.clearTimeout(suppressCardActivationTimerRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   useEffect(() => {
     if (!isEditingTitle) {
-      setDraftTitle(conversation.title);
+      setDraftTitle(conversation.title)
     }
-  }, [conversation.title, isEditingTitle]);
+  }, [conversation.title, isEditingTitle])
 
   useEffect(() => {
-    if (!isEditingTitle) return;
-    titleInputRef.current?.focus();
-    titleInputRef.current?.select();
-  }, [isEditingTitle]);
+    if (!isEditingTitle) return
+    titleInputRef.current?.focus()
+    titleInputRef.current?.select()
+  }, [isEditingTitle])
 
   const handleCopy = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    if (!onCopyFullText) return;
+    event.stopPropagation()
+    if (!onCopyFullText) return
     try {
-      const ok = await onCopyFullText(conversation);
-      if (!ok) return;
-      setCopied(true);
+      const ok = await onCopyFullText(conversation)
+      if (!ok) return
+      setCopied(true)
       if (copyFeedbackTimerRef.current !== null) {
-        window.clearTimeout(copyFeedbackTimerRef.current);
+        window.clearTimeout(copyFeedbackTimerRef.current)
       }
       copyFeedbackTimerRef.current = window.setTimeout(() => {
-        setCopied(false);
-      }, COPY_FEEDBACK_MS);
+        setCopied(false)
+      }, COPY_FEEDBACK_MS)
     } catch {
-      setCopied(false);
+      setCopied(false)
     }
-  };
+  }
 
   const handleOpenSource = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    if (!hasSourceUrl) return;
+    event.stopPropagation()
+    if (!hasSourceUrl) return
     if (onOpenSource) {
-      onOpenSource(conversation);
-      return;
+      onOpenSource(conversation)
+      return
     }
-    window.open(conversation.url, "_blank", "noopener,noreferrer");
-  };
+    window.open(conversation.url, "_blank", "noopener,noreferrer")
+  }
 
   const handleDelete = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    await onDelete?.(conversation.id);
-  };
+    event.stopPropagation()
+    await onDelete?.(conversation.id)
+  }
 
   const cancelTitleEdit = useCallback(() => {
-    setDraftTitle(conversation.title);
-    setIsEditingTitle(false);
-    setIsSavingTitle(false);
-    skipBlurSaveRef.current = false;
-    saveInFlightRef.current = false;
-  }, [conversation.title]);
+    setDraftTitle(conversation.title)
+    setIsEditingTitle(false)
+    setIsSavingTitle(false)
+    skipBlurSaveRef.current = false
+    saveInFlightRef.current = false
+  }, [conversation.title])
 
   const commitTitleEdit = useCallback(async () => {
-    if (!isEditingTitle || isSavingTitle || saveInFlightRef.current) return;
+    if (!isEditingTitle || isSavingTitle || saveInFlightRef.current) return
 
-    const trimmedTitle = draftTitle.trim();
+    const trimmedTitle = draftTitle.trim()
     if (!trimmedTitle || trimmedTitle.length > MAX_TITLE_LENGTH) {
-      cancelTitleEdit();
-      return;
+      cancelTitleEdit()
+      return
     }
 
     if (trimmedTitle === conversation.title) {
-      setIsEditingTitle(false);
-      skipBlurSaveRef.current = false;
-      return;
+      setIsEditingTitle(false)
+      skipBlurSaveRef.current = false
+      return
     }
 
     if (!onRenameTitle) {
-      cancelTitleEdit();
-      return;
+      cancelTitleEdit()
+      return
     }
 
-    saveInFlightRef.current = true;
-    setIsSavingTitle(true);
+    saveInFlightRef.current = true
+    setIsSavingTitle(true)
     try {
-      const saved = await onRenameTitle(conversation.id, trimmedTitle);
+      const saved = await onRenameTitle(conversation.id, trimmedTitle)
       if (!saved) {
-        cancelTitleEdit();
-        return;
+        cancelTitleEdit()
+        return
       }
-      setIsEditingTitle(false);
+      setIsEditingTitle(false)
     } catch (error) {
-      console.error("Failed to rename conversation title", error);
-      cancelTitleEdit();
+      console.error("Failed to rename conversation title", error)
+      cancelTitleEdit()
     } finally {
-      saveInFlightRef.current = false;
-      setIsSavingTitle(false);
-      skipBlurSaveRef.current = false;
+      saveInFlightRef.current = false
+      setIsSavingTitle(false)
+      skipBlurSaveRef.current = false
     }
   }, [
     cancelTitleEdit,
@@ -342,91 +347,91 @@ export function ConversationCard({
     draftTitle,
     isEditingTitle,
     isSavingTitle,
-    onRenameTitle,
-  ]);
+    onRenameTitle
+  ])
 
   const handleStartTitleEdit = (
     event?: Pick<MouseEvent<HTMLButtonElement>, "stopPropagation">
   ) => {
-    event?.stopPropagation();
-    if (isSavingTitle) return;
-    setDraftTitle(conversation.title);
-    setIsEditingTitle(true);
-  };
+    event?.stopPropagation()
+    if (isSavingTitle) return
+    setDraftTitle(conversation.title)
+    setIsEditingTitle(true)
+  }
 
   const handleToggleStar = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
+    event.stopPropagation()
     try {
       const updated = await updateConversationAndSync(conversation.id, {
-        is_starred: !conversation.is_starred,
-      });
-      onConversationUpdated?.(updated);
+        is_starred: !conversation.is_starred
+      })
+      onConversationUpdated?.(updated)
     } catch (error) {
-      console.error("Failed to update star status", error);
+      console.error("Failed to update star status", error)
     }
-  };
+  }
 
   const armSuppressCardActivation = useCallback(() => {
-    suppressCardActivationRef.current = true;
+    suppressCardActivationRef.current = true
     if (suppressCardActivationTimerRef.current !== null) {
-      window.clearTimeout(suppressCardActivationTimerRef.current);
+      window.clearTimeout(suppressCardActivationTimerRef.current)
     }
     suppressCardActivationTimerRef.current = window.setTimeout(() => {
-      suppressCardActivationRef.current = false;
-      suppressCardActivationTimerRef.current = null;
-    }, 0);
-  }, []);
+      suppressCardActivationRef.current = false
+      suppressCardActivationTimerRef.current = null
+    }, 0)
+  }, [])
 
   const consumeSuppressCardActivation = useCallback(() => {
     if (!suppressCardActivationRef.current) {
-      return false;
+      return false
     }
-    suppressCardActivationRef.current = false;
+    suppressCardActivationRef.current = false
     if (suppressCardActivationTimerRef.current !== null) {
-      window.clearTimeout(suppressCardActivationTimerRef.current);
-      suppressCardActivationTimerRef.current = null;
+      window.clearTimeout(suppressCardActivationTimerRef.current)
+      suppressCardActivationTimerRef.current = null
     }
-    return true;
-  }, []);
+    return true
+  }, [])
 
   const closeOverflowMenu = useCallback(() => {
-    setIsOverflowOpen(false);
-  }, []);
+    setIsOverflowOpen(false)
+  }, [])
 
   const handleCardClick = () => {
     if (consumeSuppressCardActivation()) {
-      return;
+      return
     }
     if (isBatchMode) {
-      onToggleSelect?.();
+      onToggleSelect?.()
     } else {
-      onClick();
+      onClick()
     }
-  };
+  }
 
   const handleOverflowAction = useCallback(
     async (action: () => void | Promise<void>) => {
-      armSuppressCardActivation();
-      closeOverflowMenu();
-      await action();
+      armSuppressCardActivation()
+      closeOverflowMenu()
+      await action()
     },
     [armSuppressCardActivation, closeOverflowMenu]
-  );
+  )
 
   const handleTopicAssignment = async (value: string) => {
-    const nextTopicId = value ? Number(value) : null;
+    const nextTopicId = value ? Number(value) : null
 
     try {
       const updated = await updateConversationAndSync(conversation.id, {
-        topic_id: Number.isNaN(nextTopicId) ? null : nextTopicId,
-      });
-      onConversationUpdated?.(updated);
+        topic_id: Number.isNaN(nextTopicId) ? null : nextTopicId
+      })
+      onConversationUpdated?.(updated)
     } catch (error) {
-      console.error("Failed to update topic assignment", error);
+      console.error("Failed to update topic assignment", error)
     }
-  };
+  }
 
-  const showExpandedDetails = !isBatchMode && isHovered;
+  const showExpandedDetails = !isBatchMode && isHovered
   const cardStateClass = isBatchMode
     ? isSelected
       ? "bg-accent-primary/8 ring-1 ring-accent-primary/25"
@@ -435,7 +440,7 @@ export function ConversationCard({
         : "bg-surface-card"
     : isHovered
       ? "bg-surface-card-hover shadow-card-hover"
-      : "bg-surface-card";
+      : "bg-surface-card"
 
   return (
     <div
@@ -446,51 +451,58 @@ export function ConversationCard({
       onFocus={() => setIsHovered(true)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsHovered(false);
+          setIsHovered(false)
         }
       }}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) {
-          return;
+          return
         }
         if (consumeSuppressCardActivation()) {
-          event.preventDefault();
-          return;
+          event.preventDefault()
+          return
         }
         if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          handleCardClick();
+          event.preventDefault()
+          handleCardClick()
         }
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group w-full cursor-pointer rounded-md p-3 text-left transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus ${cardStateClass}`}
-    >
+      className={`group w-full cursor-pointer rounded-md p-3 text-left transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus ${cardStateClass}`}>
       <div className="flex items-center justify-between">
-        <div className={`flex min-w-0 items-center ${isBatchMode ? "gap-2.5" : "gap-2"}`}>
-          {isBatchMode && (
-            <button
-              type="button"
-              aria-label={isSelected ? t.timeline.deselectConversation : t.timeline.selectConversation}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleSelect?.();
-              }}
-              className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors ${
-                isSelected
-                  ? "border-accent-primary bg-accent-primary"
-                  : "border-text-tertiary/35 bg-bg-primary/70"
-              }`}
-            >
-              {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={2} />}
-            </button>
-          )}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <button
+            data-onboarding-target="dashboard-checkbox"
+            type="button"
+            role="checkbox"
+            aria-checked={isSelected}
+            aria-label={
+              isSelected
+                ? t.timeline.deselectConversation
+                : t.timeline.selectConversation
+            }
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleSelect?.()
+            }}
+            className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors ${
+              isSelected
+                ? "border-accent-primary bg-accent-primary"
+                : "border-text-tertiary/35 bg-bg-primary/70 hover:border-accent-primary"
+            }`}>
+            {isSelected && (
+              <Check className="h-3 w-3 text-white" strokeWidth={2} />
+            )}
+          </button>
           <PlatformTag platform={conversation.platform} />
         </div>
         <div className="flex items-center gap-1">
           {!isBatchMode && (
             <ActionIconButton
-              label={conversation.is_starred ? t.timeline.unstar : t.timeline.star}
+              label={
+                conversation.is_starred ? t.timeline.unstar : t.timeline.star
+              }
               onClick={handleToggleStar}
               icon={
                 <Star
@@ -510,9 +522,8 @@ export function ConversationCard({
             title={new Date(
               sortMode === "capture"
                 ? getConversationCaptureFreshnessAt(conversation)
-                : getConversationOriginAt(conversation),
-            ).toLocaleString()}
-          >
+                : getConversationOriginAt(conversation)
+            ).toLocaleString()}>
             {sortMode === "capture"
               ? `${t.timeline.lastCaptured} ${formatRelativeTime(getConversationCaptureFreshnessAt(conversation), t.timeline.relativeTime)}`
               : `${t.timeline.conversedAt} ${formatRelativeTime(getConversationOriginAt(conversation), t.timeline.relativeTime)}`}
@@ -528,29 +539,29 @@ export function ConversationCard({
             disabled={isSavingTitle}
             aria-label={t.timeline.editTitle}
             onChange={(event) => {
-              setDraftTitle(event.target.value);
+              setDraftTitle(event.target.value)
             }}
             onClick={(event) => {
-              event.stopPropagation();
+              event.stopPropagation()
             }}
             onKeyDown={(event) => {
-              event.stopPropagation();
+              event.stopPropagation()
               if (event.key === "Enter") {
-                event.preventDefault();
-                skipBlurSaveRef.current = true;
-                void commitTitleEdit();
+                event.preventDefault()
+                skipBlurSaveRef.current = true
+                void commitTitleEdit()
               } else if (event.key === "Escape") {
-                event.preventDefault();
-                skipBlurSaveRef.current = true;
-                cancelTitleEdit();
+                event.preventDefault()
+                skipBlurSaveRef.current = true
+                cancelTitleEdit()
               }
             }}
             onBlur={() => {
               if (skipBlurSaveRef.current) {
-                skipBlurSaveRef.current = false;
-                return;
+                skipBlurSaveRef.current = false
+                return
               }
-              void commitTitleEdit();
+              void commitTitleEdit()
             }}
             className="h-7 min-w-0 flex-1 rounded-sm border border-border-subtle bg-white px-2 text-vesti-sm text-text-primary outline-none focus:border-text-primary focus:ring-2 focus:ring-[rgba(26,25,24,0.12)]"
           />
@@ -562,21 +573,22 @@ export function ConversationCard({
 
         {!isEditingTitle && !isBatchMode && (
           <div className="flex shrink-0 items-center gap-0.5">
-            <DropdownMenu open={isOverflowOpen} onOpenChange={setIsOverflowOpen}>
+            <DropdownMenu
+              open={isOverflowOpen}
+              onOpenChange={setIsOverflowOpen}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   aria-label={t.timeline.moreActions}
                   onPointerDown={(event) => {
-                    armSuppressCardActivation();
-                    event.stopPropagation();
+                    armSuppressCardActivation()
+                    event.stopPropagation()
                   }}
                   onClick={(event) => {
-                    armSuppressCardActivation();
-                    event.stopPropagation();
+                    armSuppressCardActivation()
+                    event.stopPropagation()
                   }}
-                  className="flex h-6 w-6 items-center justify-center rounded-sm text-text-tertiary opacity-60 transition-all duration-150 hover:bg-accent-primary-light hover:text-accent-primary hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus data-[state=open]:bg-bg-secondary data-[state=open]:text-text-primary data-[state=open]:opacity-100"
-                >
+                  className="flex h-6 w-6 items-center justify-center rounded-sm text-text-tertiary opacity-60 transition-all duration-150 hover:bg-accent-primary-light hover:text-accent-primary hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus data-[state=open]:bg-bg-secondary data-[state=open]:text-text-primary data-[state=open]:opacity-100">
                   <MoreHorizontal className="h-4 w-4" strokeWidth={1.8} />
                 </button>
               </DropdownMenuTrigger>
@@ -584,24 +596,22 @@ export function ConversationCard({
                 align="end"
                 className={THREADS_OVERFLOW_CONTENT_CLASS}
                 onCloseAutoFocus={(event) => {
-                  event.preventDefault();
-                }}
-              >
+                  event.preventDefault()
+                }}>
                 <DropdownMenuItem
                   disabled={!canRename}
                   className={THREADS_OVERFLOW_ITEM_CLASS}
                   onPointerDown={(event) => {
-                    armSuppressCardActivation();
-                    event.stopPropagation();
+                    armSuppressCardActivation()
+                    event.stopPropagation()
                   }}
                   onSelect={async (event) => {
-                    event.stopPropagation();
-                    if (!canRename) return;
+                    event.stopPropagation()
+                    if (!canRename) return
                     await handleOverflowAction(() => {
-                      handleStartTitleEdit();
-                    });
-                  }}
-                >
+                      handleStartTitleEdit()
+                    })
+                  }}>
                   <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                   {t.timeline.rename}
                 </DropdownMenuItem>
@@ -609,68 +619,69 @@ export function ConversationCard({
                   <DropdownMenuSubTrigger
                     className={THREADS_OVERFLOW_SUBTRIGGER_CLASS}
                     onPointerDown={(event) => {
-                      armSuppressCardActivation();
-                      event.stopPropagation();
+                      armSuppressCardActivation()
+                      event.stopPropagation()
                     }}
                     onClick={(event) => {
-                      armSuppressCardActivation();
-                      event.stopPropagation();
-                    }}
-                  >
+                      armSuppressCardActivation()
+                      event.stopPropagation()
+                    }}>
                     <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.6} />
                     {t.timeline.addToProject}
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className={THREADS_OVERFLOW_CONTENT_CLASS}>
+                  <DropdownMenuSubContent
+                    className={THREADS_OVERFLOW_CONTENT_CLASS}>
                     <DropdownMenuItem
                       className={THREADS_OVERFLOW_ITEM_CLASS}
                       onPointerDown={(event) => {
-                        armSuppressCardActivation();
-                        event.stopPropagation();
+                        armSuppressCardActivation()
+                        event.stopPropagation()
                       }}
                       onSelect={async (event) => {
-                        event.stopPropagation();
+                        event.stopPropagation()
                         await handleOverflowAction(async () => {
-                          await handleTopicAssignment("");
-                        });
-                      }}
-                    >
-                      <span className="text-text-tertiary">{t.timeline.noGroup}</span>
+                          await handleTopicAssignment("")
+                        })
+                      }}>
+                      <span className="text-text-tertiary">
+                        {t.timeline.noGroup}
+                      </span>
                     </DropdownMenuItem>
                     {topicOptions.map((topic) => (
                       <DropdownMenuItem
                         key={topic.id}
                         className={THREADS_OVERFLOW_ITEM_CLASS}
                         onPointerDown={(event) => {
-                          armSuppressCardActivation();
-                          event.stopPropagation();
+                          armSuppressCardActivation()
+                          event.stopPropagation()
                         }}
                         onSelect={async (event) => {
-                          event.stopPropagation();
+                          event.stopPropagation()
                           await handleOverflowAction(async () => {
-                            await handleTopicAssignment(String(topic.id));
-                          });
-                        }}
-                      >
+                            await handleTopicAssignment(String(topic.id))
+                          })
+                        }}>
                         {topic.label}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-                <DropdownMenuSeparator className={THREADS_OVERFLOW_SEPARATOR_CLASS} />
+                <DropdownMenuSeparator
+                  className={THREADS_OVERFLOW_SEPARATOR_CLASS}
+                />
                 <DropdownMenuItem
                   disabled={!onSelectFromMenu}
                   onPointerDown={(event) => {
-                    armSuppressCardActivation();
-                    event.stopPropagation();
+                    armSuppressCardActivation()
+                    event.stopPropagation()
                   }}
                   onSelect={async (event) => {
-                    event.stopPropagation();
+                    event.stopPropagation()
                     await handleOverflowAction(() => {
-                      onSelectFromMenu?.();
-                    });
+                      onSelectFromMenu?.()
+                    })
                   }}
-                  className={`${THREADS_OVERFLOW_ITEM_CLASS} focus:!bg-accent-primary-light data-[highlighted]:!bg-accent-primary-light`}
-                >
+                  className={`${THREADS_OVERFLOW_ITEM_CLASS} focus:!bg-accent-primary-light data-[highlighted]:!bg-accent-primary-light`}>
                   <CheckSquare className="h-3.5 w-3.5" strokeWidth={1.6} />
                   {t.timeline.select}
                 </DropdownMenuItem>
@@ -678,7 +689,6 @@ export function ConversationCard({
             </DropdownMenu>
           </div>
         )}
-
       </div>
 
       {showExpandedDetails && (
@@ -697,7 +707,8 @@ export function ConversationCard({
               <div className="flex min-w-0 items-center gap-2">
                 <span className="flex items-center gap-1 whitespace-nowrap text-vesti-xs text-text-tertiary">
                   <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  {conversation.message_count} {t.timeline.messages} · {turnCount} {t.timeline.turns}
+                  {conversation.message_count} {t.timeline.messages} ·{" "}
+                  {turnCount} {t.timeline.turns}
                 </span>
               </div>
 
@@ -707,7 +718,10 @@ export function ConversationCard({
                   onClick={handleCopy}
                   icon={
                     copied ? (
-                      <Check className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
+                      <Check
+                        className="h-3.5 w-3.5 text-success"
+                        strokeWidth={1.75}
+                      />
                     ) : (
                       <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
                     )
@@ -721,7 +735,9 @@ export function ConversationCard({
                   }
                   onClick={handleOpenSource}
                   disabled={!hasSourceUrl}
-                  icon={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />}
+                  icon={
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  }
                 />
                 <div className="mx-0.5 h-3.5 w-px bg-border-subtle" />
                 <ActionIconButton
@@ -736,6 +752,5 @@ export function ConversationCard({
         </div>
       )}
     </div>
-  );
+  )
 }
-

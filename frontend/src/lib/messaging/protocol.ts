@@ -5,6 +5,7 @@ import type {
   Conversation,
   ConversationMatchSummary,
   CreateNoteInput,
+  CreatePromptInput,
   DashboardStats,
   DataOverviewSnapshot,
   DesktopBridgeStatus,
@@ -19,30 +20,29 @@ import type {
   ImportDataResult,
   LlmConfig,
   Message,
-  NoteAssetRecord,
   MessageArtifact,
   MessageAttachment,
   MessageCitation,
   Note,
+  NoteAssetRecord,
   ObsidianImportFileEntry,
   ObsidianImportSummary,
   Platform,
   Prompt,
-  CreatePromptInput,
-  UpdatePromptChanges,
-  PromptListFilter,
-  PromptExtractionResult,
   PromptCompletionResult,
+  PromptExtractionResult,
+  PromptListFilter,
   RagResponse,
+  RelatedConversation,
   RelayItem,
   RoundtablePersonaId,
   RoundtableResult,
-  RelatedConversation,
   SearchConversationMatchesQuery,
   StorageUsageSnapshot,
   SummaryRecord,
   Topic,
   UpdateNoteChanges,
+  UpdatePromptChanges,
   WeeklyGrowthTimeMachineData,
   WeeklyKnowledgeNoteSaveResult,
   WeeklyKnowledgeNoteStatus,
@@ -96,6 +96,7 @@ export interface ConversationDraft {
   tags: string[]
   topic_id: number | null
   is_starred: boolean
+  isMock?: boolean
 }
 
 export interface ParsedMessage {
@@ -110,6 +111,26 @@ export interface ParsedMessage {
   normalizedHtmlSnapshot?: string | null
   htmlContent?: string
   timestamp?: number
+}
+
+export type CoreRoundtableRoleId =
+  | "domain_expert"
+  | "devils_advocate"
+  | "skeptic"
+
+export interface CoreRoundtableReply {
+  role: CoreRoundtableRoleId
+  name: string
+  content: string
+  ok: boolean
+  error?: string
+  durationMs: number
+}
+
+export interface CoreRoundtableResult {
+  topic: string
+  replies: CoreRoundtableReply[]
+  totalDurationMs: number
 }
 
 export type InsightPipelineScope = "summary" | "weekly"
@@ -243,7 +264,10 @@ export type RequestMessage =
       target?: "offscreen"
       via?: "background"
       requestId?: string
-      payload: { ids: number[]; patch: { is_starred?: boolean; is_archived?: boolean } }
+      payload: {
+        ids: number[]
+        patch: { is_starred?: boolean; is_archived?: boolean }
+      }
     }
   | {
       type: "BULK_ADD_TAG_TO_CONVERSATIONS"
@@ -277,10 +301,25 @@ export type RequestMessage =
       }
     }
   | {
+      type: "RUN_CORE_ROUNDTABLE"
+      target?: "background"
+      requestId?: string
+      payload: { topic: string }
+    }
+  | {
+      type: "OPTIMIZE_DEEPSEEK_PROMPT"
+      target?: "background"
+      requestId?: string
+      payload: {
+        originalText: string
+        mode: "expert_explain" | "optimize"
+      }
+    }
+  | {
       type: "CREATE_EXPLORE_SESSION"
       target?: "offscreen"
       requestId?: string
-      payload: { title: string }
+      payload: { title: string; systemPrompt?: string }
     }
   | {
       type: "LIST_EXPLORE_SESSIONS"
@@ -606,6 +645,37 @@ export type RequestMessage =
       requestId?: string
     }
   | {
+      type: "ONBOARDING_TOUR_START"
+      target?: "background"
+      requestId?: string
+    }
+  | {
+      type: "ONBOARDING_GUIDE_PROGRESS"
+      target?: "background"
+      requestId?: string
+      payload: {
+        feature:
+          | "deepseek"
+          | "dashboard"
+          | "explore"
+          | "aiti"
+          | "learn"
+          | "roundtable"
+          | "insights"
+        step?: number
+        completed?: boolean
+      }
+    }
+  | {
+      type: "ONBOARDING_COMPLETE"
+      target?: "background"
+      requestId?: string
+      payload: {
+        via: "quick_start" | "skip"
+        hasCleanedMockData?: boolean
+      }
+    }
+  | {
       type: "RUN_VECTORIZATION"
       target?: "background"
       requestId?: string
@@ -619,6 +689,12 @@ export type RequestMessage =
       type: "IMPORT_HISTORY_START"
       target?: "background"
       requestId?: string
+    }
+  | {
+      type: "ONBOARDING_IMPORT_RECENT_WEEK"
+      target?: "background"
+      requestId?: string
+      payload: { since: number; until: number }
     }
   | {
       type: "IMPORT_HISTORY_CANCEL"
@@ -764,6 +840,8 @@ export type ResponseDataMap = {
   BULK_ADD_TAG_TO_CONVERSATIONS: { updated: number }
   ASK_KNOWLEDGE_BASE: RagResponse & { sessionId: string }
   RUN_ROUNDTABLE: RoundtableResult
+  RUN_CORE_ROUNDTABLE: CoreRoundtableResult
+  OPTIMIZE_DEEPSEEK_PROMPT: { optimized: string; usedLlm: boolean }
   CREATE_EXPLORE_SESSION: { sessionId: string }
   LIST_EXPLORE_SESSIONS: ExploreSession[]
   GET_EXPLORE_SESSION: ExploreSession | null
@@ -821,14 +899,41 @@ export type ResponseDataMap = {
   GENERATE_WEEKLY_REPORT: WeeklyReportRecord
   GENERATE_WEEKLY_RECAP: WeeklyReportRecord
   CANCEL_WEEKLY_RECAP: { aborted: boolean }
-  GET_WEEKLY_PUSH_SETTINGS: { settings: WeeklyPushSettings; nextAt: number | null }
-  SET_WEEKLY_PUSH_SETTINGS: { settings: WeeklyPushSettings; nextAt: number | null }
+  GET_WEEKLY_PUSH_SETTINGS: {
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }
+  SET_WEEKLY_PUSH_SETTINGS: {
+    settings: WeeklyPushSettings
+    nextAt: number | null
+  }
   TEST_WEEKLY_PUSH_NOTIFICATION: { notificationId: string }
   GET_ACTIVE_CAPTURE_STATUS: ActiveCaptureStatus
   FORCE_ARCHIVE_TRANSIENT: ForceArchiveTransientResult
+  ONBOARDING_TOUR_START: { started: true }
+  ONBOARDING_GUIDE_PROGRESS: {
+    completed: boolean
+    allCompleted: boolean
+  }
+  ONBOARDING_COMPLETE: { completed: true }
   RUN_VECTORIZATION: { queued: boolean }
-  IMPORT_HISTORY_PROBE: { supported: boolean; platform?: Platform; available?: boolean }
-  IMPORT_HISTORY_START: { started: boolean; platform?: Platform; reason?: string }
+  IMPORT_HISTORY_PROBE: {
+    supported: boolean
+    platform?: Platform
+    available?: boolean
+  }
+  IMPORT_HISTORY_START: {
+    started: boolean
+    platform?: Platform
+    reason?: string
+  }
+  ONBOARDING_IMPORT_RECENT_WEEK: {
+    attemptedTabs: number
+    availablePlatforms: Platform[]
+    completedPlatforms: Platform[]
+    saved: number
+    failed: number
+  }
   IMPORT_HISTORY_CANCEL: { ok: boolean }
   DESKTOP_BRIDGE_GET_STATE: { state: DesktopBridgeStatus }
   DESKTOP_BRIDGE_PAIR: { state: DesktopBridgeStatus }

@@ -20,9 +20,13 @@ if (-not (Test-Path $manifestPath)) {
 $sidepanel = Get-ChildItem -Path $src -Filter "sidepanel*.js" -File
 $capsule = Get-ChildItem -Path $src -Filter "capsule-ui*.js" -File
 $background = Join-Path $src "static/background/index.js"
+$onboardingEntry = Join-Path $src "onboarding.html"
+$onboardingPage = Join-Path $src "tabs/onboarding.html"
 if (-not $sidepanel) { throw "Missing sidepanel bundle under $src" }
 if (-not $capsule) { throw "Missing capsule-ui bundle under $src" }
 if (-not (Test-Path $background)) { throw "Missing static/background/index.js under $src" }
+if (-not (Test-Path $onboardingEntry)) { throw "Missing onboarding.html under $src" }
+if (-not (Test-Path $onboardingPage)) { throw "Missing tabs/onboarding.html under $src" }
 
 $files = Get-ChildItem -Path $src -Recurse -File
 $fileCount = ($files | Measure-Object).Count

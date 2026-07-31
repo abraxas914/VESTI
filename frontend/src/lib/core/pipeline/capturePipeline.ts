@@ -1,56 +1,60 @@
-import type { IParser, ParsedMessage } from "../parser/IParser";
-import { countAiTurns } from "../../capture/turn-metrics";
-import type { ConversationDraft } from "../../messaging/protocol";
-import type { CaptureDecisionMeta } from "../../types";
-import { logger } from "../../utils/logger";
+import { countAiTurns } from "../../capture/turn-metrics"
+import type { ConversationDraft } from "../../messaging/protocol"
+import type { CaptureDecisionMeta } from "../../types"
+import { logger } from "../../utils/logger"
+import type { IParser, ParsedMessage } from "../parser/IParser"
 
-interface CaptureResult {
-  saved: boolean;
-  newMessages: number;
-  conversationId?: number;
-  decision: CaptureDecisionMeta;
+export interface CaptureResult {
+  saved: boolean
+  newMessages: number
+  conversationId?: number
+  decision: CaptureDecisionMeta
+}
+
+export interface CaptureOptions {
+  forceFlag?: boolean
 }
 
 export type CaptureSender = (payload: {
-  conversation: ConversationDraft;
-  messages: ParsedMessage[];
-  forceFlag?: boolean;
-}) => Promise<CaptureResult>;
+  conversation: ConversationDraft
+  messages: ParsedMessage[]
+  forceFlag?: boolean
+}) => Promise<CaptureResult>
 
 export class CapturePipeline {
-  private parser: IParser;
-  private sender: CaptureSender;
+  private parser: IParser
+  private sender: CaptureSender
 
   constructor(parser: IParser, sender: CaptureSender) {
-    this.parser = parser;
-    this.sender = sender;
+    this.parser = parser
+    this.sender = sender
   }
 
-  async capture(): Promise<void> {
+  async capture(options: CaptureOptions = {}): Promise<CaptureResult | null> {
     try {
-      const platform = this.parser.detect();
-      if (!platform) return;
+      const platform = this.parser.detect()
+      if (!platform) return null
 
-      const sessionUUID = this.parser.getSessionUUID();
+      const sessionUUID = this.parser.getSessionUUID()
       if (!sessionUUID?.trim()) {
         logger.info("capture", "Capture skipped", {
           platform,
           sessionUUID: null,
-          reason: "missing_conversation_id",
-        });
-        return;
+          reason: "missing_conversation_id"
+        })
+        return null
       }
 
       if (this.parser.isGenerating()) {
         logger.info("capture", "Capture skipped", {
           platform,
           sessionUUID,
-          reason: "still_generating",
-        });
-        return;
+          reason: "still_generating"
+        })
+        return null
       }
 
-      const messages = this.parser.getMessages();
+      const messages = this.parser.getMessages()
       if (messages.length === 0) {
         // Surfaced at info-level so "cannot capture" reports show a decisive
         // signal: the page passed detect/session/generating gates but the
@@ -58,13 +62,13 @@ export class CapturePipeline {
         logger.info("capture", "Capture skipped", {
           platform,
           sessionUUID,
-          reason: "no_messages",
-        });
-        return;
+          reason: "no_messages"
+        })
+        return null
       }
 
-      const turnCount = countAiTurns(messages);
-      const now = Date.now();
+      const turnCount = countAiTurns(messages)
+      const now = Date.now()
       const conversation: ConversationDraft = {
         uuid: sessionUUID,
         platform,
@@ -83,22 +87,27 @@ export class CapturePipeline {
         tags: [],
         topic_id: null,
         is_starred: false,
-      };
+        isMock: false
+      }
 
-      const result = await this.sender({ conversation, messages });
+      const result = await this.sender({
+        conversation,
+        messages,
+        forceFlag: options.forceFlag
+      })
       window.dispatchEvent(
         new CustomEvent("vesti:capture", {
-          detail: result,
+          detail: result
         })
-      );
+      )
 
       if (result.saved && chrome?.runtime?.sendMessage) {
         chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-          void chrome.runtime.lastError;
-        });
+          void chrome.runtime.lastError
+        })
       }
 
-      const logMethod = result.saved ? logger.success : logger.info;
+      const logMethod = result.saved ? logger.success : logger.info
       logMethod("capture", "Capture processed", {
         platform,
         sessionUUID: conversation.uuid || null,
@@ -107,11 +116,12 @@ export class CapturePipeline {
         saved: result.saved,
         reason: result.decision.reason,
         messageCount: result.decision.messageCount,
-        turnCount: result.decision.turnCount,
-      });
+        turnCount: result.decision.turnCount
+      })
+      return result
     } catch (error) {
-      logger.error("capture", "Capture failed", error as Error);
+      logger.error("capture", "Capture failed", error as Error)
+      return null
     }
   }
 }
-

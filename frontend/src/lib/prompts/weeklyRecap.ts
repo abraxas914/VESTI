@@ -131,10 +131,10 @@ Locale: ${payload.locale}
 Language: ${getLlmLanguageName(payload.locale)}
 
 Deterministic facts (read-only; never alter or add numbers):
-${JSON.stringify(facts, null, 2)}
+${JSON.stringify(facts)}
 
 Allowed highlight candidates:
-${JSON.stringify(candidates, null, 2)}
+${JSON.stringify(candidates)}
 
 Requirements:
 1) Match weekly_growth_ai.v2 exactly.
@@ -160,10 +160,10 @@ Do not invent quotes, people, or resources.`;
 }
 
 export const CURRENT_WEEKLY_RECAP_PROMPT: PromptVersion<WeeklyRecapPromptPayload> = {
-  version: "v2.1.0",
-  createdAt: "2026-07-19",
+  version: "v2.2.0",
+  createdAt: "2026-07-26",
   description:
-    "Weekly push center with three tone variants, evidence-bound open questions, and safe resource search queries.",
+    "Compact single-pass weekly narrative with three tone variants, evidence-bound questions, and safe resource searches.",
   system: WEEKLY_RECAP_SYSTEM,
   fallbackSystem: WEEKLY_RECAP_FALLBACK_SYSTEM,
   userTemplate: buildWeeklyRecapPrompt,

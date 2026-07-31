@@ -1,3 +1,5 @@
-import Dashboard from "./dashboard";
+import Dashboard from "./dashboard"
 
-export default Dashboard;
+export default function OptionsEntry() {
+  return <Dashboard />
+}

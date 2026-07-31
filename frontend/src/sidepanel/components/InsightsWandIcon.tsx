@@ -18,4 +18,3 @@ export function InsightsWandIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-

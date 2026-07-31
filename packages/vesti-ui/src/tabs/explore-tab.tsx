@@ -1129,6 +1129,8 @@ export function ExploreTab({
                 <div className="rounded-[24px] border border-border-subtle bg-bg-primary/90 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.05)] backdrop-blur">
                   <div className="relative overflow-hidden rounded-[22px] border border-border-default bg-bg-primary">
                     <textarea
+                      data-onboarding-target="explore-input"
+                      data-onboarding-action="explore-input"
                       ref={textareaRef}
                       value={inputValue}
                       onChange={(event) => setInputValue(event.target.value)}
@@ -1139,6 +1141,8 @@ export function ExploreTab({
                     />
                     <div className="absolute bottom-4 right-4">
                       <button
+                        data-onboarding-target="explore-send"
+                        data-onboarding-action="explore-send"
                         onClick={handleSubmit}
                         disabled={!inputValue.trim() || isSubmitting}
                         className="inline-flex items-center gap-1.5 rounded-full bg-accent-primary px-4 py-2 text-xs font-sans font-medium text-text-inverse transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1445,6 +1449,8 @@ export function ExploreTab({
             <div className="mx-auto max-w-3xl">
               <div className="relative flex items-end gap-2 rounded-lg border border-border-default bg-bg-primary transition-all focus-within:border-accent-primary focus-within:ring-2 focus-within:ring-accent-primary/20">
                 <textarea
+                  data-onboarding-target="explore-input"
+                  data-onboarding-action="explore-input"
                   ref={textareaRef}
                   value={inputValue}
                   onChange={(event) => setInputValue(event.target.value)}
@@ -1460,6 +1466,8 @@ export function ExploreTab({
                 />
                 <div className="p-2">
                   <button
+                    data-onboarding-target="explore-send"
+                    data-onboarding-action="explore-send"
                     onClick={handleSubmit}
                     disabled={!inputValue.trim() || isSubmitting}
                     className="rounded-md bg-accent-primary p-2 text-text-inverse transition-all hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-30"

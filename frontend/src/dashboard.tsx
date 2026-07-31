@@ -84,6 +84,7 @@ import {
   completePrompt,
 } from "~lib/services/storageService";
 import { VestiDashboard as VestiDashboardShell } from "~vendor/vesti-ui";
+import { DashboardOnboardingGuide } from "./dashboard/DashboardOnboardingGuide";
 
 type ThemeSyncStatus = "idle" | "syncing" | "error";
 
@@ -271,7 +272,8 @@ function VestiDashboardInner() {
   }, []);
 
   return (
-    <VestiDashboardShell
+    <>
+      <VestiDashboardShell
       logoSrc={LOGO_BASE64}
       rootClassName="vesti-options"
       labels={t.dashboard}
@@ -347,6 +349,8 @@ function VestiDashboardInner() {
         extractPromptsFromLibrary,
         completePrompt,
       }}
-    />
+      />
+      <DashboardOnboardingGuide locale={locale} />
+    </>
   );
 }

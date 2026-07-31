@@ -57,6 +57,8 @@ export interface Conversation {
   tags: string[]
   topic_id: number | null
   is_starred: boolean
+  /** True only for deterministic onboarding conversations. */
+  isMock?: boolean
   has_note?: boolean
 }
 
@@ -223,6 +225,7 @@ export interface ExploreSession {
   title: string
   preview: string
   messageCount: number
+  systemPrompt?: string
   createdAt: number
   updatedAt: number
 }
@@ -1070,6 +1073,18 @@ export interface WeeklyMostInsight {
   messageIds?: number[]
 }
 
+export interface WeeklyFootprintSummary {
+  platform?: string
+  topicCount?: number
+  topDirection?: string
+  latestChatAt?: number | null
+  latestConversationId?: number | null
+  latestMessageId?: number | null
+  latestQuestion?: string
+  summary?: string
+  encouragement?: string
+}
+
 export interface WeeklyGrowthReportV2 {
   schema?: "weekly_growth_report.v2"
   period?: {
@@ -1097,6 +1112,7 @@ export interface WeeklyGrowthReportV2 {
     emotionKeywords?: WeeklyEmotionKeyword[]
   }
   pushCenter?: WeeklyPushCenter
+  footprintSummary?: WeeklyFootprintSummary
   highlights?: WeeklyGrowthHighlight[]
   contributionGrid?: WeeklyContributionDay[]
   tags?: {

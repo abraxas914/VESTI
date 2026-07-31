@@ -50,4 +50,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run core logic tests (capture-core + main + ui + relay)
-        run: pnpm test -- --run
+        run: pnpm test --run

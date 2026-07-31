@@ -1,4 +1,4 @@
-import type { TranslationsType } from "./en";
+import type { TranslationsType } from "./en"
 
 export const zhTranslations = {
   common: {
@@ -35,28 +35,140 @@ export const zhTranslations = {
     exporting: "正在导出...",
     imported: "已导入",
     expand: "展开",
-    collapse: "收起",
+    collapse: "收起"
+  },
+
+  onboarding: {
+    brandName: "心迹 VESTI",
+    eyebrow: "你的私人 AI 记忆",
+    subtitle: "收藏对话，沉淀长期知识",
+    intro:
+      "心迹会安静收藏你的 AI 对话，将分散的思考整理为可搜索、仅存本地的知识轨迹。",
+    quickStart: "快速开始",
+    quickStartWorking: "正在导入最近一周的 AI 记录…",
+    quickStartDescription: "优先导入一周记录；无法导入时自动加载演示案例。",
+    quickStartSuccess: "最近一周的记忆已准备好，正在打开心迹…",
+    quickStartNoTab: "心迹已就绪。打开受支持的 AI 对话即可开始收藏。",
+    quickStartUnavailable: "心迹已就绪，但当前对话暂时无法收藏。",
+    skip: "跳过引导，直接使用 →",
+    privacy: "无需账号。你的对话资料库只保存在本机。",
+    supportedPlatforms:
+      "支持 ChatGPT、Claude、Gemini、DeepSeek、豆包、千问、Kimi 与元宝。",
+    actionFailed: "设置过程被中断，请重试。",
+    setupTitle: "让心迹更适合你",
+    setupSubtitle: "只需三个选择，稍后可随时修改。",
+    stepOf: "第 {current}/{total} 步",
+    captureStepTitle: "希望心迹如何收藏对话？",
+    captureStepDescription: "当你明确点击快速开始时，心迹始终会执行一次保存。",
+    captureMirror: "自动收藏",
+    captureMirrorDescription: "在支持的网站上静默保存持续产生的对话。",
+    captureSmart: "智能筛选",
+    captureSmartDescription: "收藏有内容的对话，暂存过短或命中屏蔽词的内容。",
+    captureManual: "手动收藏",
+    captureManualDescription: "仅在你明确归档时保存对话。",
+    aiStepTitle: "选择 AI 使用方式",
+    aiStepDescription: "Demo 模式开箱即用，个人密钥完全可选。",
+    demoMode: "Demo 模式 · 推荐",
+    demoModeDescription: "无需配置或登录，直接使用心迹托管网关。",
+    byokMode: "使用我的 API Key",
+    byokModeDescription: "将个人 DashScope 兼容密钥仅保存在本机。",
+    apiKeyLabel: "API Key",
+    apiKeyPlaceholder: "sk-...",
+    apiKeyInvalid: "请输入至少 12 个字符的有效密钥。",
+    connectionTest: "测试连接",
+    connectionTesting: "测试中…",
+    connectionOptional: "连接测试是可选项，失败不会阻止保存。",
+    preferencesStepTitle: "选择工作区体验",
+    preferencesStepDescription: "设置语言、外观和悬浮捕获胶囊。",
+    languageLabel: "语言",
+    themeLabel: "外观",
+    themeLight: "浅色",
+    themeDark: "深色",
+    capsuleLabel: "悬浮胶囊",
+    capsuleDescription: "在支持的 AI 网站显示轻量捕获状态。",
+    back: "上一步",
+    next: "继续",
+    finish: "完成设置",
+    finishing: "正在完成…",
+    resumeHint: "进度会自动保存。",
+    saveFailed: "无法保存你的选择，请重试。",
+    capturedBanner: "最近的对话已经准备好了。",
+    noTabBanner: "心迹已就绪。前往受支持的 AI 对话，收藏你的第一条记忆。",
+    unavailableBanner: "心迹已就绪。如果当前对话没有出现，请刷新 AI 页面。",
+    dismiss: "关闭提示"
   },
 
   pages: {
     threads: "对话",
     insights: "洞察",
     data: "数据",
-    settings: "设置",
+    settings: "设置"
   },
 
   dock: {
     threads: "对话",
+    explore: "探索",
+    aiti: "AITI 画像",
+    roundtable: "AI 圆桌",
     insights: "洞察",
     dataManagement: "数据管理",
     settings: "设置",
     openLibrary: "打开资料库面板",
     navigation: "Vesti 导航",
     threadsDesc: "你捕获的全部对话 —— 搜索、打标签，随时回到上次读到的地方。",
+    exploreDesc: "向本地对话知识库提问，并查看命中上下文。",
+    aitiDesc: "从全部对话中分析你的 AI 使用画像。",
+    roundtableDesc: "让三个不同立场的 AI 角色并行讨论同一话题。",
     insightsDesc: "每段对话的自动摘要，外加一份每周思考总结。",
     dataDesc: "备份与恢复你的资料库，并从各平台导入历史对话。",
     settingsDesc: "模型、捕获、语言与主题。",
-    openLibraryDesc: "打开完整网页应用 —— 资料库、探索、知识图谱、提示词。",
+    openLibraryDesc: "打开完整网页应用 —— 资料库、探索、知识图谱、提示词。"
+  },
+
+  coreFeatures: {
+    dashboard: {
+      mergeSummary: "生成合并摘要",
+      summaryLabel: "合并记忆摘要",
+      continueFromSummary: "基于上述摘要展开新对话",
+      toast:
+        "无须人工唤醒记忆，即可基于不同AI聊天背景展开新的对话。",
+      summaryError: "暂时无法生成所选对话的合并摘要。",
+      continuationError: "暂时无法创建续聊会话。"
+    },
+    explore: {
+      title: "知识库探索",
+      description: "检索保存在本机的全部对话，再基于命中内容回答。",
+      contextTitle: "续聊上下文",
+      emptyTitle: "小猫已经准备好了",
+      emptyDescription: "输入问题，小猫会翻遍本地知识库里的对话全文。",
+      placeholder: "输入你想从知识库了解的问题...",
+      ask: "向知识库提问",
+      toast: "小猫带你在知识库里遨游，与我对话探索过去的知识旅程。",
+      error: "暂时无法检索知识库，请稍后重试。"
+    },
+    aiti: {
+      title: "你的 AI 使用画像",
+      description: "根据本地保存的全部对话，分析你的使用倾向与思考方式。",
+      sample: "基于 {count} 条对话分析",
+      toast:
+        "小猫根据你的AI对话形象进行分析，你是脑洞大开的创新者，还是深度专研的思考者呢？",
+      error: "暂时无法生成 AI 使用画像。"
+    },
+    roundtable: {
+      title: "AI 圆桌",
+      description: "三个立场不同的角色将并行回应同一话题。",
+      placeholder: "输入想让圆桌讨论的话题...",
+      start: "开始讨论",
+      toast:
+        "调用不同角色的AI，从多个角度与你共同探讨你感兴趣的话题。",
+      error: "暂时无法发起圆桌讨论。",
+      roleFailed: "该角色暂未返回结果，请稍后重试。",
+      roles: {
+        domain_expert: "领域专家",
+        devils_advocate: "唱反调者",
+        skeptic: "怀疑者"
+      }
+    }
   },
 
   settings: {
@@ -64,7 +176,7 @@ export const zhTranslations = {
     groups: {
       personalisation: "个性化",
       system: "系统",
-      support: "支持",
+      support: "支持"
     },
     appearance: {
       title: "外观",
@@ -75,7 +187,7 @@ export const zhTranslations = {
       compactCardsDesc: "减少卡片内边距。",
       themeLoading: "正在应用主题...",
       darkEnabled: "深色模式已开启。",
-      lightEnabled: "浅色模式已开启。",
+      lightEnabled: "浅色模式已开启。"
     },
     language: {
       title: "语言",
@@ -84,7 +196,7 @@ export const zhTranslations = {
       en: "English",
       zh: "中文",
       ja: "日本語",
-      ko: "한국어",
+      ko: "한국어"
     },
     modelAccess: {
       title: "模型接入",
@@ -105,7 +217,8 @@ export const zhTranslations = {
       modelLabel: "模型",
       whitelistOnly: "仅白名单",
       proxy: "代理",
-      proxyDesc: "仅当此字段非空时，聊天请求才会带上 service-token 请求头。部分代理部署或嵌入接口可能强制要求，而当前检测到的聊天接口可能并不需要。",
+      proxyDesc:
+        "仅当此字段非空时，聊天请求才会带上 service-token 请求头。部分代理部署或嵌入接口可能强制要求，而当前检测到的聊天接口可能并不需要。",
       proxyChat: "代理聊天",
       proxyRoute: "路由",
       proxyBaseUrl: "基础地址",
@@ -122,7 +235,7 @@ export const zhTranslations = {
       saved: "已保存",
       connectionVerified: "连接成功",
       testFailed: "连接失败",
-      apiKeyRequired: "自定义模式需要填写 API Key",
+      apiKeyRequired: "自定义模式需要填写 API Key"
     },
     captureEngine: {
       title: "捕获引擎",
@@ -130,15 +243,15 @@ export const zhTranslations = {
       modeLabel: "捕获模式",
       fullMirror: {
         label: "完整同步",
-        desc: "捕获所有解析出的对话更新。",
+        desc: "捕获所有解析出的对话更新。"
       },
       smartDenoising: {
         label: "智能降噪",
-        desc: "仅在满足最少轮次和关键词规则时才捕获。",
+        desc: "仅在满足最少轮次和关键词规则时才捕获。"
       },
       manualArchive: {
         label: "手动归档",
-        desc: "暂停自动写入，直到你手动归档当前对话。",
+        desc: "暂停自动写入，直到你手动归档当前对话。"
       },
       minTurnsLabel: "最少轮次（1-20）",
       blacklistLabel: "黑名单关键词（逗号分隔）",
@@ -158,7 +271,7 @@ export const zhTranslations = {
       archiveHint: "仅在智能/手动模式下，且存在活动快照时可用。",
       saveSettings: "保存捕获设置",
       settingsSaved: "捕获设置已保存",
-      archivedSummary: "已保存 · {count} 条消息",
+      archivedSummary: "已保存 · {count} 条消息"
     },
     notionExport: {
       title: "Notion 导出",
@@ -176,20 +289,22 @@ export const zhTranslations = {
       extensionOnly: "OAuth 登录仅在扩展版本中可用。",
       targetDatabase: "目标数据库",
       databasePlaceholder: "搜索共享数据库",
-      noDatabases: "尚未找到共享数据库。请在 Notion 中将数据库共享给集成应用，然后刷新。",
-      shareHint: "如果数据库还没出现，请在 Notion 中将其共享给集成应用，然后刷新。",
+      noDatabases:
+        "尚未找到共享数据库。请在 Notion 中将数据库共享给集成应用，然后刷新。",
+      shareHint:
+        "如果数据库还没出现，请在 Notion 中将其共享给集成应用，然后刷新。",
       selected: "已选择",
       chooseDatabase: "选择一个数据库即可启用批注导出。",
       connecting: "正在连接...",
       connectedMsg: "Notion 已连接。",
-      disconnectedMsg: "Notion 已断开连接。",
+      disconnectedMsg: "Notion 已断开连接。"
     },
     dataManagement: {
       title: "数据管理",
       description: "存储、导出和清理。",
       dataToolsDesc: "数据工具请前往「数据」标签页使用。",
       dataToolsHint: "可查看存储概况、导出和清理数据。",
-      openDataTab: "打开数据管理",
+      openDataTab: "打开数据管理"
     },
     desktop: {
       title: "连接 VESTI 桌面",
@@ -219,21 +334,28 @@ export const zhTranslations = {
       repairHint: "桌面端拒绝了已保存的令牌，请使用新的配对码重新配对。",
       firstSyncHint: "配对成功后会自动进行首次全量同步。",
       statusWaitingConfirm: "等待应用内确认",
-      waitingConfirmHint: "已发现桌面端 — 请在 VESTI 应用窗口中点击「允许」完成连接。",
-      waitingRetryHint: "尚未完成确认。点击重试可在 VESTI 应用中再次弹出确认，也可以等待下一次自动尝试。",
+      waitingConfirmHint:
+        "已发现桌面端 — 请在 VESTI 应用窗口中点击「允许」完成连接。",
+      waitingRetryHint:
+        "尚未完成确认。点击重试可在 VESTI 应用中再次弹出确认，也可以等待下一次自动尝试。",
       statusWindowClosed: "配对窗口未打开",
-      windowClosedHint: "已发现桌面端，但配对窗口未打开。请在 VESTI 应用的设置页打开配对窗口，然后点击重试。",
+      windowClosedHint:
+        "已发现桌面端，但配对窗口未打开。请在 VESTI 应用的设置页打开配对窗口，然后点击重试。",
       statusRejected: "已被拒绝",
-      rejectedCooldown: "连接请求已在 VESTI 应用中被拒绝，约 {minutes} 分钟后可重试。",
+      rejectedCooldown:
+        "连接请求已在 VESTI 应用中被拒绝，约 {minutes} 分钟后可重试。",
       retryConnect: "重试",
       reconnect: "重新连接",
-      disconnectedHint: "已手动断开，扩展不会自动重连。需要时请点击下方按钮重新连接。",
-      offlineHint: "未检测到桌面端。请启动 VESTI 桌面应用（未安装的话请先安装），之后扩展会自动连接。",
-      usePairCode: "使用配对码连接（兜底）",
+      disconnectedHint:
+        "已手动断开，扩展不会自动重连。需要时请点击下方按钮重新连接。",
+      offlineHint:
+        "未检测到桌面端。请启动 VESTI 桌面应用（未安装的话请先安装），之后扩展会自动连接。",
+      usePairCode: "使用配对码连接（兜底）"
     },
     relay: {
       title: "待注入交接包",
-      description: "桌面端发来的 AI 交接包，可一键填充到当前 AI 平台标签页的输入框。",
+      description:
+        "桌面端发来的 AI 交接包，可一键填充到当前 AI 平台标签页的输入框。",
       countLabel: "{count} 条交接包待注入。",
       inject: "注入到当前标签页",
       injecting: "注入中…",
@@ -243,7 +365,7 @@ export const zhTranslations = {
       unsupportedTab: "当前标签页不是受支持的 AI 平台，请先打开目标平台页面。",
       contentUnreachable: "平台页面尚未就绪，请刷新页面后重试。",
       fillFailed: "未能在页面上定位输入框，请待页面加载完成后重试。",
-      failedHint: "上次注入失败，可重试。",
+      failedHint: "上次注入失败，可重试。"
     },
     support: {
       docsHelp: "文档与帮助",
@@ -253,8 +375,8 @@ export const zhTranslations = {
       copied: "已复制",
       retry: "重试",
       openIssue: "在 GitHub 上提交 Issue",
-      whatsNew: "新功能",
-    },
+      whatsNew: "新功能"
+    }
   },
 
   timeline: {
@@ -287,13 +409,13 @@ export const zhTranslations = {
     sourceUrlUnavailable: "来源链接不可用",
     filters: {
       started: "开始于",
-      source: "来源",
+      source: "来源"
     },
     datePresets: {
       allTime: "不限开始时间",
       today: "今天开始",
       thisWeek: "本周开始",
-      thisMonth: "本月开始",
+      thisMonth: "本月开始"
     },
     allSources: "所有来源",
     messages: "条消息",
@@ -311,7 +433,7 @@ export const zhTranslations = {
       minutesAgo: "分钟前",
       hoursAgo: "小时前",
       daysAgo: "天前",
-      monthsAgo: "个月前",
+      monthsAgo: "个月前"
     },
     batch: {
       clearSelection: "清除选择",
@@ -345,14 +467,23 @@ export const zhTranslations = {
       deleteDescSingular: "该操作将从本地存储中删除所选对话及其消息。输入",
       deleteDescPlural: "该操作将从本地存储中删除 {count} 条对话及其消息。输入",
       exportFormats: {
-        md: { name: "Markdown", desc: "适用于笔记、文档和写作工具的 Markdown 导出" },
+        md: {
+          name: "Markdown",
+          desc: "适用于笔记、文档和写作工具的 Markdown 导出"
+        },
         txt: { name: "文本", desc: "纯文本导出，便于快速阅读和复制" },
-        json: { name: "JSON", desc: "结构化导出，用于备份、审阅和重新处理" },
+        json: { name: "JSON", desc: "结构化导出，用于备份、审阅和重新处理" }
       },
       exportModes: {
         full: { label: "完整", desc: "在本地保留完整的对话记录。" },
-        compact: { label: "精简", desc: "为下一位智能体整理精简交接内容。优先使用当前 LLM 设置，失败时改用本地回退。" },
-        summary: { label: "摘要", desc: "整理成人类笔记格式。优先使用当前 LLM 设置，失败时使用本地回退。" },
+        compact: {
+          label: "精简",
+          desc: "为下一位智能体整理精简交接内容。优先使用当前 LLM 设置，失败时改用本地回退。"
+        },
+        summary: {
+          label: "摘要",
+          desc: "整理成人类笔记格式。优先使用当前 LLM 设置，失败时使用本地回退。"
+        }
       },
       copyExport: "复制导出内容",
       downloadExport: "下载导出内容",
@@ -363,8 +494,8 @@ export const zhTranslations = {
       clipboardFailed: "无法将导出内容复制到剪贴板。",
       clipboardHint: "检查剪贴板权限或使用下载。",
       clipboardUnavailable: "无法复制",
-      exportPanelDesc: "保留数据页的格式选项，并在这里选择导出详略。",
-    },
+      exportPanelDesc: "保留数据页的格式选项，并在这里选择导出详略。"
+    }
   },
 
   exportDialog: {
@@ -385,7 +516,7 @@ export const zhTranslations = {
     download: "下载",
     copy: "复制",
     copied: "已复制！",
-    close: "关闭",
+    close: "关闭"
   },
 
   data: {
@@ -410,11 +541,12 @@ export const zhTranslations = {
       messages: "{count} 条消息",
       summaries: "{count} 条摘要",
       weeklyReports: "{count} 份周报",
-      annotations: "{count} 条批注",
+      annotations: "{count} 条批注"
     },
     clearCacheConfirm: "仅清除缓存的摘要和周报？\n对话和消息将被保留。",
     cacheClearedMessage: "已清除洞察缓存，对话和消息已保留。",
-    clearAllConfirm: "这将清除所有本地对话、消息、摘要和周报。\n输入 DELETE 以继续：",
+    clearAllConfirm:
+      "这将清除所有本地对话、消息、摘要和周报。\n输入 DELETE 以继续：",
     clearCancelled: "已取消清除。",
     dataCleared: "已清除本地数据，LLM 配置保持不变。",
     history: {
@@ -422,8 +554,10 @@ export const zhTranslations = {
       subtitle: "把该 AI 平台上以往的对话一键纳入",
       description:
         "Vesti 通过平台自身的接口（使用你当前的登录态）读取你已有的对话并保存到本地。只读——不会发送或提交任何内容。",
-      supportedNote: "当前支持：ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi、腾讯元宝。",
-      unsupportedTab: "请在当前标签页打开受支持的平台（ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi、腾讯元宝），再回来导入其历史对话。",
+      supportedNote:
+        "当前支持：ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi、腾讯元宝。",
+      unsupportedTab:
+        "请在当前标签页打开受支持的平台（ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi、腾讯元宝），再回来导入其历史对话。",
       notLoggedIn: "请先在当前标签页登录 {platform}，然后重试。",
       ready: "可从 {platform} 导入。",
       start: "导入 {platform} 历史对话",
@@ -436,7 +570,7 @@ export const zhTranslations = {
       cancelledSummary: "已取消。目前已导入 {saved} 条。",
       errorSummary: "导入失败：{error}",
       confirm:
-        "确认从 {platform} 导入历史对话？Vesti 会通过平台自身的接口读取你的对话并保存到本地，不会发送或提交任何内容。",
+        "确认从 {platform} 导入历史对话？Vesti 会通过平台自身的接口读取你的对话并保存到本地，不会发送或提交任何内容。"
     },
     cleanup: "清理",
     cleanupDesc: "删除摘要缓存或清除所有本地数据",
@@ -470,7 +604,8 @@ export const zhTranslations = {
     dangerZone: "危险区域",
     clearLocalData: "清除本地数据",
     importAction: "导入",
-    compactionNote: "压缩指标目前基于摘要缓存估算，后续可升级为严格的 Agent A 压缩链路。",
+    compactionNote:
+      "压缩指标目前基于摘要缓存估算，后续可升级为严格的 Agent A 压缩链路。",
     chromeStorageUsed: "chrome.storage.local 已用",
     estimatedIndexedDb: "预估 IndexedDB + 其他",
     clearCacheDesc: "清除缓存的对话摘要和周报，保留对话与消息。",
@@ -479,7 +614,7 @@ export const zhTranslations = {
     importData: "导入数据",
     clearAllData: "清除所有数据",
     clearInsightsCache: "清除洞察缓存",
-    noUndo: "此操作无法撤销。",
+    noUndo: "此操作无法撤销。"
   },
 
   insights: {
@@ -557,15 +692,17 @@ export const zhTranslations = {
     depthLabels: {
       deep: "深度拆解",
       moderate: "逐步深挖",
-      superficial: "轻量梳理",
+      superficial: "轻量梳理"
     },
     latestRegenerationFailed: "上次重新生成失败。",
     failedToGenerateWeekly: "生成周报失败。",
     weeklyGenerationTimeout: "生成超时，请重试。",
     failedToGenerateSummary: "生成摘要失败。",
     notEnoughData: "数据不足，无法生成本周周报。",
-    sub3Hint: "该时间范围内的有效结构化摘要少于 3 个。当积累到足够的结构化证据后，周报会自动继续生成。",
-    semanticDegradedHint: "已找到足够的摘要，但语义质量校验将本次生成降级，以避免产生低价值的零散内容。",
+    sub3Hint:
+      "该时间范围内的有效结构化摘要少于 3 个。当积累到足够的结构化证据后，周报会自动继续生成。",
+    semanticDegradedHint:
+      "已找到足够的摘要，但语义质量校验将本次生成降级，以避免产生低价值的零散内容。",
     substantialSummaries: "有效摘要数",
     uiPauseOnly: "仅暂停 UI 进度。后台生成继续进行。",
     modelLabel: "模型",
@@ -575,17 +712,53 @@ export const zhTranslations = {
     moreThreads: "还有 {count} 条",
     thread: "对话",
     phases: {
-      loadingSummaries: { label: "加载对话摘要", desc: "读取所选周的已有摘要", hint: "~12秒", status: "正在加载本周的对话摘要..." },
-      patternDetection: { label: "模式检测", desc: "跨对话频率与重复性分析", hint: "~14秒", status: "正在扫描重复模式..." },
-      crossDomainMapping: { label: "跨域映射", desc: "结构同构检测", hint: "~15秒", status: "正在映射跨领域回响..." },
-      composing: { label: "撰写并保存", desc: "撰写摘要并保存结果", hint: "~10秒", status: "正在撰写并保存摘要..." },
+      loadingSummaries: {
+        label: "加载对话摘要",
+        desc: "读取所选周的已有摘要",
+        hint: "~12秒",
+        status: "正在加载本周的对话摘要..."
+      },
+      patternDetection: {
+        label: "模式检测",
+        desc: "跨对话频率与重复性分析",
+        hint: "~14秒",
+        status: "正在扫描重复模式..."
+      },
+      crossDomainMapping: {
+        label: "跨域映射",
+        desc: "结构同构检测",
+        hint: "~15秒",
+        status: "正在映射跨领域回响..."
+      },
+      composing: {
+        label: "撰写并保存",
+        desc: "撰写摘要并保存结果",
+        hint: "~10秒",
+        status: "正在撰写并保存摘要..."
+      }
     },
     threadPhases: {
-      preparing: { label: "初始化流水线", desc: "检查缓存并唤醒上下文窗口", status: "准备对话上下文..." },
-      distilling: { label: "提炼核心逻辑", desc: "追踪各轮次之间的变化", status: "提炼核心逻辑..." },
-      curating: { label: "整理摘要", desc: "构建思考轨迹和洞察词汇表", status: "整理结构化摘要..." },
-      finalising: { label: "最终整理", desc: "写入存储记录并刷新卡片", status: "最终整理并保存..." },
-    },
+      preparing: {
+        label: "初始化流水线",
+        desc: "检查缓存并唤醒上下文窗口",
+        status: "准备对话上下文..."
+      },
+      distilling: {
+        label: "提炼核心逻辑",
+        desc: "追踪各轮次之间的变化",
+        status: "提炼核心逻辑..."
+      },
+      curating: {
+        label: "整理摘要",
+        desc: "构建思考轨迹和洞察词汇表",
+        status: "整理结构化摘要..."
+      },
+      finalising: {
+        label: "最终整理",
+        desc: "写入存储记录并刷新卡片",
+        status: "最终整理并保存..."
+      }
+    }
   },
 
   reader: {
@@ -608,8 +781,8 @@ export const zhTranslations = {
       captured: "已捕获",
       sourceTime: "来源时间",
       summaryStarted: "开始于",
-      summaryUpdated: "上次更新",
-    },
+      summaryUpdated: "上次更新"
+    }
   },
 
   message: {
@@ -621,37 +794,44 @@ export const zhTranslations = {
     attachment: "附件",
     attachments: "附件",
     artifact: "生成物",
-    artifacts: "生成物",
+    artifacts: "生成物"
   },
 
   capture: {
     status: {
       ready: "就绪",
       mirrorMode: "镜像模式无需手动归档",
-      unsupported_tab: "请在当前标签页打开 ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi 或元宝的对话。",
+      unsupported_tab:
+        "请在当前标签页打开 ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi 或元宝的对话。",
       no_transient: "尚未检测到活动对话快照。",
-      content_unreachable: "无法访问页面内容脚本，请刷新后重试。",
+      content_unreachable: "无法访问页面内容脚本，请刷新后重试。"
     },
     errors: {
       archiveModeDisabled: "手动归档仅在智能/手动模式下可用",
-      activeTabUnsupported: "当前标签页不受支持，请打开 ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi 或元宝",
+      activeTabUnsupported:
+        "当前标签页不受支持，请打开 ChatGPT、Claude、Gemini、DeepSeek、豆包、通义千问、Kimi 或元宝",
       activeTabUnavailable: "未找到当前标签页",
       transientNotFound: "未找到活动对话快照，发送一条消息后重试",
       missingConversationId: "当前 URL 尚无稳定的对话 ID，继续对话后重试",
       emptyPayload: "没有可归档的解析消息",
       storageLimit: "存储已达硬上限，请先导出或清理数据",
       persistFailed: "归档写入失败，请重试",
-      forceArchiveFailed: "手动归档失败，请重试",
-    },
+      forceArchiveFailed: "手动归档失败，请重试"
+    }
   },
 
   dashboard: {
-    tabs: { library: "对话知识库", explore: "探索", network: "知识图谱", prompts: "提示词库" },
+    tabs: {
+      library: "对话知识库",
+      explore: "探索",
+      network: "知识图谱",
+      prompts: "提示词库"
+    },
     nav: {
       backToExplore: "返回探索",
       backToNetwork: "返回知识图谱",
       dashboardSections: "面板导航",
-      closeDrawer: "关闭抽屉",
+      closeDrawer: "关闭抽屉"
     },
     settings: {
       settings: "设置",
@@ -694,12 +874,14 @@ export const zhTranslations = {
       targetDatabase: "目标数据库",
       databaseSearchPlaceholder: "搜索共享数据库",
       refresh: "刷新",
-      shareDatabaseHint: "将数据库共享给你的 Notion 集成应用，如果尚未出现请刷新。",
+      shareDatabaseHint:
+        "将数据库共享给你的 Notion 集成应用，如果尚未出现请刷新。",
       selectedColon: "已选择：",
       readyForOneShotExport: "已准备好一次性导出",
-      noSharedDatabasesFound: "尚未找到共享数据库。请在 Notion 中将数据库共享给集成应用，然后刷新。",
+      noSharedDatabasesFound:
+        "尚未找到共享数据库。请在 Notion 中将数据库共享给集成应用，然后刷新。",
       selectedDatabaseMessage: "已选择 {title}。",
-      themeUpdateFailed: "主题更新失败。",
+      themeUpdateFailed: "主题更新失败。"
     },
     library: {
       allConversations: "全部对话",
@@ -767,7 +949,8 @@ export const zhTranslations = {
       open: "打开",
       focusNote: "定位到笔记",
       noNoteLinkedYet: "暂无关联笔记",
-      startExtractingHint: "从阅读器中提取内容，或创建对话笔记，让阅读与写作并排进行。",
+      startExtractingHint:
+        "从阅读器中提取内容，或创建对话笔记，让阅读与写作并排进行。",
       startWritingPlaceholder: "开始写作...",
       createConversationNote: "创建对话笔记",
       extractedExcerptsPlaceholder: "摘录和你的笔记将显示在这里...",
@@ -818,7 +1001,8 @@ export const zhTranslations = {
       choosingFolder: "选择文件夹...",
       notesWorkspace: "笔记工作区",
       selectNoteToEdit: "选择笔记开始编辑",
-      localNotesAndObsidianShareEditor: "本地笔记和导入的 Obsidian 文件共用同一个 Markdown 编辑器",
+      localNotesAndObsidianShareEditor:
+        "本地笔记和导入的 Obsidian 文件共用同一个 Markdown 编辑器",
       loadingNotes: "正在加载笔记...",
       createLocalNoteHint: "创建本地笔记，准备好后可导出到 Obsidian 文件夹",
       createNote: "创建笔记",
@@ -852,7 +1036,8 @@ export const zhTranslations = {
       daysAgo: "天前",
       monthsAgo: "个月前",
       yearsAgo: "年前",
-      sourceFileChangedAfterEdits: "源文件在本地编辑后已更改。为避免覆盖此笔记，已跳过重新导入。",
+      sourceFileChangedAfterEdits:
+        "源文件在本地编辑后已更改。为避免覆盖此笔记，已跳过重新导入。",
       dateUnknown: "未知日期",
       frontmatter: "Frontmatter",
       directoryExportNotSupported: "当前浏览器环境不支持本地目录导出。",
@@ -881,8 +1066,8 @@ export const zhTranslations = {
         emotionalTone: "情绪基调：",
         depth: "深度：",
         nextSteps: "后续步骤",
-        fallback: "纯文本回退",
-      },
+        fallback: "纯文本回退"
+      }
     },
     explore: {
       modeAgent: "智能体",
@@ -925,7 +1110,7 @@ export const zhTranslations = {
         emotionalTone: "情绪基调：",
         depth: "深度：",
         nextSteps: "后续步骤",
-        fallback: "纯文本回退",
+        fallback: "纯文本回退"
       },
       sendToButton: "发送到…",
       sendToNotionConversation: "Notion —— 整段对话",
@@ -959,127 +1144,139 @@ export const zhTranslations = {
       askPlaceholder: "向知识库提问、总结本周内容，或追踪决策轨迹...",
       askAgentPlaceholder: "向知识库提问（智能体模式）...",
       askClassicPlaceholder: "向知识库提问（经典模式）...",
-      agentModeDesc: "智能体模式会展示规划路线、工具调用、来源控制和可编辑的上下文草稿",
+      agentModeDesc:
+        "智能体模式会展示规划路线、工具调用、来源控制和可编辑的上下文草稿",
       classicModeDesc: "经典模式会搜索历史记录，并返回简洁、带来源依据的答案",
       newChatPrefill: "新对话（预填）",
       searchByTitlePlaceholder: "按标题或内容搜索...",
       fillComposer: "填入输入框",
       starterDeck1Eyebrow: "从任务开始",
       starterDeck1Title: "以更轻量的方式探索你的知识库",
-      starterDeck1Description: "提出一个聚焦的问题，让「探索」帮你搜索、总结，并整理出所需的最小上下文",
+      starterDeck1Description:
+        "提出一个聚焦的问题，让「探索」帮你搜索、总结，并整理出所需的最小上下文",
       starterDeck2Eyebrow: "默认保持私密",
       starterDeck2Title: "询问工作的轮廓，而非全部对话记录",
-      starterDeck2Description: "「探索」最擅长将知识库压缩为精炼、可信的答案，你可以随时检查来源",
+      starterDeck2Description:
+        "「探索」最擅长将知识库压缩为精炼、可信的答案，你可以随时检查来源",
       starterDeck3Eyebrow: "分层推进",
       starterDeck3Title: "从宽泛入手，再聚焦到关键来源",
-      starterDeck3Description: "使用推荐提示获取简洁答案，如需验证再查看来源对话",
+      starterDeck3Description:
+        "使用推荐提示获取简洁答案，如需验证再查看来源对话",
       modeStages: {
         agent: [
           "正在规划路线...",
           "正在扫描轻量级知识库线索...",
           "正在收集来源依据...",
           "正在编译上下文草稿...",
-          "正在综合更完整的答案...",
+          "正在综合更完整的答案..."
         ],
         classic: [
           "正在理解你的问题...",
           "正在搜索已索引的上下文...",
-          "正在综合更完整的答案...",
-        ],
+          "正在综合更完整的答案..."
+        ]
       },
       starterDecks: [
         {
           eyebrow: "从任务开始",
           title: "以更轻量的方式探索你的知识库",
-          description: "提出一个聚焦的问题，让「探索」帮你搜索、总结，并整理出所需的最小上下文",
-          privacyTip: "保持提示聚焦。询问主题、决策或某个时间窗口，而非原始对话记录。",
+          description:
+            "提出一个聚焦的问题，让「探索」帮你搜索、总结，并整理出所需的最小上下文",
+          privacyTip:
+            "保持提示聚焦。询问主题、决策或某个时间窗口，而非原始对话记录。",
           capabilityHint: "这里支持摘要、周报以及有来源依据的答案。",
           prompts: [
             {
               title: "总结本周",
               prompt: "总结我本周做的工作，并突出主要决策。",
-              detail: "非常适合把最近一批对话汇总成简洁的回顾。",
+              detail: "非常适合把最近一批对话汇总成简洁的回顾。"
             },
             {
               title: "找到决策脉络",
               prompt: "展示能解释我们如何得出最终决策的对话。",
-              detail: "当你想要结论背后的来龙去脉而不仅是结论时使用。",
+              detail: "当你想要结论背后的来龙去脉而不仅是结论时使用。"
             },
             {
               title: "归类相关话题",
-              prompt: "将关于这个主题最相关的对话归为一组，并说明它们为何相关。",
-              detail: "适合在不暴露完整原始对话记录的情况下对主题聚类。",
+              prompt:
+                "将关于这个主题最相关的对话归为一组，并说明它们为何相关。",
+              detail: "适合在不暴露完整原始对话记录的情况下对主题聚类。"
             },
             {
               title: "快速生成简报",
               prompt: "根据最相关的对话生成一份简短简报，并保持有来源依据。",
-              detail: "当你需要干净的交接或摘要笔记时，这是一个精简的起点。",
-            },
-          ],
+              detail: "当你需要干净的交接或摘要笔记时，这是一个精简的起点。"
+            }
+          ]
         },
         {
           eyebrow: "默认保持私密",
           title: "询问工作的轮廓，而非全部对话记录",
-          description: "「探索」最擅长将知识库压缩为精炼、可信的答案，你可以随时检查来源",
-          privacyTip: "优先使用主题、卡点或结果这类描述词，避免一次性索取全部内容。",
+          description:
+            "「探索」最擅长将知识库压缩为精炼、可信的答案，你可以随时检查来源",
+          privacyTip:
+            "优先使用主题、卡点或结果这类描述词，避免一次性索取全部内容。",
           capabilityHint: "你可以搜索全部对话或选定的子集，之后再细化来源。",
           prompts: [
             {
               title: "有什么变化？",
               prompt: "过去一周我的对话中发生了哪些变化？",
-              detail: "一种在不获取多余内容的前提下呈现进展的安全方式。",
+              detail: "一种在不获取多余内容的前提下呈现进展的安全方式。"
             },
             {
               title: "归类卡点",
               prompt: "归类我对话中反复出现的卡点或未解问题。",
-              detail: "有助于发现反复出现的痛点，以及讨论总是绕回的地方。",
+              detail: "有助于发现反复出现的痛点，以及讨论总是绕回的地方。"
             },
             {
               title: "追踪某个主题",
               prompt: "追踪关于隐私或搜索的主要讨论，并总结其脉络。",
-              detail: "适合在多个对话中跟踪同一条线索。",
+              detail: "适合在多个对话中跟踪同一条线索。"
             },
             {
               title: "梳理后续步骤",
               prompt: "梳理最相关对话所暗示的后续行动。",
-              detail: "把零散的讨论转化为可执行的跟进清单。",
-            },
-          ],
+              detail: "把零散的讨论转化为可执行的跟进清单。"
+            }
+          ]
         },
         {
           eyebrow: "分层推进",
           title: "从宽泛入手，再聚焦到关键来源",
           description: "使用推荐提示获取简洁答案，如需验证再查看来源对话",
-          privacyTip: "简短的提示通常比完整详尽的请求暴露更少，有助于保持探索的聚焦。",
-          capabilityHint: "可以索取周报、跨对话主题，或一份可手动检查的来源清单。",
+          privacyTip:
+            "简短的提示通常比完整详尽的请求暴露更少，有助于保持探索的聚焦。",
+          capabilityHint:
+            "可以索取周报、跨对话主题，或一份可手动检查的来源清单。",
           prompts: [
             {
               title: "每周回顾",
               prompt: "给我一份简洁的每周回顾，包含主要主题和后续事项。",
-              detail: "为兼顾简洁与实用的周报而设计。",
+              detail: "为兼顾简洁与实用的周报而设计。"
             },
             {
               title: "主题图谱",
               prompt: "梳理我关于架构与工具的对话中的主要主题。",
-              detail: "当目标是先从更高层面理解知识库时很有用。",
+              detail: "当目标是先从更高层面理解知识库时很有用。"
             },
             {
               title: "证据优先",
               prompt: "列出该主题最相关的对话，并对每一条做简要总结。",
-              detail: "当你想要有来源支撑的答案时，这是搜索与回顾之间很好的桥梁。",
+              detail:
+                "当你想要有来源支撑的答案时，这是搜索与回顾之间很好的桥梁。"
             },
             {
               title: "决策摘要",
               prompt: "总结该决策以及促成它的证据。",
-              detail: "简短、可检查，适合用于快速交接笔记。",
-            },
-          ],
-        },
+              detail: "简短、可检查，适合用于快速交接笔记。"
+            }
+          ]
+        }
       ],
       libraryStarter: {
         titleTemplate: "继续“{cue}”",
         promptTemplate: "继续“{cue}”，在总结要点前先搜索相关上下文。",
-        detail: "基于近期知识库线索生成，仅使用轻量的标题和摘要上下文。",
+        detail: "基于近期知识库线索生成，仅使用轻量的标题和摘要上下文。"
       },
       toolLabels: {
         intent_planner: "意图规划器",
@@ -1089,34 +1286,37 @@ export const zhTranslations = {
         search_rag: "语义搜索",
         summary_tool: "摘要工具",
         context_compiler: "上下文编译器",
-        answer_synthesizer: "答案合成器",
+        answer_synthesizer: "答案合成器"
       },
       toolExplanations: {
-        intent_planner: "使用模型判断用户的诉求、要走哪条路线，以及是否需要时间窗口。",
-        time_scope_resolver: "把诸如「本周」之类的表述转换为具体的日期范围，使答案可审计。",
+        intent_planner:
+          "使用模型判断用户的诉求、要走哪条路线，以及是否需要时间窗口。",
+        time_scope_resolver:
+          "把诸如「本周」之类的表述转换为具体的日期范围，使答案可审计。",
         weekly_summary_tool: "查找该时间段内的对话，然后复用或生成周报。",
         query_planner: "早期「探索」流程中遗留的固定规划步骤。",
         search_rag: "按语义相似度检索知识库，召回最相关的对话。",
         summary_tool: "补全缺失的对话摘要，使多来源答案更易于综合与检查。",
         context_compiler: "构建抽屉中展示的可编辑上下文草稿与来源集合。",
-        answer_synthesizer: "根据收集到的证据生成最终答案，并告知用户可在何处检查结果。",
+        answer_synthesizer:
+          "根据收集到的证据生成最终答案，并告知用户可在何处检查结果。"
       },
       intentLabels: {
         fact_lookup: "事实查询",
         cross_conversation_summary: "跨对话摘要",
         weekly_review: "每周回顾",
         timeline: "时间线",
-        clarification_needed: "需要澄清",
+        clarification_needed: "需要澄清"
       },
       pathLabels: {
         rag: "语义搜索",
         weekly_summary: "周报",
-        clarify: "先澄清",
+        clarify: "先澄清"
       },
       toolStatus: {
         running: "进行中",
         completed: "已完成",
-        failed: "失败",
+        failed: "失败"
       },
       inRange: "时间范围内",
       unknown: "未知",
@@ -1175,7 +1375,8 @@ export const zhTranslations = {
       goalPrefix: "目标：",
       clarificationPrefix: "澄清：",
       plannedTools: "计划使用的工具",
-      plannerFootnote: "规划器借助模型选择高层路线。工具执行始终受限且可在应用内检查。",
+      plannerFootnote:
+        "规划器借助模型选择高层路线。工具执行始终受限且可在应用内检查。",
       noPlannerMetadata: "该答案未记录规划器元数据。",
       noToolCallsRecorded: "该答案未记录工具调用。",
       activeQuery: "当前查询",
@@ -1188,7 +1389,7 @@ export const zhTranslations = {
       draftEditable: "草稿（可编辑）",
       save: "保存",
       copy: "复制",
-      downloadTxt: "下载 TXT",
+      downloadTxt: "下载 TXT"
     },
     data: {
       title: "数据管理",
@@ -1220,11 +1421,12 @@ export const zhTranslations = {
       localDataCleared: "本地数据已清除。LLM 配置已保留。",
       exportedFile: "已导出 {filename}",
       runningDataAction: "正在执行数据操作...",
-      refreshingStorage: "正在刷新存储...",
+      refreshingStorage: "正在刷新存储..."
     },
     network: {
       emptyTitle: "知识图谱将在此显示。",
-      emptyDesc: "在 AI 聊天网站上捕获的对话会自动出现在这里。先捕获一些对话，再看图谱随时间生长——节点按平台/话题分组，语义连线会随相似度索引完成而出现。",
+      emptyDesc:
+        "在 AI 聊天网站上捕获的对话会自动出现在这里。先捕获一些对话，再看图谱随时间生长——节点按平台/话题分组，语义连线会随相似度索引完成而出现。",
       noConversationsYet: "尚未捕获任何对话。",
       replayInfo: "回放会在 8 秒内播放完整时间线，即使所有内容都是今天捕获的。",
       newConversationOn: "+ {platform} 上的新对话",
@@ -1254,7 +1456,8 @@ export const zhTranslations = {
       conversationN: "对话 {id}",
       thinkingMapView: "思维图谱",
       conversationMapView: "对话图谱",
-      thinkingMapEmpty: "思维图谱由摘要驱动——先在资料库为对话生成摘要，图谱就会按关键话题描出你的思考脉络。",
+      thinkingMapEmpty:
+        "思维图谱由摘要驱动——先在资料库为对话生成摘要，图谱就会按关键话题描出你的思考脉络。",
       loadingThinkingMap: "正在构建思维图谱...",
       gapInsightTitle: "还没连起来的线",
       gapInsightTemplate: "你聊过「{a}」和「{b}」，但还没把它们联系起来",
@@ -1265,7 +1468,7 @@ export const zhTranslations = {
       groupByTopic: "按话题",
       groupByProject: "按项目",
       groupOther: "未分组",
-      clusterConversationCount: "{count} 条对话",
+      clusterConversationCount: "{count} 条对话"
     },
     prompts: {
       title: "常用提示词",
@@ -1352,7 +1555,7 @@ export const zhTranslations = {
       selectAria: "选择提示词",
       selectedCount: "已选 {n} 条",
       deleteSelected: "删除",
-      clearSelection: "取消",
+      clearSelection: "取消"
     },
     aiti: {
       modeAsk: "问答",
@@ -1402,18 +1605,20 @@ export const zhTranslations = {
       axisInterdisciplinaryLeft: "专注型",
       axisInterdisciplinaryRight: "跨界型",
       axisInterdisciplinaryLeftStrength: "你在特定领域深耕，积累专业深度。",
-      axisInterdisciplinaryRightStrength: "你善于跨领域连接，把遥远的领域编织在一起。",
+      axisInterdisciplinaryRightStrength:
+        "你善于跨领域连接，把遥远的领域编织在一起。",
       trendsTitle: "近期走向",
       trendRising: "上升",
       trendFalling: "下降",
-      trendStable: "平稳",
+      trendStable: "平稳"
     },
     learn: {
       modeLearn: "学习",
       title: "你最近在学些什么",
       subtitle: "把你的对话整理成一份个人学习地图，完全本地计算。",
       insufficient: "对话还不够多 —— 多聊一些，你的学习地图会逐渐成形。",
-      insufficientHint: "开始 1–2 段对话后，学习模块就会呈现领域、术语和未解问题。",
+      insufficientHint:
+        "开始 1–2 段对话后，学习模块就会呈现领域、术语和未解问题。",
       sample: "来自 {n} 段已分析对话",
       confidenceLabel: "置信度",
       confidenceLow: "初步",
@@ -1439,10 +1644,12 @@ export const zhTranslations = {
       learningPathApplyTitle: "解决开放问题",
       learningPathSynthesizeTitle: "整合你的知识地图",
       learningPathFoundationDesc: "锁定在你对话中出现最频繁的核心概念。",
-      learningPathExpandDesc: "把核心主题与邻近领域连接起来，建立更丰富的知识地图。",
+      learningPathExpandDesc:
+        "把核心主题与邻近领域连接起来，建立更丰富的知识地图。",
       learningPathApplyDesc: "运用所学去解决对话中留下的未解问题。",
-      learningPathSynthesizeDesc: "退后一步，跨领域、跨术语地把知识点连成网络。",
-      learningGoalDeepen: "深入 {domain}",
+      learningPathSynthesizeDesc:
+        "退后一步，跨领域、跨术语地把知识点连成网络。",
+      learningGoalDeepen: "深入 {domain}"
     },
     roundtable: {
       title: "AI 圆桌",
@@ -1464,8 +1671,8 @@ export const zhTranslations = {
       personaOptimist: "乐观者",
       personaPragmatist: "实用主义者",
       personaDomainExpert: "领域专家",
-      personaDevilsAdvocate: "唱反调者",
-    },
+      personaDevilsAdvocate: "唱反调者"
+    }
   },
 
   platforms: {
@@ -1476,7 +1683,7 @@ export const zhTranslations = {
     Qwen: "通义千问",
     Doubao: "豆包",
     Kimi: "Kimi",
-    Yuanbao: "元宝",
+    Yuanbao: "元宝"
   },
 
   realTimeAssist: {
@@ -1487,7 +1694,7 @@ export const zhTranslations = {
       poor: "较差",
       fair: "一般",
       good: "良好",
-      excellent: "优秀",
+      excellent: "优秀"
     },
     breakdown: {
       length: "合适的长度",
@@ -1497,7 +1704,7 @@ export const zhTranslations = {
       structure: "步骤或要点",
       variables: "可复用变量",
       codeFence: "代码块",
-      questionPenalty: "仅为简短提问",
+      questionPenalty: "仅为简短提问"
     },
     clarity: {
       tooShort: "过短，无法评估",
@@ -1510,7 +1717,7 @@ export const zhTranslations = {
       noContext: "缺少背景信息",
       vagueScope: "范围宽泛 / 模糊",
       noStructure: "较长但缺少结构",
-      undefinedVariables: "变量未作说明",
+      undefinedVariables: "变量未作说明"
     },
     suggestion: {
       tooShort: "补充细节：说明任务、背景，以及理想答案的样子。",
@@ -1523,7 +1730,7 @@ export const zhTranslations = {
       noContext: "补充模型需要的背景：受众、目标、已有上下文。",
       vagueScope: "收窄范围：给出具体细节、输入和确切的交付物。",
       noStructure: "拆分为带编号的步骤或要点列表。",
-      undefinedVariables: "说明每个 {{变量}} 的含义并给出示例取值。",
+      undefinedVariables: "说明每个 {{变量}} 的含义并给出示例取值。"
     },
     actions: {
       optimize: "AI 优化",
@@ -1533,7 +1740,7 @@ export const zhTranslations = {
       cancel: "取消",
       offlineHint: "在设置中配置大模型即可启用 AI 改写。",
       completionFailed: "优化失败，请重试。",
-      saveAsPrompt: "保存为提示词",
+      saveAsPrompt: "保存为提示词"
     },
     toggle: {
       label: "实时提示词助手",
@@ -1541,15 +1748,15 @@ export const zhTranslations = {
       enabled: "实时辅助已开启",
       disabled: "实时辅助已关闭",
       turnOffHere: "在此网站关闭",
-      openSettings: "打开设置",
+      openSettings: "打开设置"
     },
     status: {
       analyzing: "分析中…",
-      ready: "可以优化",
+      ready: "可以优化"
     },
     empty: {
       noScore: "开始输入即可获得建议。",
-      allClear: "看起来很清晰，未发现问题。",
-    },
-  },
-};
+      allClear: "看起来很清晰，未发现问题。"
+    }
+  }
+}
