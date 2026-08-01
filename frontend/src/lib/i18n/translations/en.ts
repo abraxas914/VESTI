@@ -113,7 +113,7 @@ export const enTranslations = {
       serviceTokenLabel: "Service Token",
       serviceTokenOptional: "optional",
       serviceTokenPlaceholder: "Pre-filled by default",
-      baseUrlPlaceholder: "https://vesti-gate.vercel.app",
+      baseUrlPlaceholder: "https://api.ccvg1218.online",
       save: "Save",
       test: "Test",
       testing: "Working...",

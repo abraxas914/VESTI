@@ -115,7 +115,7 @@ export const zhTranslations = {
       serviceTokenLabel: "服务令牌",
       serviceTokenOptional: "可选",
       serviceTokenPlaceholder: "默认已填充，通常无需修改",
-      baseUrlPlaceholder: "https://vesti-gate.vercel.app",
+      baseUrlPlaceholder: "https://api.ccvg1218.online",
       save: "保存",
       test: "测试",
       testing: "检测中...",

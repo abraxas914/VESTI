@@ -13,8 +13,10 @@ import {
 // Legacy ModelScope endpoints (kept for BYOK users still on ModelScope)
 export const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1/";
 
-// Default demo proxy: Vesti AI Gateway Proxy on Vercel
-export const DEFAULT_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
+// Default demo proxy: Vesti AI gateway (api.ccvg1218.online). The legacy
+// Vercel deployment stays as a documented fallback for older builds.
+export const DEFAULT_PROXY_BASE_URL = "https://api.ccvg1218.online/api";
+export const LEGACY_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
 export const DEFAULT_PROXY_URL = `${DEFAULT_PROXY_BASE_URL}/chat`;
 export const DEFAULT_PROXY_EMBEDDINGS_URL = `${DEFAULT_PROXY_BASE_URL}/embeddings`;
 
