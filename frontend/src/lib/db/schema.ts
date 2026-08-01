@@ -70,6 +70,10 @@ export interface VectorRecord {
   conversation_id: number;
   text_hash: string;
   embedding: Float32Array;
+  embedding_provider: string;
+  embedding_model: string;
+  embedding_dimensions: number;
+  index_version: string;
 }
 export interface NoteRecord {
   id?: number;
@@ -801,6 +805,43 @@ export class MemoryHubDB extends Dexie {
               record.is_starred = false;
             }
           });
+      });
+    // v20 isolates embeddings by provider/model/dimensions/schema version.
+    // Legacy vectors are retained but never mixed with vectors created by the
+    // current gateway.
+    this.version(20)
+      .stores({
+        conversations:
+          "++id, platform, title, created_at, updated_at, origin_at, uuid, source_created_at, turn_count, topic_id, is_starred, [platform+created_at], [platform+uuid], [topic_id+updated_at]",
+        messages:
+          "++id, conversation_id, role, created_at, [conversation_id+created_at]",
+        summaries: "++id, conversationId, createdAt",
+        weekly_reports:
+          "++id, rangeStart, rangeEnd, createdAt, periodType, [periodType+rangeStart]",
+        topics:
+          "++id, parent_id, name, created_at, updated_at, [parent_id+name]",
+        vectors:
+          "++id, conversation_id, text_hash, index_version, [conversation_id+text_hash+index_version]",
+        notes:
+          "++id, created_at, updated_at, source_type, source_path, kind, source_report_id, is_starred, [source_type+updated_at], [source_type+source_path], [kind+updated_at]",
+        note_sources: "id, kind, updated_at, created_at",
+        note_assets:
+          "id, vault_id, relative_path, hash, updated_at, [vault_id+relative_path]",
+        annotations:
+          "++id, conversation_id, message_id, created_at, days_after, [conversation_id+message_id], [conversation_id+created_at]",
+        explore_sessions: "id, updatedAt, createdAt",
+        explore_messages: "id, sessionId, timestamp, [sessionId+timestamp]",
+        prompts:
+          "++id, source, category, is_favorite, is_archived, quality_score, updated_at, last_used_at, use_count, body_hash, source_conversation_id, [source+updated_at], [is_favorite+updated_at]",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("vectors").toCollection().modify((record: Partial<VectorRecord>) => {
+          const dimensions = record.embedding?.length ?? 0;
+          record.embedding_provider ||= "legacy";
+          record.embedding_model ||= "unknown";
+          record.embedding_dimensions ||= dimensions;
+          record.index_version ||= `legacy:unknown:${dimensions}`;
+        });
       });
   }
 }

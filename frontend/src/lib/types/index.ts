@@ -98,6 +98,10 @@ export interface VectorRecord {
   conversation_id: number
   text_hash: string
   embedding: Float32Array
+  embedding_provider: string
+  embedding_model: string
+  embedding_dimensions: number
+  index_version: string
 }
 
 export interface RelatedConversation {

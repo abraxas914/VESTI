@@ -8,7 +8,7 @@
     "predev": "pnpm -C ../packages/vesti-content-package build",
     "dev": "plasmo dev",
     "dev:verbose": "pnpm exec plasmo dev --verbose",
-    "prebuild": "pnpm -C ../packages/vesti-content-package build && pnpm -C ../packages/vesti-ui build && pnpm -C .. install --frozen-lockfile",
+    "prebuild": "pnpm -C ../packages/vesti-content-package build && pnpm -C ../packages/vesti-ui build",
     "build": "plasmo build",
     "postbuild": "node ./scripts/ensure-onboarding-entry.mjs",
     "package": "node -e \"console.error('Local packaging is disabled. Use CI workflow extension-package or run pnpm -C frontend package:safe.'); process.exit(1)\"",
@@ -57,6 +57,7 @@
     "version": "1.2.0",
     "version_name": "1.2.0-rc.8",
     "host_permissions": [
+      "https://api.ccvg1218.online/*",
       "https://vesti-gate.vercel.app/*",
       "https://vesti-proxy.vercel.app/*",
       "https://dashscope.aliyuncs.com/*",

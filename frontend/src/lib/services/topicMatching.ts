@@ -105,9 +105,9 @@ export function scoreTopicCandidate(
     options.embeddingSimilarity >= 0 &&
     options.embeddingSimilarity <= 1;
   if (hasEmbedding) {
-    // 50% name + 25% tags + 25% embedding — embedding catches
-    // cross-vocabulary matches that keyword overlap misses.
-    return 0.50 * nameScore + 0.25 * tagScore + 0.25 * (options!.embeddingSimilarity!);
+    // Let a very strong semantic match carry a cross-vocabulary decision while
+    // keeping mediocre similarities below the auto-archive threshold.
+    return 0.40 * nameScore + 0.20 * tagScore + 0.40 * (options!.embeddingSimilarity!);
   }
   return 0.65 * nameScore + 0.35 * tagScore;
 }

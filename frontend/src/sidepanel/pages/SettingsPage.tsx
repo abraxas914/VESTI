@@ -1229,7 +1229,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                         )
                       }
                       className="model-access-input"
-                      placeholder="https://vesti-gate.vercel.app"
+                      placeholder="https://api.ccvg1218.online/api"
                     />
                   </div>
 

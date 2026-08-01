@@ -13,12 +13,15 @@ import {
 // Legacy ModelScope endpoints (kept for BYOK users still on ModelScope)
 export const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1/";
 
-// Default demo proxy: Vesti AI Gateway Proxy on Vercel
-export const DEFAULT_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
+// Demo proxy routing. The legacy Vercel deployment remains a transport-level
+// fallback only; model fallback is owned by the primary gateway.
+export const PRIMARY_PROXY_BASE_URL = "https://api.ccvg1218.online/api";
+export const FALLBACK_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
+export const DEFAULT_PROXY_BASE_URL = PRIMARY_PROXY_BASE_URL;
 export const DEFAULT_PROXY_URL = `${DEFAULT_PROXY_BASE_URL}/chat`;
 export const DEFAULT_PROXY_EMBEDDINGS_URL = `${DEFAULT_PROXY_BASE_URL}/embeddings`;
 
-// 默认代理 service token，与 vesti-gate 代理默认值保持一致。
+// 默认代理 service token，由 Vesti 网关校验。
 // 用户无需手动填写，Demo proxy 模式开箱即用。
 // token 名称保留 "kcq" 前缀仅用于历史兼容，实际对应阿里云百炼上游。
 export const DEFAULT_PROXY_SERVICE_TOKEN = "vesti-kcq-default-d850d4dcd610a0e2e919eb610f42066faff1e1c57c0c047c";
@@ -131,15 +134,26 @@ function resolveProxyBaseUrl(
   settings: Pick<LlmConfig, "proxyBaseUrl" | "proxyUrl">
 ): string {
   const explicit = normalizeProxyBaseCandidate(settings.proxyBaseUrl);
-  if (explicit) return explicit;
+  if (explicit) {
+    // Migrate the previously persisted built-in endpoint. The old deployment
+    // is still reached automatically when the new gateway has a retryable
+    // transport failure.
+    return explicit === FALLBACK_PROXY_BASE_URL
+      ? PRIMARY_PROXY_BASE_URL
+      : explicit;
+  }
 
   const legacy = normalizeProxyBaseCandidate(settings.proxyUrl);
-  if (legacy) return legacy;
+  if (legacy) {
+    return legacy === FALLBACK_PROXY_BASE_URL
+      ? PRIMARY_PROXY_BASE_URL
+      : legacy;
+  }
 
   return DEFAULT_PROXY_BASE_URL;
 }
 
-function buildProxyRouteUrl(baseUrl: string, route: ProxyRoute): string {
+export function buildProxyRouteUrl(baseUrl: string, route: ProxyRoute): string {
   return `${trimSlashes(baseUrl)}/${route}`;
 }
 
