@@ -2,7 +2,7 @@ import * as path from "path";
 
 export default {
   vite: (config) => {
-    const repoRoot = path.resolve(__dirname, "..", "..");
+    const repoRoot = path.resolve(__dirname, "..");
     const packagesRoot = path.resolve(repoRoot, "packages");
     const vestiContentPackageEntry = path.resolve(
       packagesRoot,

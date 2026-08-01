@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAdaptiveTags,
   buildHeuristicTags,
   dedupeTags,
   DOMAIN_KEYWORDS,
   inferDomainTags,
+  inferLearnedTags,
 } from "../tagging";
 
 describe("DOMAIN_KEYWORDS", () => {
@@ -82,5 +84,67 @@ describe("dedupeTags", () => {
       "React",
       "Vue",
     ]);
+  });
+});
+
+describe("inferLearnedTags", () => {
+  it("reuses exact user vocabulary that is present in the conversation", () => {
+    expect(
+      inferLearnedTags(
+        "Continue the Project Moonlight launch checklist and review.",
+        ["Project Moonlight", "General"],
+      ),
+    ).toEqual(["Project Moonlight"]);
+  });
+
+  it("dedupes learned vocabulary case-insensitively and preserves first spelling", () => {
+    expect(
+      inferLearnedTags(
+        "Project Moonlight and roadmap planning are both in scope.",
+        ["Project Moonlight", "project moonlight", "Roadmap Planning"],
+      ),
+    ).toEqual(["Project Moonlight", "Roadmap Planning"]);
+  });
+
+  it("does not learn a tag from weak partial token overlap", () => {
+    expect(
+      inferLearnedTags("Alpha is mentioned without the remaining concepts.", [
+        "Alpha Beta Gamma Delta",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("honors the requested result limit", () => {
+    expect(
+      inferLearnedTags(
+        "Project Moonlight, Roadmap Planning, and Release Readiness",
+        ["Project Moonlight", "Roadmap Planning", "Release Readiness"],
+        2,
+      ),
+    ).toHaveLength(2);
+  });
+});
+
+describe("buildAdaptiveTags", () => {
+  it("prioritizes learned tags and fills remaining slots with heuristics", () => {
+    const tags = buildAdaptiveTags(
+      "Project Moonlight uses React and TypeScript for the frontend rollout.",
+      ["Project Moonlight"],
+    );
+
+    expect(tags[0]).toBe("Project Moonlight");
+    expect(tags).toContain("React");
+    expect(tags).toContain("TypeScript");
+    expect(tags.length).toBeLessThanOrEqual(6);
+  });
+
+  it("removes the General placeholder when a learned or heuristic tag exists", () => {
+    const tags = buildAdaptiveTags("Project Moonlight planning", [
+      "General",
+      "Project Moonlight",
+    ]);
+
+    expect(tags).toContain("Project Moonlight");
+    expect(tags).not.toContain("General");
   });
 });

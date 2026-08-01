@@ -9,10 +9,15 @@ import { logger } from "../utils/logger";
 import {
   getEffectiveModelId,
   getLlmAccessMode,
-  getProxyRouteUrl,
+  getProxyBaseUrl,
 } from "./llmConfig";
 import { parseJsonObjectFromText } from "./insightSchemas";
 import { getLlmModelProfile } from "./llmModelProfile";
+import {
+  fetchDemoProxy,
+  getProxyResponseMetadata,
+  type ProxyResponseMetadata,
+} from "./proxyRequest";
 
 const SYSTEM_PROMPT = "You are a careful technical summarization assistant.";
 const STRICT_JSON_SYSTEM_PROMPT =
@@ -40,6 +45,10 @@ export interface LlmDiagnostic {
   rawMessage: string;
   userMessage: string;
   technicalSummary: string;
+  providerUsed: string | null;
+  modelUsed: string | null;
+  attempt: number | null;
+  fallbackReason: string | null;
 }
 
 interface StreamDecision {
@@ -77,6 +86,7 @@ export interface ModelScopeCallResult {
   finishReason?: string | null;
   usage?: InferenceUsage | null;
   proxyTokenMetrics?: ProxyTokenMetrics | null;
+  proxyRouting?: ProxyResponseMetadata | null;
 }
 
 export interface InferenceCallResult extends ModelScopeCallResult {
@@ -117,6 +127,10 @@ interface ParsedLlmErrorPayload {
   rawText: string;
   message: string;
   requestId: string | null;
+  providerUsed: string | null;
+  modelUsed: string | null;
+  attempt: number | null;
+  fallbackReason: string | null;
 }
 
 export class LlmRequestError extends Error {
@@ -363,6 +377,19 @@ function toNullableString(value: unknown): string | null {
 }
 
 async function parseErrorPayload(response: Response): Promise<ParsedLlmErrorPayload> {
+  const proxyMetadata = getProxyResponseMetadata(response);
+  const headerAttempt = Number(response.headers.get("x-proxy-attempt"));
+  const diagnostics = {
+    providerUsed:
+      response.headers.get("x-proxy-provider-used") || proxyMetadata?.providerUsed || null,
+    modelUsed:
+      response.headers.get("x-proxy-model-used") || proxyMetadata?.modelUsed || null,
+    attempt: Number.isFinite(headerAttempt) && headerAttempt > 0
+      ? headerAttempt
+      : proxyMetadata?.attempt ?? null,
+    fallbackReason:
+      response.headers.get("x-proxy-fallback-reason") || proxyMetadata?.fallbackReason || null,
+  };
   try {
     const rawText = await response.text();
     const collapsed = collapseErrorText(rawText);
@@ -373,6 +400,7 @@ async function parseErrorPayload(response: Response): Promise<ParsedLlmErrorPayl
         rawText: "",
         message: "",
         requestId: requestIdFromHeader,
+        ...diagnostics,
       };
     }
 
@@ -382,12 +410,14 @@ async function parseErrorPayload(response: Response): Promise<ParsedLlmErrorPayl
         rawText,
         message: collapseErrorText(extractMessageFromPayload(parsed)) || collapsed,
         requestId: requestIdFromHeader || extractRequestIdFromPayload(parsed),
+        ...diagnostics,
       };
     } catch {
       return {
         rawText,
         message: collapsed,
         requestId: requestIdFromHeader,
+        ...diagnostics,
       };
     }
   } catch {
@@ -395,6 +425,7 @@ async function parseErrorPayload(response: Response): Promise<ParsedLlmErrorPayl
       rawText: "",
       message: "",
       requestId: response.headers.get("x-request-id"),
+      ...diagnostics,
     };
   }
 }
@@ -450,6 +481,10 @@ function normalizeLlmDiagnostic(
     rawMessage: payload.rawText || payload.message,
     userMessage,
     technicalSummary: buildTechnicalSummary(route, status, payload.requestId),
+    providerUsed: payload.providerUsed,
+    modelUsed: payload.modelUsed,
+    attempt: payload.attempt,
+    fallbackReason: payload.fallbackReason,
   };
 }
 
@@ -494,6 +529,7 @@ function buildPayload(
     temperature: config.temperature,
     max_tokens: config.maxTokens,
     messages,
+    stream: false,
   };
 
   if (modelProfile.thinkingParamPolicy === "force_false") {
@@ -526,7 +562,7 @@ async function requestModelScope(
     stage: "stable_non_stream",
     reason: "not_requested",
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Response> {
   const baseUrl = config.baseUrl.replace(/\/+$/, "");
   const url = `${baseUrl}/chat/completions`;
@@ -551,23 +587,14 @@ async function requestProxyService(
     stage: "stable_non_stream",
     reason: "not_requested",
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Response> {
-  const url = getProxyRouteUrl(config, "chat");
   const serviceToken = (config.proxyServiceToken || "").trim();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (serviceToken) {
-    headers["x-vesti-service-token"] = serviceToken;
-  }
-
   const payload = buildPayload(config, messages, responseFormat, streamDecision);
-
-  return fetch(url, {
-    method: "POST",
-    headers,
+  return fetchDemoProxy({
+    primaryBaseUrl: getProxyBaseUrl(config),
+    route: "chat",
+    serviceToken,
     body: JSON.stringify(payload),
     signal,
   });
@@ -624,7 +651,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
         logger.error(
           "llm",
           `${route} prompt_json request failed: ${promptJsonResponse.status}`,
-          new Error(promptJsonErrorPayload.rawText || promptJsonErrorPayload.message)
+          new Error(promptJsonErrorPayload.message || `HTTP ${promptJsonResponse.status}`)
         );
         throw createLlmRequestError(route, promptJsonResponse.status, promptJsonErrorPayload);
       }
@@ -641,6 +668,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
           finishReason: extractFinishReason(promptJsonData),
           usage: extractUsage(promptJsonData),
           proxyTokenMetrics: extractProxyTokenMetrics(promptJsonResponse),
+          proxyRouting: getProxyResponseMetadata(promptJsonResponse),
         };
       }
 
@@ -660,6 +688,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
           finishReason: extractFinishReason(promptJsonData),
           usage: extractUsage(promptJsonData),
           proxyTokenMetrics: extractProxyTokenMetrics(promptJsonResponse),
+          proxyRouting: getProxyResponseMetadata(promptJsonResponse),
         };
       }
 
@@ -687,6 +716,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
             finishReason: extractFinishReason(data),
             usage: extractUsage(data),
             proxyTokenMetrics: extractProxyTokenMetrics(jsonResponse),
+            proxyRouting: getProxyResponseMetadata(jsonResponse),
           };
         }
 
@@ -706,6 +736,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
             finishReason: extractFinishReason(data),
             usage: extractUsage(data),
             proxyTokenMetrics: extractProxyTokenMetrics(jsonResponse),
+            proxyRouting: getProxyResponseMetadata(jsonResponse),
           };
         }
 
@@ -729,7 +760,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
         logger.error(
           "llm",
           `${route} JSON request failed: ${jsonResponse.status}`,
-          new Error(jsonErrorPayload.rawText || jsonErrorPayload.message)
+          new Error(jsonErrorPayload.message || `HTTP ${jsonResponse.status}`)
         );
         throw createLlmRequestError(route, jsonResponse.status, jsonErrorPayload);
       }
@@ -767,7 +798,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
     logger.error(
       "llm",
       `${route} request failed: ${response.status}`,
-      new Error(errorPayload.rawText || errorPayload.message)
+      new Error(errorPayload.message || `HTTP ${response.status}`)
     );
     throw createLlmRequestError(route, response.status, errorPayload);
   }
@@ -782,6 +813,7 @@ ${STRICT_JSON_SYSTEM_PROMPT}` },
     finishReason: extractFinishReason(data),
     usage: extractUsage(data),
     proxyTokenMetrics: extractProxyTokenMetrics(response),
+    proxyRouting: getProxyResponseMetadata(response),
   };
 }
 

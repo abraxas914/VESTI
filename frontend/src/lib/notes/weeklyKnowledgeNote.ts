@@ -41,6 +41,7 @@ const COPY = {
     topics: "topics",
     deepConversations: "deep conversations",
     narrative: "Growth narrative",
+    footprint: "Footprint summary",
     highlights: "Highlights",
     evidence: "Evidence",
     conversation: "conversation",
@@ -79,6 +80,7 @@ const COPY = {
     topics: "个话题",
     deepConversations: "次深度对话",
     narrative: "成长叙事",
+    footprint: "足迹总结",
     highlights: "本周高光",
     evidence: "依据",
     conversation: "对话",
@@ -117,6 +119,7 @@ const COPY = {
     topics: "トピック",
     deepConversations: "深い会話",
     narrative: "成長ストーリー",
+    footprint: "足跡まとめ",
     highlights: "ハイライト",
     evidence: "根拠",
     conversation: "会話",
@@ -155,6 +158,7 @@ const COPY = {
     topics: "개 주제",
     deepConversations: "회 심층 대화",
     narrative: "성장 이야기",
+    footprint: "활동 발자취 요약",
     highlights: "하이라이트",
     evidence: "근거",
     conversation: "대화",
@@ -419,6 +423,8 @@ function collectSources(report: WeeklyGrowthReportV2): {
     addConversationIds([most.conversationId])
     addMessageIds(most.messageIds)
   }
+  addConversationIds([report.footprintSummary?.latestConversationId])
+  addMessageIds([report.footprintSummary?.latestMessageId])
 
   return {
     conversationIds: Array.from(conversationIds),
@@ -592,6 +598,16 @@ export function buildWeeklyKnowledgeNoteDraft(
       .map((paragraph) => normalizeInline(paragraph, 2_000))
   ].filter(Boolean)
   addSection(sections, copy.narrative, narrative)
+
+  addSection(sections, copy.footprint, [
+    normalizeInline(report.footprintSummary?.summary, 2_000) || null,
+    normalizeInline(report.footprintSummary?.encouragement, 1_500) || null,
+    evidenceLine(
+      validIds([report.footprintSummary?.latestConversationId], 1),
+      validIds([report.footprintSummary?.latestMessageId], 1),
+      copy
+    )
+  ])
 
   addSection(
     sections,

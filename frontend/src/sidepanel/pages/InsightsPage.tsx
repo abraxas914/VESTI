@@ -2079,19 +2079,21 @@ export function InsightsPage({
 
         <p className="ins-group-label">{t.insights.scheduled}</p>
 
-        <InsightsAccordionItem
-          title={t.insights.weeklyDigest}
-          description={t.insights.weeklyDigestDesc}
-          open={weeklyDigestOpen}
-          onToggle={
-            WEEKLY_DIGEST_SOON ? undefined : () => setWeeklyDigestOpen((prev) => !prev)
-          }
-          icon={<CalendarDays className="h-4 w-4" strokeWidth={1.5} />}
-          disabled={WEEKLY_DIGEST_SOON}
-          soonTag={WEEKLY_DIGEST_SOON ? t.common.soon : undefined}
-        >
-          {renderWeeklyBody()}
-        </InsightsAccordionItem>
+        <div data-onboarding-target="weekly-report">
+          <InsightsAccordionItem
+            title={t.insights.weeklyDigest}
+            description={t.insights.weeklyDigestDesc}
+            open={weeklyDigestOpen}
+            onToggle={
+              WEEKLY_DIGEST_SOON ? undefined : () => setWeeklyDigestOpen((prev) => !prev)
+            }
+            icon={<CalendarDays className="h-4 w-4" strokeWidth={1.5} />}
+            disabled={WEEKLY_DIGEST_SOON}
+            soonTag={WEEKLY_DIGEST_SOON ? t.common.soon : undefined}
+          >
+            {renderWeeklyBody()}
+          </InsightsAccordionItem>
+        </div>
 
         <p className="ins-group-label">{t.insights.discovery}</p>
 

@@ -546,4 +546,3 @@ function normalizeFenceLanguage(value: string): string | null {
   }
   return token;
 }
-

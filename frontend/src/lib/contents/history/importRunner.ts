@@ -28,6 +28,9 @@ export interface RunOptions {
   throttleMs?: number;
   /** Optional cap on conversations to import. */
   max?: number;
+  /** Import only conversations whose known source time is in this range. */
+  since?: number;
+  until?: number;
 }
 
 const DEFAULT_THROTTLE_MS = 400;
@@ -67,7 +70,7 @@ export async function runHistoryImport(
   emit();
 
   try {
-    const refs = await provider.listConversations({
+    const listedRefs = await provider.listConversations({
       signal: options.signal,
       max: options.max,
       onDiscover: (total) => {
@@ -75,6 +78,17 @@ export async function runHistoryImport(
         emit();
       },
     });
+    const refs = listedRefs.filter((ref) => {
+      const sourceTime = ref.updatedAt ?? ref.createdAt
+      if (typeof sourceTime !== "number") return true
+      if (typeof options.since === "number" && sourceTime < options.since) {
+        return false
+      }
+      if (typeof options.until === "number" && sourceTime > options.until) {
+        return false
+      }
+      return true
+    })
     progress.discovered = refs.length;
     progress.phase = "importing";
     emit();
@@ -90,6 +104,18 @@ export async function runHistoryImport(
         if (!built) {
           progress.skipped += 1;
         } else {
+          const sourceTime = built.conversation.source_created_at
+          if (
+            typeof sourceTime === "number" &&
+            ((typeof options.since === "number" && sourceTime < options.since) ||
+              (typeof options.until === "number" && sourceTime > options.until))
+          ) {
+            progress.skipped += 1
+            progress.processed += 1
+            emit()
+            await delay(throttleMs, options.signal)
+            continue
+          }
           const result = await sendRequest<"CAPTURE_CONVERSATION">({
             type: "CAPTURE_CONVERSATION",
             target: "offscreen",

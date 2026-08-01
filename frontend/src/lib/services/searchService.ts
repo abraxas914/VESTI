@@ -31,7 +31,10 @@ import {
   listConversationsByRange,
   updateExploreSession,
 } from "../db/repository";
-import { embedText } from "./embeddingService";
+import {
+  embedTextWithMetadata,
+  type EmbeddingIndexMetadata,
+} from "./embeddingService";
 import {
   generateConversationSummary,
   generateWeeklyReport,
@@ -1340,7 +1343,8 @@ async function retrieveRagContext(
     throw new Error("QUERY_EMPTY");
   }
 
-  const queryVector = toFloat32Array(await embedText(preparedQuery));
+  const queryEmbedding = await embedTextWithMetadata(preparedQuery);
+  const queryVector = toFloat32Array(queryEmbedding.vector);
   const vectors = await db.vectors.toArray();
   const scopedConversationIds = getScopedConversationIds(searchScope);
   const scopedConversationIdSet = scopedConversationIds
@@ -1352,6 +1356,7 @@ async function retrieveRagContext(
   // otherwise produce duplicate source chips and crowd out other conversations.
   const bestByConversation = new Map<number, number>();
   for (const vector of vectors) {
+    if (vector.index_version !== queryEmbedding.metadata.version) continue;
     if (
       scopedConversationIdSet &&
       !scopedConversationIdSet.has(vector.conversation_id)
@@ -2084,36 +2089,43 @@ async function ensureVectorsForConversations(conversationIds: number[]): Promise
 export async function ensureVectorForConversation(
   conversationId: number,
   text: string
-): Promise<void> {
+): Promise<EmbeddingIndexMetadata | null> {
   const preparedText = normalizeEmbeddingInput(text);
-  if (!preparedText) return;
+  if (!preparedText) return null;
 
   const textHash = await hashText(preparedText);
-
+  const { vector: embedding, metadata } = await embedTextWithMetadata(preparedText);
   const existing = await db.vectors
     .where("conversation_id")
     .equals(conversationId)
-    .and((record) => record.text_hash === textHash)
+    .and(
+      (record) =>
+        record.text_hash === textHash &&
+        record.index_version === metadata.version,
+    )
     .first();
-  if (existing && existing.id !== undefined) return;
-
-  const embedding = await embedText(preparedText);
+  if (existing && existing.id !== undefined) return metadata;
 
   await db.transaction("rw", db.vectors, async () => {
-    // Delete ALL existing rows for this conversation (not just stale-hash ones):
-    // a concurrent vectorize can leave two same-hash rows, so replacing the whole
-    // set guarantees exactly one vector per conversation.
+    // Replace only this index version. Other model/provider versions remain
+    // available for rollback and are excluded during retrieval.
     await db.vectors
       .where("conversation_id")
       .equals(conversationId)
+      .and((record) => record.index_version === metadata.version)
       .delete();
 
     await db.vectors.add({
       conversation_id: conversationId,
       text_hash: textHash,
       embedding,
+      embedding_provider: metadata.provider,
+      embedding_model: metadata.model,
+      embedding_dimensions: metadata.dimensions,
+      index_version: metadata.version,
     });
   });
+  return metadata;
 }
 
 // True cosine similarity. Previously this returned a raw dot product, which is
@@ -2141,11 +2153,13 @@ export async function findRelatedConversations(
   limit = 3
 ): Promise<RelatedConversation[]> {
   const { text } = await getConversationText(conversationId);
-  await ensureVectorForConversation(conversationId, text);
+  const metadata = await ensureVectorForConversation(conversationId, text);
+  if (!metadata) return [];
 
   const targetVector = await db.vectors
     .where("conversation_id")
     .equals(conversationId)
+    .and((record) => record.index_version === metadata.version)
     .first();
   if (!targetVector) return [];
 
@@ -2158,6 +2172,7 @@ export async function findRelatedConversations(
   const bestByConversation = new Map<number, number>();
   for (const vector of vectors) {
     if (vector.conversation_id === conversationId) continue;
+    if (vector.index_version !== metadata.version) continue;
     const embedding = toFloat32Array(vector.embedding as Float32Array | number[]);
     const similarity = cosineSimilarity(targetEmbedding, embedding);
     if (similarity < 0.15) continue;
@@ -2216,6 +2231,7 @@ export async function findAllEdges(
     for (let j = i + 1; j < vectors.length; j += 1) {
       const left = vectors[i];
       const right = vectors[j];
+      if (left.index_version !== right.index_version) continue;
       if (
         typeof left.conversation_id !== "number" ||
         typeof right.conversation_id !== "number"

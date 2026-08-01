@@ -124,15 +124,54 @@ describe("resolveTopicPathAgainstExisting", () => {
   it("suggests creating under the deepest existing prefix", () => {
     expect(
       resolveTopicPathAgainstExisting(["编程", "前端", "Vue"], options)
-    ).toEqual({ kind: "create", parentId: 2, name: "Vue" });
+    ).toEqual({ kind: "create", parentId: 2, segments: ["Vue"] });
   });
 
-  it("suggests a new root topic when nothing matches", () => {
-    expect(resolveTopicPathAgainstExisting(["健康"], options)).toEqual({
+  it("returns every missing segment under the deepest existing prefix", () => {
+    expect(
+      resolveTopicPathAgainstExisting(
+        ["编程", "后端", "分布式系统"],
+        options,
+      ),
+    ).toEqual({
+      kind: "create",
+      parentId: 1,
+      segments: ["后端", "分布式系统"],
+    });
+  });
+
+  it("returns the complete hierarchy when no root segment matches", () => {
+    expect(resolveTopicPathAgainstExisting(["健康", "睡眠"], options)).toEqual({
       kind: "create",
       parentId: null,
-      name: "健康",
+      segments: ["健康", "睡眠"],
     });
+  });
+
+  it("does not arbitrarily choose between duplicate leaf names", () => {
+    const duplicateLeaves = [
+      ...options,
+      { id: 5, path: "工作 / React" },
+    ];
+
+    expect(
+      resolveTopicPathAgainstExisting(["React"], duplicateLeaves),
+    ).toEqual({
+      kind: "create",
+      parentId: null,
+      segments: ["React"],
+    });
+  });
+
+  it("uses the full path to disambiguate duplicate leaf names", () => {
+    const duplicateLeaves = [
+      ...options,
+      { id: 5, path: "工作 / React" },
+    ];
+
+    expect(
+      resolveTopicPathAgainstExisting(["工作", "React"], duplicateLeaves),
+    ).toEqual({ kind: "existing", id: 5 });
   });
 
   it("returns null for an empty path", () => {
@@ -162,5 +201,35 @@ describe("buildClassificationPrompt", () => {
     });
     expect(prompt).toContain("(no topics exist yet)");
     expect(prompt).toContain("(no messages)");
+    expect(prompt).toContain("(no tags exist yet)");
+  });
+
+  it("includes the existing tag vocabulary so the model can reuse it", () => {
+    const prompt = buildClassificationPrompt({
+      title: "代理迁移",
+      snippet: "升级模型服务",
+      messages: ["继续处理新的代理迁移"],
+      topicPaths: [],
+      existingTags: ["LLM 代理", "Vesti", "发布稳定性"],
+    });
+
+    expect(prompt).toContain(
+      "Existing tag vocabulary (reuse exact spelling when appropriate):",
+    );
+    expect(prompt).toContain("LLM 代理, Vesti, 发布稳定性");
+  });
+
+  it("caps the existing tag vocabulary to keep classification prompts bounded", () => {
+    const existingTags = Array.from({ length: 81 }, (_, index) => `tag-${index + 1}`);
+    const prompt = buildClassificationPrompt({
+      title: "t",
+      snippet: "",
+      messages: [],
+      topicPaths: [],
+      existingTags,
+    });
+
+    expect(prompt).toContain("tag-80");
+    expect(prompt).not.toContain("tag-81");
   });
 });

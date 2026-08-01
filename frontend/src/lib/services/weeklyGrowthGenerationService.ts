@@ -28,6 +28,7 @@ import { getEffectiveModelId } from "./llmConfig";
 import { callInference, sanitizeSummaryText, truncateForContext } from "./llmService";
 import { getLanguageSettings } from "./languageSettingsService";
 import { parseJsonObjectFromText } from "./insightSchemas";
+import { buildWeeklyFootprintSummary } from "./weeklyFootprintSummary";
 import {
   buildContributionGrid,
   buildEmotionMap,
@@ -48,10 +49,11 @@ import { logger } from "../utils/logger";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const HISTORY_WEEKS = 5;
-const HIGHLIGHT_CANDIDATE_LIMIT = 8;
+const HIGHLIGHT_CANDIDATE_LIMIT = 6;
 const HIGHLIGHT_OUTPUT_LIMIT = 5;
-const HIGHLIGHT_EXCERPT_LIMIT = 280;
-const WEEKLY_GROWTH_PROMPT_LIMIT = 12000;
+const HIGHLIGHT_EXCERPT_LIMIT = 220;
+const WEEKLY_GROWTH_PROMPT_LIMIT = 9000;
+const WEEKLY_GROWTH_MAX_TOKENS = 1400;
 
 export interface WeeklyGrowthGenerationControl {
   signal?: AbortSignal;
@@ -789,6 +791,12 @@ function renderWeeklyGrowthText(
   for (const paragraph of report.narrative ?? []) {
     if (paragraph) lines.push(paragraph);
   }
+  if (report.footprintSummary?.summary) {
+    lines.push(report.footprintSummary.summary);
+  }
+  if (report.footprintSummary?.encouragement) {
+    lines.push(report.footprintSummary.encouragement);
+  }
   if (report.blankWeek?.isBlank && report.blankWeek.gentleMessage) {
     lines.push(report.blankWeek.gentleMessage);
   }
@@ -809,12 +817,12 @@ function renderWeeklyGrowthText(
 
 function buildSourceFingerprint(
   conversations: Conversation[],
-  messagesByConversation: ReadonlyMap<number, readonly Message[]>,
+  topics: Awaited<ReturnType<typeof listTopicDefinitions>>,
   historyStart: number,
   rangeEnd: number
 ): string {
   return JSON.stringify({
-    version: "weekly-growth-source.v2",
+    version: "weekly-growth-source.v4",
     historyStart,
     rangeEnd,
     conversations: [...conversations]
@@ -831,15 +839,16 @@ function buildSourceFingerprint(
         messageCount: conversation.message_count,
         turnCount: conversation.turn_count,
       })),
-    messages: [...messagesByConversation.values()]
-      .flat()
+    topics: topics
+      .flatMap(function flatten(topic): typeof topics {
+        return [topic, ...(topic.children ?? []).flatMap(flatten)];
+      })
       .sort((left, right) => left.id - right.id)
-      .map((message) => ({
-        id: message.id,
-        conversationId: message.conversation_id,
-        createdAt: message.created_at,
-        role: message.role,
-        content: message.content_text,
+      .map((topic) => ({
+        id: topic.id,
+        parentId: topic.parent_id,
+        name: topic.name,
+        updatedAt: topic.updated_at,
       })),
   });
 }
@@ -852,7 +861,7 @@ async function buildCacheKey(input: {
 }): Promise<string> {
   const encoded = new TextEncoder().encode(
     JSON.stringify({
-      version: "weekly-growth-cache.v2",
+      version: "weekly-growth-cache.v4",
       sourceHash: input.sourceFingerprint,
       model: input.modelId,
       promptVersion: input.promptVersion,
@@ -865,7 +874,7 @@ async function buildCacheKey(input: {
   const hex = Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0")
   ).join("");
-  return `weekly-growth-cache.v2:${hex}`;
+  return `weekly-growth-cache.v4:${hex}`;
 }
 
 function isReusableReport(
@@ -903,16 +912,9 @@ export async function generateWeeklyGrowthReportV2(
     ]);
   throwIfAborted(control.signal);
 
-  const messagesByConversation = await listMessagesByRange(
-    historyStart,
-    rangeEnd,
-    historyConversations.map((conversation) => conversation.id)
-  );
-  throwIfAborted(control.signal);
-
   const sourceFingerprint = buildSourceFingerprint(
     historyConversations,
-    messagesByConversation,
+    topics,
     historyStart,
     rangeEnd
   );
@@ -927,6 +929,13 @@ export async function generateWeeklyGrowthReportV2(
   if (isReusableReport(cachedReport, cacheKey, modelId)) {
     return cachedReport;
   }
+
+  const messagesByConversation = await listMessagesByRange(
+    historyStart,
+    rangeEnd,
+    historyConversations.map((conversation) => conversation.id)
+  );
+  throwIfAborted(control.signal);
 
   const currentConversations = historyConversations.filter((conversation) => {
     if (conversation.is_trash) return false;
@@ -1011,6 +1020,15 @@ export async function generateWeeklyGrowthReportV2(
     currentConversations.length
   );
   localIdentity.emotionKeywords = emotionMap;
+  const footprintSummary = buildWeeklyFootprintSummary(
+    currentConversations,
+    messagesByConversation,
+    topics,
+    stats,
+    languageSettings.locale,
+    rangeStart,
+    rangeEnd
+  );
 
   let structured: WeeklyGrowthReportV2 = {
     schema: "weekly_growth_report.v2",
@@ -1046,6 +1064,7 @@ export async function generateWeeklyGrowthReportV2(
     },
     identity: localIdentity,
     pushCenter: localPushCenter,
+    footprintSummary,
     highlights: candidates.slice(0, 3).map(fallbackHighlight),
     contributionGrid: buildContributionGrid(
       currentConversations,
@@ -1093,33 +1112,29 @@ export async function generateWeeklyGrowthReportV2(
         prompt.userTemplate(payload),
         WEEKLY_GROWTH_PROMPT_LIMIT
       );
-      const first = await callInference(settings, primaryPrompt, {
-        responseFormat: "json_object",
-        systemPrompt: prompt.system,
-        signal: control.signal,
-      });
-      let parsed: WeeklyGrowthAiResponse | null = null;
-      try {
-        parsed = parseJsonObjectFromText(first.content) as WeeklyGrowthAiResponse;
-      } catch {
-        const repair = await callInference(
-          settings,
-          truncateForContext(
-            `Return valid weekly_growth_ai.v2 JSON only. Repair this output without adding facts:\n${first.content}`,
-            WEEKLY_GROWTH_PROMPT_LIMIT
-          ),
-          {
-            responseFormat: "json_object",
-            systemPrompt: prompt.system,
-            signal: control.signal,
-          }
-        );
-        parsed = parseJsonObjectFromText(
-          repair.content
-        ) as WeeklyGrowthAiResponse;
-      }
+      const first = await callInference(
+        {
+          ...settings,
+          maxTokens: Math.min(settings.maxTokens, WEEKLY_GROWTH_MAX_TOKENS),
+        },
+        primaryPrompt,
+        {
+          responseFormat: "json_object",
+          systemPrompt: prompt.system,
+          signal: control.signal,
+        }
+      );
+      const parsed = parseJsonObjectFromText(
+        first.content
+      ) as WeeklyGrowthAiResponse;
       if (parsed) {
         structured = applyAiLayer(structured, parsed, candidates);
+      } else {
+        status = "fallback";
+        logger.warn("service", "Weekly growth V2 returned invalid JSON", {
+          rangeStart,
+          rangeEnd,
+        });
       }
     } catch (error) {
       if (isAbortError(error, control.signal)) throw error;

@@ -187,7 +187,7 @@ function MetricCards({
   copy: (typeof COPY)[keyof typeof COPY]
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="weekly-report-metric-grid grid gap-2">
       {comparison.metrics.map((metric) => (
         <article
           key={metric.key}

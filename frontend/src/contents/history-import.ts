@@ -88,18 +88,43 @@ if (window.top === window.self) {
           sendResponse({ ok: false, reason: "already_running" });
           return;
         }
+        const request = message as {
+          since?: number;
+          until?: number;
+          waitForCompletion?: boolean;
+        };
         abortController = new AbortController();
-        sendResponse({ ok: true, started: true, platform: provider.platform });
+        if (!request.waitForCompletion) {
+          sendResponse({ ok: true, started: true, platform: provider.platform });
+        }
         void (async () => {
           try {
-            await runHistoryImport(provider, {
+            const progress = await runHistoryImport(provider, {
               signal: abortController.signal,
               onProgress: broadcastProgress,
+              since: request.since,
+              until: request.until,
             });
+            if (request.waitForCompletion) {
+              sendResponse({
+                ok: true,
+                started: true,
+                platform: provider.platform,
+                progress,
+              });
+            }
           } catch (error) {
             logger.warn("content", "History import crashed", {
               error: (error as Error)?.message ?? String(error),
             });
+            if (request.waitForCompletion) {
+              sendResponse({
+                ok: false,
+                started: true,
+                platform: provider.platform,
+                reason: (error as Error)?.message ?? "import_failed",
+              });
+            }
           } finally {
             abortController = null;
             if (chrome?.runtime?.sendMessage) {
@@ -109,7 +134,7 @@ if (window.top === window.self) {
             }
           }
         })();
-        return; // response already sent synchronously
+        return request.waitForCompletion ? true : undefined;
       }
 
       if (type === "IMPORT_HISTORY_CANCEL") {

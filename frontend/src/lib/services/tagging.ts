@@ -1,4 +1,4 @@
-import { extractKeywords } from "./keywordExtraction";
+import { extractKeywords, tokenizeForMatch } from "./keywordExtraction";
 
 // Legacy regex list kept for backward compatibility (insightUiUtils re-exports
 // inferTechTagsFromText/resolveTechTags). New code should prefer
@@ -226,4 +226,57 @@ export function buildHeuristicTags(text: string): string[] {
 
   const target = Math.max(MIN_TAGS, Math.min(domainTags.length + 2, MAX_TAGS));
   return merged.slice(0, Math.min(Math.max(target, MIN_TAGS), MAX_TAGS));
+}
+
+/**
+ * Reuse the user's established tag vocabulary when its meaning is present in
+ * the new conversation. This makes the offline fallback adaptive instead of
+ * limiting it to DOMAIN_KEYWORDS forever.
+ */
+export function inferLearnedTags(
+  text: string,
+  existingTags: string[],
+  limit = 3,
+): string[] {
+  if (!text.trim() || existingTags.length === 0 || limit <= 0) return [];
+
+  const textLower = text.toLowerCase();
+  const textTokens = tokenizeForMatch(text);
+  const scored: Array<{ tag: string; score: number; order: number }> = [];
+
+  dedupeTags(existingTags).forEach((tag, order) => {
+    const normalized = tag.trim();
+    if (normalized.length < 2 || normalized.toLowerCase() === "general") return;
+
+    const tagTokens = tokenizeForMatch(normalized);
+    if (tagTokens.size === 0) return;
+    let hits = 0;
+    for (const token of tagTokens) {
+      if (textTokens.has(token)) hits += 1;
+    }
+    const coverage = hits / tagTokens.size;
+    const exact = textLower.includes(normalized.toLowerCase());
+    if (!exact && (hits === 0 || coverage < 0.75)) return;
+
+    scored.push({
+      tag: normalized,
+      score: (exact ? 3 : 0) + coverage + Math.min(normalized.length / 40, 0.5),
+      order,
+    });
+  });
+
+  return scored
+    .sort((left, right) => right.score - left.score || left.order - right.order)
+    .slice(0, limit)
+    .map((item) => item.tag);
+}
+
+/** User-vocabulary tags first; fixed dictionaries and extracted keywords fill
+ * any remaining slots so classification continues to work fully offline. */
+export function buildAdaptiveTags(text: string, existingTags: string[]): string[] {
+  const learned = inferLearnedTags(text, existingTags);
+  const heuristic = buildHeuristicTags(text);
+  const merged = dedupeTags([...learned, ...heuristic]);
+  const withoutPlaceholder = merged.filter((tag) => tag.toLowerCase() !== "general");
+  return (withoutPlaceholder.length > 0 ? withoutPlaceholder : merged).slice(0, MAX_TAGS);
 }

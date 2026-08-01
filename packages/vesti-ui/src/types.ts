@@ -1041,6 +1041,14 @@ export interface DashboardLabels {
     allConversations: string;
     starred: string;
     recent: string;
+    smartClassification: string;
+    noSmartClassification: string;
+    organizeUnclassified: string;
+    organizeUnclassifiedConfirm: string;
+    organizingConversations: string;
+    classificationComplete: string;
+    classificationPartial: string;
+    tags: string;
     folders: string;
     myNotes: string;
     exporting: string;

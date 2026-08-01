@@ -1229,7 +1229,7 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                         )
                       }
                       className="model-access-input"
-                      placeholder="https://api.ccvg1218.online"
+                      placeholder="https://api.ccvg1218.online/api"
                     />
                   </div>
 

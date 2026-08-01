@@ -1,40 +1,66 @@
-import type { PlasmoCSConfig } from "plasmo";
-import { sendRequest } from "../lib/messaging/runtime";
-import { getUiSettings } from "../lib/services/uiSettingsService";
+import type { PlasmoCSConfig } from "plasmo"
+
+import {
+  getComposerText,
+  resolveComposer,
+  resolveComposerFromEvent,
+  setComposerText,
+  type ComposerEl
+} from "../lib/contents/composerIo"
+import {
+  findDeepSeekNewChatControl,
+  findDeepSeekSendControl,
+  runDeepSeekExpertExplainAction,
+  runDeepSeekOptimizeAction,
+  showDeepSeekActionToast
+} from "../lib/features/deepseekContentActions"
+import {
+  createDeepSeekCoachmark,
+  type DeepSeekCoachmarkController
+} from "../lib/features/deepseekCoachmark"
+import {
+  getOnboardingGuideCopy,
+  setOnboardingGuideProgressIfActive,
+  subscribeToOnboardingState
+} from "../lib/features/onboardingTourService"
+import { resolveLocale, type SupportedLocale } from "../lib/i18n/locales"
+import { sendRequest } from "../lib/messaging/runtime"
+import {
+  getOnboardingState,
+  type OnboardingState
+} from "../lib/onboarding/state"
+import { searchCuratedPrompts } from "../lib/promptPlaza/commonPrompts"
 import {
   DEFAULT_CAPSULE_SETTINGS,
   getCapsuleSettingsForHost,
   updateCapsuleSettingsForHost,
   type CapsuleAnchor,
   type CapsuleSettings,
-  type CapsuleViewMode,
-} from "../lib/services/capsuleSettingsService";
+  type CapsuleViewMode
+} from "../lib/services/capsuleSettingsService"
+import { detectAndSetLanguage } from "../lib/services/languageSettingsService"
 import {
   getPromptAssistSettingsForHost,
-  subscribePromptAssistSettings,
-} from "../lib/services/promptAssistSettingsService";
-import {
-  getComposerText,
-  resolveComposer,
-  resolveComposerFromEvent,
-  setComposerText,
-  type ComposerEl,
-} from "../lib/contents/composerIo";
-import { searchCuratedPrompts } from "../lib/promptPlaza/commonPrompts";
+  subscribePromptAssistSettings
+} from "../lib/services/promptAssistSettingsService"
+import { getUiSettings } from "../lib/services/uiSettingsService"
+import type {
+  ActiveCaptureStatus,
+  Platform,
+  Prompt,
+  UiThemeMode
+} from "../lib/types"
+import { LOGO_BASE64 } from "../lib/ui/logo"
+import { logger } from "../lib/utils/logger"
 
 // A dock search result: either a saved prompt (has promptId) or a curated plaza
 // prompt (fromPlaza). Both fill the composer; only saved ones track usage.
 type PmResult = {
-  title: string;
-  body: string;
-  promptId?: number;
-  fromPlaza?: boolean;
-};
-import type { ActiveCaptureStatus, Platform, Prompt, UiThemeMode } from "../lib/types";
-import { LOGO_BASE64 } from "../lib/ui/logo";
-import { logger } from "../lib/utils/logger";
-import { detectAndSetLanguage } from "../lib/services/languageSettingsService";
-import { resolveLocale, type SupportedLocale } from "../lib/i18n/locales";
+  title: string
+  body: string
+  promptId?: number
+  fromPlaza?: boolean
+}
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -48,11 +74,11 @@ export const config: PlasmoCSConfig = {
     "https://www.kimi.com/*",
     "https://kimi.com/*",
     "https://kimi.moonshot.cn/*",
-    "https://yuanbao.tencent.com/*",
+    "https://yuanbao.tencent.com/*"
   ],
   run_at: "document_idle",
-  all_frames: false,
-};
+  all_frames: false
+}
 
 type CapsuleRuntimeState =
   | "idle"
@@ -61,65 +87,65 @@ type CapsuleRuntimeState =
   | "ready_to_archive"
   | "archiving"
   | "saved"
-  | "error";
+  | "error"
 
-type DragSource = "collapsed" | "expanded";
+type DragSource = "collapsed" | "expanded"
 
 interface DragSession {
-  active: boolean;
-  pointerId: number | null;
-  source: DragSource | null;
-  canDrag: boolean;
-  startedWithModifier: boolean;
-  dragging: boolean;
-  startX: number;
-  startY: number;
-  startLeft: number;
-  startTop: number;
+  active: boolean
+  pointerId: number | null
+  source: DragSource | null
+  canDrag: boolean
+  startedWithModifier: boolean
+  dragging: boolean
+  startX: number
+  startY: number
+  startLeft: number
+  startTop: number
 }
 
-type CapsulePosition = Pick<CapsuleSettings, "anchor" | "offsetX" | "offsetY">;
+type CapsulePosition = Pick<CapsuleSettings, "anchor" | "offsetX" | "offsetY">
 
-const CAPSULE_ROOT_ID = "vesti-capsule-root";
-const CAPSULE_Z_INDEX = 2147483646;
-const POLL_INTERVAL_MS = 3000;
-const RETRY_BACKOFF_MS = [1000, 2000, 4000];
-const DRAG_THRESHOLD_PX = 5;
-const VIEWPORT_MARGIN = 8;
-const COLLAPSED_SIZE = 43.2;
-const LOGO_SIZE = 21.6;
-const UI_SETTINGS_STORAGE_KEY = "vesti_ui_settings";
-const CAPSULE_SETTINGS_STORAGE_KEY = "vesti_capsule_settings";
-const POSITION_SYNC_GRACE_MS = 2000;
-const CAPSULE_FONT_FACE_STYLE_ID = "vesti-capsule-font-face-style";
+const CAPSULE_ROOT_ID = "vesti-capsule-root"
+const CAPSULE_Z_INDEX = 2147483646
+const POLL_INTERVAL_MS = 3000
+const RETRY_BACKOFF_MS = [1000, 2000, 4000]
+const DRAG_THRESHOLD_PX = 5
+const VIEWPORT_MARGIN = 8
+const COLLAPSED_SIZE = 43.2
+const LOGO_SIZE = 21.6
+const UI_SETTINGS_STORAGE_KEY = "vesti_ui_settings"
+const CAPSULE_SETTINGS_STORAGE_KEY = "vesti_capsule_settings"
+const POSITION_SYNC_GRACE_MS = 2000
+const CAPSULE_FONT_FACE_STYLE_ID = "vesti-capsule-font-face-style"
 const FONT_UI_400_URL = new URL(
   "../../public/fonts/Lexend-UI-400.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_UI_500_URL = new URL(
   "../../public/fonts/Lexend-UI-500.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_UI_600_URL = new URL(
   "../../public/fonts/Lexend-UI-600.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_UI_CJK_400_URL = new URL(
   "../../public/fonts/SourceHanSansSC-UI-400.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_UI_CJK_500_URL = new URL(
   "../../public/fonts/SourceHanSansSC-UI-500.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_UI_CJK_600_URL = new URL(
   "../../public/fonts/SourceHanSansSC-UI-500.woff2",
   import.meta.url
-).toString();
+).toString()
 const FONT_TITLE_400_URL = new URL(
   "../../public/fonts/Exposure-Title-400.woff2",
   import.meta.url
-).toString();
+).toString()
 const PRIMARY_ROLLOUT_HOSTS = new Set([
   "chatgpt.com",
   "chat.openai.com",
@@ -131,13 +157,13 @@ const PRIMARY_ROLLOUT_HOSTS = new Set([
   "www.kimi.com",
   "kimi.com",
   "kimi.moonshot.cn",
-  "yuanbao.tencent.com",
-]);
+  "yuanbao.tencent.com"
+])
 
 interface PlatformTone {
-  bg: string;
-  text: string;
-  border: string;
+  bg: string
+  text: string
+  border: string
 }
 
 const PLATFORM_BY_HOST: Record<string, Platform> = {
@@ -151,110 +177,110 @@ const PLATFORM_BY_HOST: Record<string, Platform> = {
   "www.kimi.com": "Kimi",
   "kimi.com": "Kimi",
   "kimi.moonshot.cn": "Kimi",
-  "yuanbao.tencent.com": "Yuanbao",
-};
+  "yuanbao.tencent.com": "Yuanbao"
+}
 
 const PLATFORM_TONE: Record<UiThemeMode, Record<Platform, PlatformTone>> = {
   light: {
     ChatGPT: {
       bg: "hsl(146 46% 93%)",
       text: "hsl(146 52% 28%)",
-      border: "hsl(146 32% 76%)",
+      border: "hsl(146 32% 76%)"
     },
     Claude: {
       bg: "hsl(22 86% 93%)",
       text: "hsl(20 54% 42%)",
-      border: "hsl(21 55% 79%)",
+      border: "hsl(21 55% 79%)"
     },
     Gemini: {
       bg: "hsl(254 86% 95%)",
       text: "hsl(252 45% 47%)",
-      border: "hsl(252 52% 82%)",
+      border: "hsl(252 52% 82%)"
     },
     DeepSeek: {
       bg: "hsl(222 90% 95%)",
       text: "hsl(222 62% 44%)",
-      border: "hsl(222 63% 81%)",
+      border: "hsl(222 63% 81%)"
     },
     Qwen: {
       bg: "hsl(242 88% 95%)",
       text: "hsl(242 56% 46%)",
-      border: "hsl(242 58% 82%)",
+      border: "hsl(242 58% 82%)"
     },
     Doubao: {
       bg: "hsl(210 100% 95%)",
       text: "hsl(212 66% 44%)",
-      border: "hsl(211 69% 81%)",
+      border: "hsl(211 69% 81%)"
     },
     Kimi: {
       bg: "hsl(222 20% 93%)",
       text: "hsl(222 15% 28%)",
-      border: "hsl(222 12% 74%)",
+      border: "hsl(222 12% 74%)"
     },
     Yuanbao: {
       bg: "hsl(173 62% 93%)",
       text: "hsl(173 58% 26%)",
-      border: "hsl(173 35% 75%)",
-    },
+      border: "hsl(173 35% 75%)"
+    }
   },
   dark: {
     ChatGPT: {
       bg: "hsl(158 33% 18%)",
       text: "hsl(150 50% 66%)",
-      border: "hsl(154 30% 33%)",
+      border: "hsl(154 30% 33%)"
     },
     Claude: {
       bg: "hsl(18 44% 20%)",
       text: "hsl(18 58% 66%)",
-      border: "hsl(18 33% 34%)",
+      border: "hsl(18 33% 34%)"
     },
     Gemini: {
       bg: "hsl(252 35% 20%)",
       text: "hsl(252 80% 76%)",
-      border: "hsl(252 34% 35%)",
+      border: "hsl(252 34% 35%)"
     },
     DeepSeek: {
       bg: "hsl(224 44% 20%)",
       text: "hsl(222 88% 75%)",
-      border: "hsl(223 35% 35%)",
+      border: "hsl(223 35% 35%)"
     },
     Qwen: {
       bg: "hsl(242 42% 20%)",
       text: "hsl(242 88% 76%)",
-      border: "hsl(242 33% 35%)",
+      border: "hsl(242 33% 35%)"
     },
     Doubao: {
       bg: "hsl(211 46% 20%)",
       text: "hsl(211 90% 76%)",
-      border: "hsl(211 37% 35%)",
+      border: "hsl(211 37% 35%)"
     },
     Kimi: {
       bg: "hsl(222 20% 16%)",
       text: "hsl(222 18% 68%)",
-      border: "hsl(222 14% 32%)",
+      border: "hsl(222 14% 32%)"
     },
     Yuanbao: {
       bg: "hsl(173 30% 16%)",
       text: "hsl(173 52% 62%)",
-      border: "hsl(173 28% 31%)",
-    },
-  },
-};
+      border: "hsl(173 28% 31%)"
+    }
+  }
+}
 
 const FALLBACK_PLATFORM_TONE: Record<UiThemeMode, PlatformTone> = {
   light: {
     bg: "hsl(220 20% 93%)",
     text: "hsl(220 16% 36%)",
-    border: "hsl(220 20% 83%)",
+    border: "hsl(220 20% 83%)"
   },
   dark: {
     bg: "hsl(220 17% 22%)",
     text: "hsl(220 19% 73%)",
-    border: "hsl(220 16% 36%)",
-  },
-};
+    border: "hsl(220 16% 36%)"
+  }
+}
 
-type CapsuleLocale = SupportedLocale;
+type CapsuleLocale = SupportedLocale
 
 const capsuleEn = {
   unavailable: "Unavailable",
@@ -280,7 +306,8 @@ const capsuleEn = {
     optimizing: "Optimizing...",
     continue: "Continue",
     continuing: "Continuing...",
-    searchPlaceholder: "Search your prompts + plaza picks by trigger/keyword...",
+    searchPlaceholder:
+      "Search your prompts + plaza picks by trigger/keyword...",
     empty: "No prompts yet.",
     noResults: "No match.",
     noDraft: "Type something in the chat box first.",
@@ -289,7 +316,13 @@ const capsuleEn = {
     failed: "Could not generate. Try again.",
     offlineHint: "Connect a model in Settings to optimize prompts.",
     hint: "Type to match · Enter to fill",
-    plazaBadge: "Plaza",
+    plazaBadge: "Plaza"
+  },
+  deepseek: {
+    expertExplain: "Explain like an expert mentor",
+    optimize: "Optimize my prompt",
+    working: "Working...",
+    failed: "The action could not be completed. Check the input and try again."
   },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "Archive is disabled in mirror mode.",
@@ -301,9 +334,9 @@ const capsuleEn = {
     storage_limit_blocked: "Storage is full. Export or clean up first.",
     persist_failed: "Archive failed during persistence.",
     FORCE_ARCHIVE_FAILED: "Archive action failed. Retry.",
-    content_unreachable: "Capture context is temporarily unreachable.",
-  },
-};
+    content_unreachable: "Capture context is temporarily unreachable."
+  }
+}
 
 const capsuleZh = {
   unavailable: "不可用",
@@ -329,7 +362,8 @@ const capsuleZh = {
     optimizing: "优化中...",
     continue: "续写",
     continuing: "续写中...",
-    searchPlaceholder: "使用唤醒词/关键词 搜索常用提示词/优质提示词（来自提示词广场）",
+    searchPlaceholder:
+      "使用唤醒词/关键词 搜索常用提示词/优质提示词（来自提示词广场）",
     empty: "暂无提示词。",
     noResults: "无匹配。",
     noDraft: "请先在对话输入框中输入内容。",
@@ -338,7 +372,13 @@ const capsuleZh = {
     failed: "生成失败，请重试。",
     offlineHint: "在设置中连接模型后即可优化提示词。",
     hint: "输入即匹配 · 回车填入",
-    plazaBadge: "广场",
+    plazaBadge: "广场"
+  },
+  deepseek: {
+    expertExplain: "像专家导师一样讲解",
+    optimize: "优化我的提示词",
+    working: "处理中...",
+    failed: "操作没有完成，请检查输入框后重试"
   },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "镜像模式下归档已禁用。",
@@ -350,9 +390,9 @@ const capsuleZh = {
     storage_limit_blocked: "存储已满。请先导出或清理数据。",
     persist_failed: "归档持久化失败。",
     FORCE_ARCHIVE_FAILED: "归档操作失败。请重试。",
-    content_unreachable: "捕获上下文暂时无法访问。",
-  },
-} as const;
+    content_unreachable: "捕获上下文暂时无法访问。"
+  }
+} as const
 
 const capsuleJa: typeof capsuleEn = {
   unavailable: "利用不可",
@@ -378,7 +418,8 @@ const capsuleJa: typeof capsuleEn = {
     optimizing: "最適化中...",
     continue: "続きを生成",
     continuing: "生成中...",
-    searchPlaceholder: "トリガー/キーワードで、あなたのプロンプトと広場のおすすめを検索...",
+    searchPlaceholder:
+      "トリガー/キーワードで、あなたのプロンプトと広場のおすすめを検索...",
     empty: "まだプロンプトがありません。",
     noResults: "一致なし。",
     noDraft: "先にチャット入力欄に何か入力してください。",
@@ -387,7 +428,13 @@ const capsuleJa: typeof capsuleEn = {
     failed: "生成できませんでした。もう一度お試しください。",
     offlineHint: "設定でモデルを接続するとプロンプトを最適化できます。",
     hint: "入力すると一致 · Enter で入力",
-    plazaBadge: "広場",
+    plazaBadge: "広場"
+  },
+  deepseek: {
+    expertExplain: "専門家の指導者として解説",
+    optimize: "プロンプトを最適化",
+    working: "処理中...",
+    failed: "操作を完了できませんでした。入力欄を確認して再試行してください。"
   },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "ミラーモードではアーカイブは無効です。",
@@ -396,12 +443,13 @@ const capsuleJa: typeof capsuleEn = {
     TRANSIENT_NOT_FOUND: "利用可能な会話スナップショットがまだありません。",
     missing_conversation_id: "安定した会話 URL を待っています。",
     empty_payload: "アーカイブできる解析済みメッセージがありません。",
-    storage_limit_blocked: "ストレージがいっぱいです。まずエクスポートまたは整理してください。",
+    storage_limit_blocked:
+      "ストレージがいっぱいです。まずエクスポートまたは整理してください。",
     persist_failed: "アーカイブの保存中に失敗しました。",
     FORCE_ARCHIVE_FAILED: "アーカイブ操作に失敗しました。再試行してください。",
-    content_unreachable: "キャプチャコンテキストに一時的にアクセスできません。",
-  },
-};
+    content_unreachable: "キャプチャコンテキストに一時的にアクセスできません。"
+  }
+}
 
 const capsuleKo: typeof capsuleEn = {
   unavailable: "사용 불가",
@@ -436,7 +484,13 @@ const capsuleKo: typeof capsuleEn = {
     failed: "생성하지 못했습니다. 다시 시도하세요.",
     offlineHint: "설정에서 모델을 연결하면 프롬프트를 최적화할 수 있습니다.",
     hint: "입력하면 일치 · Enter로 채우기",
-    plazaBadge: "광장",
+    plazaBadge: "광장"
+  },
+  deepseek: {
+    expertExplain: "전문가 멘토처럼 설명",
+    optimize: "내 프롬프트 최적화",
+    working: "처리 중...",
+    failed: "작업을 완료하지 못했습니다. 입력창을 확인하고 다시 시도하세요."
   },
   errorMessages: {
     ARCHIVE_MODE_DISABLED: "미러 모드에서는 보관이 비활성화됩니다.",
@@ -445,35 +499,36 @@ const capsuleKo: typeof capsuleEn = {
     TRANSIENT_NOT_FOUND: "아직 사용 가능한 대화 스냅샷이 없습니다.",
     missing_conversation_id: "안정적인 대화 URL을 기다리는 중입니다.",
     empty_payload: "보관할 분석된 메시지가 없습니다.",
-    storage_limit_blocked: "저장 공간이 가득 찼습니다. 먼저 내보내거나 정리하세요.",
+    storage_limit_blocked:
+      "저장 공간이 가득 찼습니다. 먼저 내보내거나 정리하세요.",
     persist_failed: "보관 저장 중 실패했습니다.",
     FORCE_ARCHIVE_FAILED: "보관 작업에 실패했습니다. 다시 시도하세요.",
-    content_unreachable: "캡처 컨텍스트에 일시적으로 접근할 수 없습니다.",
-  },
-};
+    content_unreachable: "캡처 컨텍스트에 일시적으로 접근할 수 없습니다."
+  }
+}
 
 const capsuleTranslations: Record<CapsuleLocale, typeof capsuleEn> = {
   en: capsuleEn,
   zh: capsuleZh,
   ja: capsuleJa,
-  ko: capsuleKo,
-};
+  ko: capsuleKo
+}
 
-let capsuleLocale: CapsuleLocale = "en";
-let capsuleT = capsuleTranslations.en;
+let capsuleLocale: CapsuleLocale = "en"
+let capsuleT = capsuleTranslations.en
 
 async function initCapsuleLocale(): Promise<void> {
   try {
-    const locale = await detectAndSetLanguage();
-    capsuleLocale = resolveLocale(locale);
-    capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en;
+    const locale = await detectAndSetLanguage()
+    capsuleLocale = resolveLocale(locale)
+    capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en
   } catch {
     // Keep default English
   }
 }
 
 function capsuleResolveError(key: string): string {
-  return (capsuleT.errorMessages as Record<string, string>)[key] ?? key;
+  return (capsuleT.errorMessages as Record<string, string>)[key] ?? key
 }
 
 const ERROR_MESSAGE_MAP: Record<string, string> = {
@@ -486,24 +541,24 @@ const ERROR_MESSAGE_MAP: Record<string, string> = {
   storage_limit_blocked: "Storage is full. Export or clean up first.",
   persist_failed: "Archive failed during persistence.",
   FORCE_ARCHIVE_FAILED: "Archive action failed. Retry.",
-  content_unreachable: "Capture context is temporarily unreachable.",
-};
+  content_unreachable: "Capture context is temporarily unreachable."
+}
 
 const normalizeThemeMode = (value: unknown): UiThemeMode =>
-  value === "dark" ? "dark" : "light";
+  value === "dark" ? "dark" : "light"
 
 const parseThemeModeFromStorageValue = (value: unknown): UiThemeMode => {
-  if (!value || typeof value !== "object") return "light";
-  return normalizeThemeMode((value as { themeMode?: unknown }).themeMode);
-};
+  if (!value || typeof value !== "object") return "light"
+  return normalizeThemeMode((value as { themeMode?: unknown }).themeMode)
+}
 
 const resolvePlatformTone = (
   platform: Platform | undefined,
   themeMode: UiThemeMode
 ): PlatformTone => {
-  if (!platform) return FALLBACK_PLATFORM_TONE[themeMode];
-  return PLATFORM_TONE[themeMode][platform] ?? FALLBACK_PLATFORM_TONE[themeMode];
-};
+  if (!platform) return FALLBACK_PLATFORM_TONE[themeMode]
+  return PLATFORM_TONE[themeMode][platform] ?? FALLBACK_PLATFORM_TONE[themeMode]
+}
 
 const CAPSULE_FONT_FACE_STYLE_TEXT = `
 @font-face {
@@ -569,7 +624,7 @@ const CAPSULE_FONT_FACE_STYLE_TEXT = `
   font-synthesis: weight;
   unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F, U+20A0-20CF, U+2100-214F;
 }
-`;
+`
 
 const SHADOW_STYLE = `
 :host {
@@ -887,6 +942,24 @@ const SHADOW_STYLE = `
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 8px 11px 12px;
+}
+
+.capsule-deepseek-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 11px 10px;
+}
+
+.capsule-deepseek-actions[hidden] {
+  display: none;
+}
+
+.capsule-deepseek-actions .capsule-action-btn {
+  min-height: 38px;
+  padding: 6px 8px;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .capsule-action-btn {
@@ -1373,86 +1446,86 @@ const SHADOW_STYLE = `
 .capsule-shell[data-theme="dark"][data-view="expanded"] .capsule-action-btn:focus-visible {
   box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.32);
 }
-`;
+`
 
 const ensureCapsuleFontFaceStyleInjected = (): void => {
-  if (document.getElementById(CAPSULE_FONT_FACE_STYLE_ID)) return;
-  const styleNode = document.createElement("style");
-  styleNode.id = CAPSULE_FONT_FACE_STYLE_ID;
-  styleNode.textContent = CAPSULE_FONT_FACE_STYLE_TEXT;
-  (document.head ?? document.documentElement).appendChild(styleNode);
-};
+  if (document.getElementById(CAPSULE_FONT_FACE_STYLE_ID)) return
+  const styleNode = document.createElement("style")
+  styleNode.id = CAPSULE_FONT_FACE_STYLE_ID
+  styleNode.textContent = CAPSULE_FONT_FACE_STYLE_TEXT
+  ;(document.head ?? document.documentElement).appendChild(styleNode)
+}
 
 const clamp = (value: number, min: number, max: number): number => {
-  const normalizedMax = Math.max(min, max);
-  return Math.min(Math.max(value, min), normalizedMax);
-};
+  const normalizedMax = Math.max(min, max)
+  return Math.min(Math.max(value, min), normalizedMax)
+}
 
 const normalizeHost = (host: string): string =>
   String(host ?? "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
 
 const resolvePlatform = (host: string): Platform | undefined => {
-  const normalizedHost = normalizeHost(host);
-  return PLATFORM_BY_HOST[normalizedHost];
-};
+  const normalizedHost = normalizeHost(host)
+  return PLATFORM_BY_HOST[normalizedHost]
+}
 
 const resolveReasonMessage = (errorCode?: string | null): string | null => {
-  if (!errorCode) return null;
-  const direct = capsuleResolveError(errorCode);
-  if (direct !== errorCode) return direct;
+  if (!errorCode) return null
+  const direct = capsuleResolveError(errorCode)
+  if (direct !== errorCode) return direct
   const key = Object.keys(capsuleT.errorMessages).find((k) =>
     errorCode.includes(k)
-  );
-  return key ? capsuleResolveError(key) : errorCode;
-};
+  )
+  return key ? capsuleResolveError(key) : errorCode
+}
 
 const labelForState = (state: CapsuleRuntimeState): string => {
   switch (state) {
     case "idle":
-      return capsuleT.unavailable;
+      return capsuleT.unavailable
     case "mirroring":
-      return capsuleT.mirroring;
+      return capsuleT.mirroring
     case "holding":
-      return capsuleT.held;
+      return capsuleT.held
     case "ready_to_archive":
-      return capsuleT.ready;
+      return capsuleT.ready
     case "archiving":
-      return capsuleT.archiving;
+      return capsuleT.archiving
     case "saved":
-      return capsuleT.saved;
+      return capsuleT.saved
     case "error":
-      return capsuleT.actionFailed;
+      return capsuleT.actionFailed
   }
-};
+}
 
 const openSidepanel = async (): Promise<boolean> => {
-  if (!chrome?.runtime?.sendMessage) return false;
+  if (!chrome?.runtime?.sendMessage) return false
 
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
       { type: "OPEN_SIDEPANEL", source: "capsule-ui" },
       (response) => {
         if (chrome.runtime.lastError) {
-          resolve(false);
-          return;
+          resolve(false)
+          return
         }
         // Trust the background's honest ok flag — sidePanel.open can fail even
         // when the message itself round-trips successfully.
-        resolve((response as { ok?: boolean } | undefined)?.ok === true);
+        resolve((response as { ok?: boolean } | undefined)?.ok === true)
       }
-    );
-  });
-};
+    )
+  })
+}
 
 const getRetryDelay = (failureCount: number): number => {
-  if (failureCount <= 0) return POLL_INTERVAL_MS;
+  if (failureCount <= 0) return POLL_INTERVAL_MS
   if (failureCount <= RETRY_BACKOFF_MS.length) {
-    return RETRY_BACKOFF_MS[failureCount - 1];
+    return RETRY_BACKOFF_MS[failureCount - 1]
   }
-  return POLL_INTERVAL_MS;
-};
+  return POLL_INTERVAL_MS
+}
 
 // ---- prompt-manager background RPC helpers --------------------------------
 // All route through the offscreen dispatcher (handleOffscreenRequest in the
@@ -1462,302 +1535,337 @@ const pmSearchPrompts = async (query: string): Promise<Prompt[]> => {
     return (await sendRequest({
       type: "SEARCH_PROMPTS",
       target: "offscreen",
-      payload: { query, limit: 8 },
-    })) as Prompt[];
+      payload: { query, limit: 8 }
+    })) as Prompt[]
   } catch (error) {
     logger.debug("content", "Capsule prompt search failed", {
-      error: (error as Error)?.message ?? String(error),
-    });
-    return [];
+      error: (error as Error)?.message ?? String(error)
+    })
+    return []
   }
-};
+}
 
 const pmCompleteDraft = async (
   draft: string,
   platform: Platform | undefined,
-  mode: "optimize" | "continue",
+  mode: "optimize" | "continue"
 ): Promise<{ completion: string; usedLlm: boolean }> => {
   return (await sendRequest(
     {
       type: "COMPLETE_PROMPT",
       target: "offscreen",
-      payload: { draft, platform, useLibrary: true, mode },
+      payload: { draft, platform, useLibrary: true, mode }
     },
-    120000,
-  )) as { completion: string; usedLlm: boolean };
-};
+    120000
+  )) as { completion: string; usedLlm: boolean }
+}
 
 const pmIncrementUsage = async (id: number): Promise<void> => {
   try {
     await sendRequest({
       type: "INCREMENT_PROMPT_USAGE",
       target: "offscreen",
-      payload: { id },
-    });
+      payload: { id }
+    })
   } catch {
     // best-effort
   }
-};
+}
 
 const mount = async () => {
-  if (window.top !== window.self) return;
-  if (document.getElementById(CAPSULE_ROOT_ID)) return;
-  await initCapsuleLocale();
-  ensureCapsuleFontFaceStyleInjected();
+  if (window.top !== window.self) return
+  if (document.getElementById(CAPSULE_ROOT_ID)) return
+  await initCapsuleLocale()
+  ensureCapsuleFontFaceStyleInjected()
 
-  const hostname = normalizeHost(window.location.hostname);
-  const isPrimaryRolloutHost = PRIMARY_ROLLOUT_HOSTS.has(hostname);
+  const hostname = normalizeHost(window.location.hostname)
+  const isPrimaryRolloutHost = PRIMARY_ROLLOUT_HOSTS.has(hostname)
 
-  let settings: CapsuleSettings = DEFAULT_CAPSULE_SETTINGS;
+  let settings: CapsuleSettings = DEFAULT_CAPSULE_SETTINGS
   try {
-    settings = await getCapsuleSettingsForHost(hostname);
+    settings = await getCapsuleSettingsForHost(hostname)
   } catch (error) {
-    logger.warn("content", "Failed to load capsule settings, fallback to defaults", {
-      host: hostname,
-      error: (error as Error).message,
-    });
+    logger.warn(
+      "content",
+      "Failed to load capsule settings, fallback to defaults",
+      {
+        host: hostname,
+        error: (error as Error).message
+      }
+    )
   }
 
-  let themeMode: UiThemeMode = "light";
+  let themeMode: UiThemeMode = "light"
   try {
-    const uiSettings = await getUiSettings();
-    themeMode = normalizeThemeMode(uiSettings.themeMode);
+    const uiSettings = await getUiSettings()
+    themeMode = normalizeThemeMode(uiSettings.themeMode)
   } catch (error) {
-    logger.warn("content", "Failed to load UI theme settings, fallback to light", {
-      host: hostname,
-      error: (error as Error).message,
-    });
+    logger.warn(
+      "content",
+      "Failed to load UI theme settings, fallback to light",
+      {
+        host: hostname,
+        error: (error as Error).message
+      }
+    )
   }
 
   if (!settings.enabled || settings.hiddenHosts.includes(hostname)) {
-    logger.info("content", "Capsule hidden by settings", { host: hostname });
-    return;
+    logger.info("content", "Capsule hidden by settings", { host: hostname })
+    return
   }
 
-  const host = document.createElement("div");
-  host.id = CAPSULE_ROOT_ID;
-  host.style.position = "fixed";
-  host.style.inset = "0";
-  host.style.pointerEvents = "none";
-  host.style.zIndex = String(CAPSULE_Z_INDEX);
-  document.body.appendChild(host);
+  const host = document.createElement("div")
+  host.id = CAPSULE_ROOT_ID
+  host.style.position = "fixed"
+  host.style.inset = "0"
+  host.style.pointerEvents = "none"
+  host.style.zIndex = String(CAPSULE_Z_INDEX)
+  document.body.appendChild(host)
 
-  const shadow = host.attachShadow({ mode: "open" });
-  const styleNode = document.createElement("style");
-  styleNode.textContent = SHADOW_STYLE;
-  shadow.appendChild(styleNode);
+  const shadow = host.attachShadow({ mode: "open" })
+  const styleNode = document.createElement("style")
+  styleNode.textContent = SHADOW_STYLE
+  shadow.appendChild(styleNode)
 
-  const shell = document.createElement("div");
-  shell.className = isPrimaryRolloutHost ? "capsule-shell" : "capsule-shell fallback-shell";
-  shell.dataset.view = "collapsed";
-  shell.dataset.state = "idle";
-  shell.dataset.theme = themeMode;
-  shadow.appendChild(shell);
+  const shell = document.createElement("div")
+  shell.className = isPrimaryRolloutHost
+    ? "capsule-shell"
+    : "capsule-shell fallback-shell"
+  shell.dataset.view = "collapsed"
+  shell.dataset.state = "idle"
+  shell.dataset.theme = themeMode
+  shadow.appendChild(shell)
 
-  const collapsedButton = document.createElement("button");
-  collapsedButton.type = "button";
-  collapsedButton.className = "capsule-collapsed";
-  collapsedButton.setAttribute("aria-label", capsuleT.vestiCapsule);
+  const collapsedButton = document.createElement("button")
+  collapsedButton.type = "button"
+  collapsedButton.className = "capsule-collapsed"
+  collapsedButton.setAttribute("aria-label", capsuleT.vestiCapsule)
   collapsedButton.title = isPrimaryRolloutHost
     ? capsuleT.openVestiCapsule
-    : capsuleT.openVestiDock;
-  const logo = document.createElement("img");
-  logo.className = "capsule-logo";
-  logo.src = LOGO_BASE64;
-  logo.alt = "Vesti";
-  logo.draggable = false;
-  collapsedButton.appendChild(logo);
-  shell.appendChild(collapsedButton);
+    : capsuleT.openVestiDock
+  const logo = document.createElement("img")
+  logo.className = "capsule-logo"
+  logo.src = LOGO_BASE64
+  logo.alt = "Vesti"
+  logo.draggable = false
+  collapsedButton.appendChild(logo)
+  shell.appendChild(collapsedButton)
 
-  const panel = document.createElement("section");
-  panel.className = "capsule-panel";
-  panel.hidden = true;
+  const panel = document.createElement("section")
+  panel.className = "capsule-panel"
+  panel.hidden = true
 
-  const header = document.createElement("div");
-  header.className = "capsule-header";
+  const header = document.createElement("div")
+  header.className = "capsule-header"
 
-  const dragHandle = document.createElement("div");
-  dragHandle.className = "capsule-drag-handle";
-  dragHandle.setAttribute("role", "presentation");
+  const dragHandle = document.createElement("div")
+  dragHandle.className = "capsule-drag-handle"
+  dragHandle.setAttribute("role", "presentation")
 
-  const title = document.createElement("span");
-  title.className = "capsule-title";
-  title.textContent = "Vesti";
+  const title = document.createElement("span")
+  title.className = "capsule-title"
+  title.textContent = "Vesti"
 
-  const platformBadge = document.createElement("span");
-  platformBadge.className = "capsule-platform";
-  platformBadge.textContent = resolvePlatform(hostname) ?? "Unknown";
-  const initialPlatform = resolvePlatform(hostname);
-  const initialPlatformTone = resolvePlatformTone(initialPlatform, themeMode);
-  platformBadge.style.backgroundColor = initialPlatformTone.bg;
-  platformBadge.style.color = initialPlatformTone.text;
-  platformBadge.style.borderColor = initialPlatformTone.border;
+  const platformBadge = document.createElement("span")
+  platformBadge.className = "capsule-platform"
+  platformBadge.textContent = resolvePlatform(hostname) ?? "Unknown"
+  const initialPlatform = resolvePlatform(hostname)
+  const initialPlatformTone = resolvePlatformTone(initialPlatform, themeMode)
+  platformBadge.style.backgroundColor = initialPlatformTone.bg
+  platformBadge.style.color = initialPlatformTone.text
+  platformBadge.style.borderColor = initialPlatformTone.border
 
-  dragHandle.appendChild(title);
-  dragHandle.appendChild(platformBadge);
+  dragHandle.appendChild(title)
+  dragHandle.appendChild(platformBadge)
 
-  const collapseBtn = document.createElement("button");
-  collapseBtn.type = "button";
-  collapseBtn.className = "capsule-collapse-btn";
-  collapseBtn.textContent = "⌃";
-  collapseBtn.setAttribute("aria-label", capsuleT.collapseAria);
-  collapseBtn.title = capsuleT.collapseTitle;
+  const collapseBtn = document.createElement("button")
+  collapseBtn.type = "button"
+  collapseBtn.className = "capsule-collapse-btn"
+  collapseBtn.textContent = "⌃"
+  collapseBtn.setAttribute("aria-label", capsuleT.collapseAria)
+  collapseBtn.title = capsuleT.collapseTitle
 
-  header.appendChild(dragHandle);
-  header.appendChild(collapseBtn);
+  header.appendChild(dragHandle)
+  header.appendChild(collapseBtn)
 
-  const statusRow = document.createElement("div");
-  statusRow.className = "capsule-status-row";
+  const statusRow = document.createElement("div")
+  statusRow.className = "capsule-status-row"
 
-  const statusBadge = document.createElement("span");
-  statusBadge.className = "capsule-status-badge";
-  statusBadge.dataset.state = "idle";
-  const statusDot = document.createElement("span");
-  statusDot.className = "capsule-status-dot";
-  const statusLabel = document.createElement("span");
-  statusLabel.className = "capsule-status-label";
-  statusLabel.textContent = "Unavailable";
-  statusBadge.appendChild(statusDot);
-  statusBadge.appendChild(statusLabel);
+  const statusBadge = document.createElement("span")
+  statusBadge.className = "capsule-status-badge"
+  statusBadge.dataset.state = "idle"
+  const statusDot = document.createElement("span")
+  statusDot.className = "capsule-status-dot"
+  const statusLabel = document.createElement("span")
+  statusLabel.className = "capsule-status-label"
+  statusLabel.textContent = "Unavailable"
+  statusBadge.appendChild(statusDot)
+  statusBadge.appendChild(statusLabel)
 
-  const statusHost = document.createElement("span");
-  statusHost.className = "capsule-domain-label";
-  statusHost.textContent = hostname;
+  const statusHost = document.createElement("span")
+  statusHost.className = "capsule-domain-label"
+  statusHost.textContent = hostname
 
-  statusRow.appendChild(statusBadge);
-  statusRow.appendChild(statusHost);
+  statusRow.appendChild(statusBadge)
+  statusRow.appendChild(statusHost)
 
-  const reasonLine = document.createElement("div");
-  reasonLine.className = "capsule-reason";
-  reasonLine.textContent = capsuleT.waitingForStatus;
+  const reasonLine = document.createElement("div")
+  reasonLine.className = "capsule-reason"
+  reasonLine.textContent = capsuleT.waitingForStatus
 
-  const actions = document.createElement("div");
-  actions.className = "capsule-actions";
+  const actions = document.createElement("div")
+  actions.className = "capsule-actions"
 
-  const archiveBtn = document.createElement("button");
-  archiveBtn.type = "button";
-  archiveBtn.className = "capsule-action-btn is-primary";
-  archiveBtn.textContent = capsuleT.archiveNow;
+  const archiveBtn = document.createElement("button")
+  archiveBtn.type = "button"
+  archiveBtn.className = "capsule-action-btn is-primary"
+  archiveBtn.textContent = capsuleT.archiveNow
 
-  const openDockBtn = document.createElement("button");
-  openDockBtn.type = "button";
-  openDockBtn.className = "capsule-action-btn";
-  openDockBtn.textContent = capsuleT.openDock;
+  const openDockBtn = document.createElement("button")
+  openDockBtn.type = "button"
+  openDockBtn.className = "capsule-action-btn"
+  openDockBtn.textContent = capsuleT.openDock
 
-  actions.appendChild(archiveBtn);
-  actions.appendChild(openDockBtn);
+  actions.appendChild(archiveBtn)
+  actions.appendChild(openDockBtn)
+
+  const deepSeekActions = document.createElement("div")
+  deepSeekActions.className = "capsule-deepseek-actions"
+  deepSeekActions.hidden = true
+
+  const expertExplainBtn = document.createElement("button")
+  expertExplainBtn.type = "button"
+  expertExplainBtn.className = "capsule-action-btn is-primary"
+  expertExplainBtn.textContent = capsuleT.deepseek.expertExplain
+
+  const deepSeekOptimizeBtn = document.createElement("button")
+  deepSeekOptimizeBtn.type = "button"
+  deepSeekOptimizeBtn.className = "capsule-action-btn"
+  deepSeekOptimizeBtn.textContent = capsuleT.deepseek.optimize
+
+  deepSeekActions.appendChild(expertExplainBtn)
+  deepSeekActions.appendChild(deepSeekOptimizeBtn)
 
   // ---- prompt manager (lower dock section) --------------------------------
   // The owl/dock is the single open/close toggle for this unified feature:
   // optimize / continue work on the page composer, and the search list fills a
   // saved prompt by trigger (Enter = top match, click = that item).
-  const pm = document.createElement("div");
-  pm.className = "capsule-pm";
+  const pm = document.createElement("div")
+  pm.className = "capsule-pm"
 
-  const pmHeading = document.createElement("div");
-  pmHeading.className = "capsule-pm-heading";
-  pmHeading.textContent = capsuleT.pm.heading;
+  const pmHeading = document.createElement("div")
+  pmHeading.className = "capsule-pm-heading"
+  pmHeading.textContent = capsuleT.pm.heading
 
-  const pmTools = document.createElement("div");
-  pmTools.className = "capsule-pm-tools";
-  const optimizeBtn = document.createElement("button");
-  optimizeBtn.type = "button";
-  optimizeBtn.className = "capsule-pm-btn";
-  optimizeBtn.textContent = capsuleT.pm.optimize;
-  const continueBtn = document.createElement("button");
-  continueBtn.type = "button";
-  continueBtn.className = "capsule-pm-btn";
-  continueBtn.textContent = capsuleT.pm.continue;
-  pmTools.appendChild(optimizeBtn);
-  pmTools.appendChild(continueBtn);
+  const pmTools = document.createElement("div")
+  pmTools.className = "capsule-pm-tools"
+  const optimizeBtn = document.createElement("button")
+  optimizeBtn.type = "button"
+  optimizeBtn.className = "capsule-pm-btn"
+  optimizeBtn.textContent = capsuleT.pm.optimize
+  const continueBtn = document.createElement("button")
+  continueBtn.type = "button"
+  continueBtn.className = "capsule-pm-btn"
+  continueBtn.textContent = capsuleT.pm.continue
+  pmTools.appendChild(optimizeBtn)
+  pmTools.appendChild(continueBtn)
 
-  const pmSearch = document.createElement("input");
-  pmSearch.type = "text";
-  pmSearch.className = "capsule-pm-search";
-  pmSearch.placeholder = capsuleT.pm.searchPlaceholder;
+  const pmSearch = document.createElement("input")
+  pmSearch.type = "text"
+  pmSearch.className = "capsule-pm-search"
+  pmSearch.placeholder = capsuleT.pm.searchPlaceholder
 
-  const pmList = document.createElement("div");
-  pmList.className = "capsule-pm-list";
+  const pmList = document.createElement("div")
+  pmList.className = "capsule-pm-list"
 
-  const pmPreview = document.createElement("div");
-  pmPreview.className = "capsule-pm-preview";
-  pmPreview.hidden = true;
-  const pmPreviewText = document.createElement("div");
-  pmPreviewText.className = "capsule-pm-preview-text";
-  const pmPreviewActions = document.createElement("div");
-  pmPreviewActions.className = "capsule-pm-preview-actions";
-  const pmCancelBtn = document.createElement("button");
-  pmCancelBtn.type = "button";
-  pmCancelBtn.className = "capsule-pm-btn";
-  pmCancelBtn.textContent = capsuleT.pm.cancel;
-  const pmFillBtn = document.createElement("button");
-  pmFillBtn.type = "button";
-  pmFillBtn.className = "capsule-action-btn is-primary";
-  pmFillBtn.textContent = capsuleT.pm.fill;
-  pmPreviewActions.appendChild(pmCancelBtn);
-  pmPreviewActions.appendChild(pmFillBtn);
-  pmPreview.appendChild(pmPreviewText);
-  pmPreview.appendChild(pmPreviewActions);
+  const pmPreview = document.createElement("div")
+  pmPreview.className = "capsule-pm-preview"
+  pmPreview.hidden = true
+  const pmPreviewText = document.createElement("div")
+  pmPreviewText.className = "capsule-pm-preview-text"
+  const pmPreviewActions = document.createElement("div")
+  pmPreviewActions.className = "capsule-pm-preview-actions"
+  const pmCancelBtn = document.createElement("button")
+  pmCancelBtn.type = "button"
+  pmCancelBtn.className = "capsule-pm-btn"
+  pmCancelBtn.textContent = capsuleT.pm.cancel
+  const pmFillBtn = document.createElement("button")
+  pmFillBtn.type = "button"
+  pmFillBtn.className = "capsule-action-btn is-primary"
+  pmFillBtn.textContent = capsuleT.pm.fill
+  pmPreviewActions.appendChild(pmCancelBtn)
+  pmPreviewActions.appendChild(pmFillBtn)
+  pmPreview.appendChild(pmPreviewText)
+  pmPreview.appendChild(pmPreviewActions)
 
-  const pmHint = document.createElement("div");
-  pmHint.className = "capsule-pm-hint";
-  pmHint.textContent = capsuleT.pm.hint;
+  const pmHint = document.createElement("div")
+  pmHint.className = "capsule-pm-hint"
+  pmHint.textContent = capsuleT.pm.hint
 
-  pm.appendChild(pmHeading);
-  pm.appendChild(pmTools);
-  pm.appendChild(pmSearch);
-  pm.appendChild(pmList);
-  pm.appendChild(pmPreview);
-  pm.appendChild(pmHint);
+  pm.appendChild(pmHeading)
+  pm.appendChild(pmTools)
+  pm.appendChild(pmSearch)
+  pm.appendChild(pmList)
+  pm.appendChild(pmPreview)
+  pm.appendChild(pmHint)
 
-  panel.appendChild(header);
-  panel.appendChild(statusRow);
-  panel.appendChild(reasonLine);
-  panel.appendChild(actions);
-  panel.appendChild(pm);
+  panel.appendChild(header)
+  panel.appendChild(statusRow)
+  panel.appendChild(reasonLine)
+  panel.appendChild(actions)
+  panel.appendChild(pm)
 
   if (isPrimaryRolloutHost) {
-    shell.appendChild(panel);
+    shell.appendChild(panel)
   }
 
-  const quietDefaultView: CapsuleViewMode = "collapsed";
+  const quietDefaultView: CapsuleViewMode = "collapsed"
   const quietPosition: CapsulePosition = {
     anchor: DEFAULT_CAPSULE_SETTINGS.anchor,
     offsetX: DEFAULT_CAPSULE_SETTINGS.offsetX,
-    offsetY: DEFAULT_CAPSULE_SETTINGS.offsetY,
-  };
+    offsetY: DEFAULT_CAPSULE_SETTINGS.offsetY
+  }
 
-  let viewMode: CapsuleViewMode = quietDefaultView;
-  let runtimeStatus: ActiveCaptureStatus | null = null;
-  let runtimeError: string | null = null;
-  let uiState: CapsuleRuntimeState = "idle";
-  let inFlightArchive = false;
-  let savedUntil = 0;
-  let pollTimer: number | null = null;
-  let autoCollapseTimer: number | null = null;
-  let failureCount = 0;
-  let destroyed = false;
-  let suppressCollapsedClick = false;
-  let positionRef: CapsulePosition = { ...quietPosition };
-  let lastDragAt = 0;
-  let persistInFlight = false;
-  let pendingSettingsPatch: Partial<CapsuleSettings> | null = null;
+  let viewMode: CapsuleViewMode = quietDefaultView
+  let runtimeStatus: ActiveCaptureStatus | null = null
+  let runtimeError: string | null = null
+  let uiState: CapsuleRuntimeState = "idle"
+  let inFlightArchive = false
+  let savedUntil = 0
+  let pollTimer: number | null = null
+  let autoCollapseTimer: number | null = null
+  let failureCount = 0
+  let destroyed = false
+  let suppressCollapsedClick = false
+  let positionRef: CapsulePosition = { ...quietPosition }
+  let lastDragAt = 0
+  let persistInFlight = false
+  let pendingSettingsPatch: Partial<CapsuleSettings> | null = null
 
   // ---- prompt manager state ----
-  const promptPlatform = resolvePlatform(hostname);
-  let pmEnabled = true;
-  let pmBusy: "optimize" | "continue" | null = null;
-  let pmResults: PmResult[] = [];
-  let pmPreviewBody = "";
-  let pmSearchDebounce: number | null = null;
+  const promptPlatform = resolvePlatform(hostname)
+  let pmEnabled = true
+  let pmBusy: "optimize" | "continue" | null = null
+  let deepSeekBusy: "expert" | "optimize" | null = null
+  let pmResults: PmResult[] = []
+  let pmPreviewBody = ""
+  let pmSearchDebounce: number | null = null
   // Monotonic search token: a slower earlier query must not overwrite the
   // results of a newer one once its awaited lookups resolve.
-  let pmSearchSeq = 0;
-  let unsubscribePromptAssist: (() => void) | null = null;
+  let pmSearchSeq = 0
+  let unsubscribePromptAssist: (() => void) | null = null
+  let deepSeekCoachmark: DeepSeekCoachmarkController | null = null
+  let unsubscribeOnboarding: (() => void) | null = null
+  let deepSeekGuideActive = false
+  let deepSeekGuideStep = 0
+  let latestOnboardingState: OnboardingState | null = null
+  let deepSeekGuideObserver: MutationObserver | null = null
+  let deepSeekGuideSyncFrame: number | null = null
   // The composer the user last typed in. Clicking the shadow panel moves
   // document.activeElement to the shadow host, so resolveComposer() can miss the
   // real composer on rich editors (Claude/Kimi) — fall back to this.
-  let lastComposer: ComposerEl | null = null;
+  let lastComposer: ComposerEl | null = null
 
   const dragSession: DragSession = {
     active: false,
@@ -1769,62 +1877,62 @@ const mount = async () => {
     startX: 0,
     startY: 0,
     startLeft: 0,
-    startTop: 0,
-  };
+    startTop: 0
+  }
 
   const getShellSize = () => {
-    const rect = shell.getBoundingClientRect();
+    const rect = shell.getBoundingClientRect()
     return {
       width: Math.max(rect.width || 0, COLLAPSED_SIZE),
-      height: Math.max(rect.height || 0, COLLAPSED_SIZE),
-    };
-  };
+      height: Math.max(rect.height || 0, COLLAPSED_SIZE)
+    }
+  }
 
   const clampOffsetsToViewport = (
     anchor: CapsuleAnchor,
     offsetX: number,
     offsetY: number
   ) => {
-    const { width, height } = getShellSize();
-    const maxOffsetX = window.innerWidth - width - VIEWPORT_MARGIN;
-    const maxOffsetY = window.innerHeight - height - VIEWPORT_MARGIN;
+    const { width, height } = getShellSize()
+    const maxOffsetX = window.innerWidth - width - VIEWPORT_MARGIN
+    const maxOffsetY = window.innerHeight - height - VIEWPORT_MARGIN
     return {
       anchor,
       offsetX: clamp(offsetX, VIEWPORT_MARGIN, maxOffsetX),
-      offsetY: clamp(offsetY, VIEWPORT_MARGIN, maxOffsetY),
-    };
-  };
+      offsetY: clamp(offsetY, VIEWPORT_MARGIN, maxOffsetY)
+    }
+  }
 
   const applyAnchoredPosition = () => {
     const next = clampOffsetsToViewport(
       positionRef.anchor,
       positionRef.offsetX,
       positionRef.offsetY
-    );
+    )
     positionRef = {
       anchor: next.anchor,
       offsetX: next.offsetX,
-      offsetY: next.offsetY,
-    };
+      offsetY: next.offsetY
+    }
     settings = {
       ...settings,
       anchor: next.anchor,
       offsetX: next.offsetX,
-      offsetY: next.offsetY,
-    };
-
-    shell.style.top = "auto";
-    shell.style.bottom = `${next.offsetY}px`;
-
-    if (next.anchor === "bottom_right") {
-      shell.style.left = "auto";
-      shell.style.right = `${next.offsetX}px`;
-      return;
+      offsetY: next.offsetY
     }
 
-    shell.style.left = `${next.offsetX}px`;
-    shell.style.right = "auto";
-  };
+    shell.style.top = "auto"
+    shell.style.bottom = `${next.offsetY}px`
+
+    if (next.anchor === "bottom_right") {
+      shell.style.left = "auto"
+      shell.style.right = `${next.offsetX}px`
+      return
+    }
+
+    shell.style.left = `${next.offsetX}px`
+    shell.style.right = "auto"
+  }
 
   const logAction = (
     action: "open_dock" | "archive_now" | "drag_end",
@@ -1835,216 +1943,358 @@ const mount = async () => {
       action,
       state: uiState,
       ok,
-      ...detail,
-    };
-    if (ok) {
-      logger.info("content", "Capsule action", payload);
-    } else {
-      logger.warn("content", "Capsule action failed", payload);
+      ...detail
     }
-  };
+    if (ok) {
+      logger.info("content", "Capsule action", payload)
+    } else {
+      logger.warn("content", "Capsule action failed", payload)
+    }
+  }
 
   const persistSettingsPatch = (patch: Partial<CapsuleSettings>) => {
     pendingSettingsPatch = {
       ...(pendingSettingsPatch ?? {}),
-      ...patch,
-    };
-    if (persistInFlight) return;
-    persistInFlight = true;
+      ...patch
+    }
+    if (persistInFlight) return
+    persistInFlight = true
     void (async () => {
       while (pendingSettingsPatch) {
-        const patchToWrite = pendingSettingsPatch;
-        pendingSettingsPatch = null;
+        const patchToWrite = pendingSettingsPatch
+        pendingSettingsPatch = null
         try {
-          const nextSettings = await updateCapsuleSettingsForHost(hostname, patchToWrite);
+          const nextSettings = await updateCapsuleSettingsForHost(
+            hostname,
+            patchToWrite
+          )
           settings = {
             ...nextSettings,
             anchor: positionRef.anchor,
             offsetX: positionRef.offsetX,
-            offsetY: positionRef.offsetY,
-          };
+            offsetY: positionRef.offsetY
+          }
         } catch (error) {
           logger.warn("content", "Failed to persist capsule settings", {
             host: hostname,
             patch: patchToWrite,
-            error: (error as Error).message,
-          });
+            error: (error as Error).message
+          })
         }
       }
-      persistInFlight = false;
-    })();
-  };
-
+      persistInFlight = false
+    })()
+  }
 
   if (isPrimaryRolloutHost) {
     const needsQuietDefaults =
       settings.defaultView !== quietDefaultView ||
       settings.anchor !== quietPosition.anchor ||
       settings.offsetX !== quietPosition.offsetX ||
-      settings.offsetY !== quietPosition.offsetY;
+      settings.offsetY !== quietPosition.offsetY
 
     if (needsQuietDefaults) {
       persistSettingsPatch({
         defaultView: quietDefaultView,
         anchor: quietPosition.anchor,
         offsetX: quietPosition.offsetX,
-        offsetY: quietPosition.offsetY,
-      });
+        offsetY: quietPosition.offsetY
+      })
     }
   }
 
   const deriveUiState = (): CapsuleRuntimeState => {
-    if (inFlightArchive) return "archiving";
-    if (savedUntil > Date.now()) return "saved";
-    if (runtimeError) return "error";
+    if (inFlightArchive) return "archiving"
+    if (savedUntil > Date.now()) return "saved"
+    if (runtimeError) return "error"
 
     if (!runtimeStatus || !runtimeStatus.supported) {
-      return "idle";
+      return "idle"
     }
 
     if (runtimeStatus.reason === "content_unreachable") {
-      return "error";
+      return "error"
     }
 
     if (runtimeStatus.mode === "mirror") {
-      return "mirroring";
+      return "mirroring"
     }
 
     if (runtimeStatus.available) {
-      return "ready_to_archive";
+      return "ready_to_archive"
     }
 
-    return "holding";
-  };
+    return "holding"
+  }
 
   const buildReasonLine = () => {
     if (uiState === "error") {
-      return resolveReasonMessage(runtimeError) ?? capsuleT.actionFailed;
+      return resolveReasonMessage(runtimeError) ?? capsuleT.actionFailed
     }
 
     switch (uiState) {
       case "idle":
-        return "Open an active chat thread to continue.";
+        return "Open an active chat thread to continue."
       case "mirroring":
-        return capsuleT.mirrorModeHint;
+        return capsuleT.mirrorModeHint
       case "holding":
-        return "Waiting for archivable thread snapshot.";
+        return "Waiting for archivable thread snapshot."
       case "ready_to_archive":
-        return "Thread snapshot ready for manual archive.";
+        return "Thread snapshot ready for manual archive."
       case "archiving":
-        return "Persisting snapshot...";
+        return "Persisting snapshot..."
       case "saved":
-        return capsuleT.archiveCompleted;
+        return capsuleT.archiveCompleted
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   const renderCapsule = () => {
-    if (destroyed) return;
+    if (destroyed) return
 
-    uiState = deriveUiState();
-    shell.dataset.view = viewMode;
-    shell.dataset.state = uiState;
-    shell.dataset.theme = themeMode;
+    uiState = deriveUiState()
+    shell.dataset.view = viewMode
+    shell.dataset.state = uiState
+    shell.dataset.theme = themeMode
 
     if (!isPrimaryRolloutHost) {
-      shell.classList.add("fallback-shell");
-      return;
+      shell.classList.add("fallback-shell")
+      return
     }
 
-    panel.hidden = viewMode !== "expanded";
-    collapsedButton.hidden = viewMode === "expanded";
-    statusBadge.dataset.state = uiState;
-    statusLabel.textContent = labelForState(uiState);
+    panel.hidden = viewMode !== "expanded"
+    collapsedButton.hidden = viewMode === "expanded"
+    statusBadge.dataset.state = uiState
+    statusLabel.textContent = labelForState(uiState)
 
     const platform =
-      runtimeStatus?.platform ?? resolvePlatform(hostname) ?? "ChatGPT";
-    platformBadge.textContent = platform;
-    const platformTone = resolvePlatformTone(platform, themeMode);
-    platformBadge.style.backgroundColor = platformTone.bg;
-    platformBadge.style.color = platformTone.text;
-    platformBadge.style.borderColor = platformTone.border;
+      runtimeStatus?.platform ?? resolvePlatform(hostname) ?? "ChatGPT"
+    platformBadge.textContent = platform
+    const platformTone = resolvePlatformTone(platform, themeMode)
+    platformBadge.style.backgroundColor = platformTone.bg
+    platformBadge.style.color = platformTone.text
+    platformBadge.style.borderColor = platformTone.border
 
-    archiveBtn.disabled = uiState !== "ready_to_archive";
-    archiveBtn.textContent = uiState === "archiving" ? capsuleT.archiving : capsuleT.archiveNow;
-    reasonLine.textContent = buildReasonLine() ?? "";
-    openDockBtn.textContent = capsuleT.openDock;
-    collapsedButton.setAttribute("aria-label", capsuleT.vestiCapsule);
-    collapsedButton.title = isPrimaryRolloutHost ? capsuleT.openVestiCapsule : capsuleT.openVestiDock;
+    archiveBtn.disabled = uiState !== "ready_to_archive"
+    archiveBtn.textContent =
+      uiState === "archiving" ? capsuleT.archiving : capsuleT.archiveNow
+    reasonLine.textContent = buildReasonLine() ?? ""
+    openDockBtn.textContent = capsuleT.openDock
+    collapsedButton.setAttribute("aria-label", capsuleT.vestiCapsule)
+    collapsedButton.title = isPrimaryRolloutHost
+      ? capsuleT.openVestiCapsule
+      : capsuleT.openVestiDock
 
-    pm.hidden = !pmEnabled;
-    pmHeading.textContent = capsuleT.pm.heading;
-    optimizeBtn.textContent = pmBusy === "optimize" ? capsuleT.pm.optimizing : capsuleT.pm.optimize;
-    continueBtn.textContent = pmBusy === "continue" ? capsuleT.pm.continuing : capsuleT.pm.continue;
-    optimizeBtn.disabled = pmBusy !== null;
-    continueBtn.disabled = pmBusy !== null;
-    pmSearch.placeholder = capsuleT.pm.searchPlaceholder;
-    pmCancelBtn.textContent = capsuleT.pm.cancel;
-    pmFillBtn.textContent = capsuleT.pm.fill;
-    pmHint.textContent = capsuleT.pm.hint;
-  };
+    pm.hidden = !pmEnabled
+    pmHeading.textContent = capsuleT.pm.heading
+    optimizeBtn.textContent =
+      pmBusy === "optimize" ? capsuleT.pm.optimizing : capsuleT.pm.optimize
+    continueBtn.textContent =
+      pmBusy === "continue" ? capsuleT.pm.continuing : capsuleT.pm.continue
+    optimizeBtn.disabled = pmBusy !== null
+    continueBtn.disabled = pmBusy !== null
+    pmSearch.placeholder = capsuleT.pm.searchPlaceholder
+    pmCancelBtn.textContent = capsuleT.pm.cancel
+    pmFillBtn.textContent = capsuleT.pm.fill
+    pmHint.textContent = capsuleT.pm.hint
+
+    expertExplainBtn.textContent =
+      deepSeekBusy === "expert"
+        ? capsuleT.deepseek.working
+        : capsuleT.deepseek.expertExplain
+    deepSeekOptimizeBtn.textContent =
+      deepSeekBusy === "optimize"
+        ? capsuleT.deepseek.working
+        : capsuleT.deepseek.optimize
+    expertExplainBtn.disabled = deepSeekBusy !== null
+    deepSeekOptimizeBtn.disabled = deepSeekBusy !== null
+    deepSeekActions.hidden = !deepSeekGuideActive
+  }
 
   const syncPosition = () => {
-    if (destroyed || dragSession.dragging) return;
+    if (destroyed || dragSession.dragging) return
     window.requestAnimationFrame(() => {
-      if (destroyed || dragSession.dragging) return;
-      applyAnchoredPosition();
-    });
-  };
+      if (destroyed || dragSession.dragging) return
+      applyAnchoredPosition()
+    })
+  }
 
   const setViewMode = (next: CapsuleViewMode, persist = true) => {
-    if (!isPrimaryRolloutHost) return;
-    if (viewMode === next) return;
-    viewMode = next;
-    renderCapsule();
-    syncPosition();
+    if (!isPrimaryRolloutHost) return
+    if (viewMode === next) return
+    viewMode = next
+    renderCapsule()
+    syncPosition()
     if (next === "expanded" && pmEnabled) {
-      void renderPromptResults(pmSearch.value);
+      void renderPromptResults(pmSearch.value)
     } else if (next === "collapsed") {
-      hidePmPreview();
+      hidePmPreview()
     }
     if (persist) {
-      persistSettingsPatch({ defaultView: next });
+      persistSettingsPatch({ defaultView: next })
     }
-  };
+  }
+
+  const syncDeepSeekGuide = (state: OnboardingState) => {
+    if (hostname !== "chat.deepseek.com") return
+    latestOnboardingState = state
+    deepSeekGuideActive =
+      state.tourStarted &&
+      !state.hasSeenOnboarding &&
+      !state.onboardingStepCompleted.deepseek
+    deepSeekGuideStep = state.guideSteps.deepseek
+    renderCapsule()
+
+    if (!deepSeekGuideActive) {
+      deepSeekCoachmark?.hide()
+      return
+    }
+
+    const copy = getOnboardingGuideCopy(capsuleLocale).deepseek
+    if (deepSeekGuideStep === 0) {
+      setViewMode("collapsed", false)
+      deepSeekCoachmark?.show(
+        collapsedButton,
+        copy[0],
+        async () => {
+          setViewMode("expanded", false)
+          await setOnboardingGuideProgressIfActive("deepseek", { step: 1 })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+      return
+    }
+
+    if (deepSeekGuideStep === 1) {
+      setViewMode("expanded", false)
+      deepSeekCoachmark?.show(
+        expertExplainBtn,
+        copy[1],
+        async () => {
+          await setOnboardingGuideProgressIfActive("deepseek", { step: 2 })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+      return
+    }
+
+    if (deepSeekGuideStep === 2) {
+      setViewMode("collapsed", false)
+      deepSeekCoachmark?.show(
+        findDeepSeekNewChatControl() ?? collapsedButton,
+        copy[2],
+        async () => {
+          await setOnboardingGuideProgressIfActive("deepseek", { step: 3 })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+      return
+    }
+
+    if (deepSeekGuideStep === 3) {
+      setViewMode("collapsed", false)
+      const composer = currentComposer()
+      if (composer) {
+        deepSeekCoachmark?.show(
+          composer as HTMLElement,
+          copy[3],
+          async () => {
+            setComposerText(
+              composer,
+              "从生物作息的角度让我简单明白为什么小猫晚上睡不着"
+            )
+            await setOnboardingGuideProgressIfActive("deepseek", { step: 4 })
+          },
+          getOnboardingGuideCopy(capsuleLocale).skipStep
+        )
+      }
+      return
+    }
+
+    if (deepSeekGuideStep === 4) {
+      setViewMode("collapsed", false)
+      deepSeekCoachmark?.show(
+        collapsedButton,
+        copy[4],
+        async () => {
+          setViewMode("expanded", false)
+          await setOnboardingGuideProgressIfActive("deepseek", { step: 5 })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+      return
+    }
+
+    if (deepSeekGuideStep === 5) {
+      setViewMode("expanded", false)
+      deepSeekCoachmark?.show(
+        deepSeekOptimizeBtn,
+        copy[5],
+        async () => {
+          await setOnboardingGuideProgressIfActive("deepseek", { step: 6 })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+      return
+    }
+
+    setViewMode("collapsed", false)
+    const sendControl = findDeepSeekSendControl()
+    if (sendControl) {
+      deepSeekCoachmark?.show(
+        sendControl,
+        copy[6],
+        async () => {
+          await setOnboardingGuideProgressIfActive("deepseek", {
+            step: 7,
+            completed: true
+          })
+        },
+        getOnboardingGuideCopy(capsuleLocale).skipStep
+      )
+    }
+  }
 
   // ---- prompt manager logic ----
   const currentComposer = (): ComposerEl | null =>
-    resolveComposer(window.location.hostname) ?? lastComposer;
+    resolveComposer(window.location.hostname) ?? lastComposer
 
   const hidePmPreview = () => {
-    pmPreviewBody = "";
-    pmPreview.hidden = true;
-    pmPreviewText.textContent = "";
-  };
+    pmPreviewBody = ""
+    pmPreview.hidden = true
+    pmPreviewText.textContent = ""
+  }
 
   const fillComposer = (text: string, replace: boolean): boolean => {
-    const composer = currentComposer();
+    const composer = currentComposer()
     if (!composer) {
-      logger.info("content", "Capsule prompt fill: composer not found", { host: hostname });
-      return false;
+      logger.info("content", "Capsule prompt fill: composer not found", {
+        host: hostname
+      })
+      return false
     }
     if (replace) {
-      setComposerText(composer, text);
+      setComposerText(composer, text)
     } else {
-      const existing = getComposerText(composer).trim();
-      setComposerText(composer, existing ? `${existing}\n${text}` : text);
+      const existing = getComposerText(composer).trim()
+      setComposerText(composer, existing ? `${existing}\n${text}` : text)
     }
-    return true;
-  };
+    return true
+  }
 
   const insertPrompt = (result: PmResult) => {
     if (fillComposer(result.body, false)) {
-      if (typeof result.promptId === "number") void pmIncrementUsage(result.promptId);
-      setViewMode("collapsed");
+      if (typeof result.promptId === "number")
+        void pmIncrementUsage(result.promptId)
+      setViewMode("collapsed")
     }
-  };
+  }
 
   const renderPromptResults = async (query: string) => {
-    if (!pmEnabled) return;
-    const seq = ++pmSearchSeq;
-    const trimmed = query.trim();
+    if (!pmEnabled) return
+    const seq = ++pmSearchSeq
+    const trimmed = query.trim()
     // Search the user's saved 常用提示词 (DB) AND the curated 优质提示词 (plaza).
     const [saved, curated] = await Promise.all([
       pmSearchPrompts(trimmed),
@@ -2052,142 +2302,178 @@ const mount = async () => {
       // English plaza data while the capsule's own UI stays fully localized.
       Promise.resolve(
         searchCuratedPrompts(trimmed, capsuleLocale === "zh" ? "zh" : "en", 6)
-      ),
-    ]);
+      )
+    ])
     // A newer keystroke superseded this search while it was in flight.
-    if (seq !== pmSearchSeq) return;
-    const seen = new Set<string>();
-    const merged: PmResult[] = [];
+    if (seq !== pmSearchSeq) return
+    const seen = new Set<string>()
+    const merged: PmResult[] = []
     for (const p of saved) {
-      const key = p.body.trim();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push({ title: p.title || p.body.slice(0, 32), body: p.body, promptId: p.id });
+      const key = p.body.trim()
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push({
+        title: p.title || p.body.slice(0, 32),
+        body: p.body,
+        promptId: p.id
+      })
     }
     for (const c of curated) {
-      const key = c.body.trim();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push({ title: c.title || c.body.slice(0, 32), body: c.body, fromPlaza: true });
+      const key = c.body.trim()
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push({
+        title: c.title || c.body.slice(0, 32),
+        body: c.body,
+        fromPlaza: true
+      })
     }
-    pmResults = merged;
-    pmList.innerHTML = "";
+    pmResults = merged
+    pmList.innerHTML = ""
     if (merged.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "capsule-pm-empty";
-      empty.textContent = trimmed ? capsuleT.pm.noResults : capsuleT.pm.empty;
-      pmList.appendChild(empty);
-      return;
+      const empty = document.createElement("div")
+      empty.className = "capsule-pm-empty"
+      empty.textContent = trimmed ? capsuleT.pm.noResults : capsuleT.pm.empty
+      pmList.appendChild(empty)
+      return
     }
     for (const result of merged) {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "capsule-pm-item";
-      const title = document.createElement("span");
-      title.className = "capsule-pm-item-title";
-      title.textContent = result.title;
+      const item = document.createElement("button")
+      item.type = "button"
+      item.className = "capsule-pm-item"
+      const title = document.createElement("span")
+      title.className = "capsule-pm-item-title"
+      title.textContent = result.title
       if (result.fromPlaza) {
-        const badge = document.createElement("span");
-        badge.className = "capsule-pm-badge";
-        badge.textContent = capsuleT.pm.plazaBadge;
-        title.appendChild(badge);
+        const badge = document.createElement("span")
+        badge.className = "capsule-pm-badge"
+        badge.textContent = capsuleT.pm.plazaBadge
+        title.appendChild(badge)
       }
-      const body = document.createElement("span");
-      body.className = "capsule-pm-item-body";
-      body.textContent = result.body;
-      item.appendChild(title);
-      item.appendChild(body);
-      item.addEventListener("click", () => insertPrompt(result));
-      pmList.appendChild(item);
+      const body = document.createElement("span")
+      body.className = "capsule-pm-item-body"
+      body.textContent = result.body
+      item.appendChild(title)
+      item.appendChild(body)
+      item.addEventListener("click", () => insertPrompt(result))
+      pmList.appendChild(item)
     }
-  };
+  }
 
   const showPmPreview = (completion: string) => {
-    pmPreviewBody = completion;
-    pmPreviewText.textContent = completion;
-    pmPreview.hidden = false;
-  };
+    pmPreviewBody = completion
+    pmPreviewText.textContent = completion
+    pmPreview.hidden = false
+  }
 
   const runCompletion = async (mode: "optimize" | "continue") => {
-    if (pmBusy) return;
-    const composer = currentComposer();
-    const draft = composer ? getComposerText(composer).trim() : "";
+    if (pmBusy) return
+    const composer = currentComposer()
+    const draft = composer ? getComposerText(composer).trim() : ""
     if (!draft) {
-      showPmPreview(capsuleT.pm.noDraft);
-      return;
+      showPmPreview(capsuleT.pm.noDraft)
+      return
     }
-    pmBusy = mode;
-    renderCapsule();
+    pmBusy = mode
+    renderCapsule()
     try {
-      const result = await pmCompleteDraft(draft, promptPlatform, mode);
+      const result = await pmCompleteDraft(draft, promptPlatform, mode)
       if (!result.usedLlm && result.completion.trim() === draft) {
-        showPmPreview(capsuleT.pm.offlineHint);
+        showPmPreview(capsuleT.pm.offlineHint)
       } else {
-        showPmPreview(result.completion);
+        showPmPreview(result.completion)
       }
     } catch (error) {
       logger.debug("content", "Capsule prompt completion failed", {
         host: hostname,
         mode,
-        error: (error as Error)?.message ?? String(error),
-      });
-      showPmPreview(capsuleT.pm.failed);
+        error: (error as Error)?.message ?? String(error)
+      })
+      showPmPreview(capsuleT.pm.failed)
     } finally {
-      pmBusy = null;
-      renderCapsule();
+      pmBusy = null
+      renderCapsule()
     }
-  };
+  }
+
+  const runDeepSeekAction = async (
+    mode: "expert" | "optimize",
+    action: () => Promise<void>
+  ) => {
+    if (deepSeekBusy) return
+    deepSeekBusy = mode
+    renderCapsule()
+    try {
+      await action()
+      const keptOpenForGuide =
+        ((mode === "expert" && deepSeekGuideStep === 1) ||
+          (mode === "optimize" && deepSeekGuideStep === 5)) &&
+        (await setOnboardingGuideProgressIfActive("deepseek", {
+          step: mode === "expert" ? 2 : 6
+        }))
+      if (!keptOpenForGuide) setViewMode("collapsed")
+    } catch (error) {
+      logger.warn("content", "DeepSeek capsule action failed", {
+        mode,
+        error: (error as Error)?.message ?? String(error)
+      })
+      showDeepSeekActionToast(capsuleT.deepseek.failed)
+    } finally {
+      deepSeekBusy = null
+      renderCapsule()
+    }
+  }
 
   const triggerOpenDock = async () => {
-    const ok = await openSidepanel();
-    logAction("open_dock", ok, { host: hostname });
-  };
+    const ok = await openSidepanel()
+    logAction("open_dock", ok, { host: hostname })
+  }
 
   const scheduleAutoCollapse = () => {
     if (autoCollapseTimer) {
-      window.clearTimeout(autoCollapseTimer);
-      autoCollapseTimer = null;
+      window.clearTimeout(autoCollapseTimer)
+      autoCollapseTimer = null
     }
 
-    if (settings.autoCollapseMs <= 0) return;
+    if (settings.autoCollapseMs <= 0) return
     autoCollapseTimer = window.setTimeout(() => {
-      if (destroyed) return;
-      savedUntil = 0;
-      setViewMode("collapsed", false);
-      renderCapsule();
-      syncPosition();
-    }, settings.autoCollapseMs);
-  };
+      if (destroyed) return
+      savedUntil = 0
+      setViewMode("collapsed", false)
+      renderCapsule()
+      syncPosition()
+    }, settings.autoCollapseMs)
+  }
 
   const scheduleNextPoll = (delay: number) => {
-    if (!isPrimaryRolloutHost || destroyed) return;
+    if (!isPrimaryRolloutHost || destroyed) return
     if (pollTimer) {
-      window.clearTimeout(pollTimer);
-      pollTimer = null;
+      window.clearTimeout(pollTimer)
+      pollTimer = null
     }
     pollTimer = window.setTimeout(() => {
-      void pollRuntimeStatus();
-    }, delay);
-  };
+      void pollRuntimeStatus()
+    }, delay)
+  }
 
   const pollRuntimeStatus = async () => {
-    if (!isPrimaryRolloutHost || destroyed) return;
+    if (!isPrimaryRolloutHost || destroyed) return
 
     try {
       const status = await sendRequest<"GET_ACTIVE_CAPTURE_STATUS">(
         {
           type: "GET_ACTIVE_CAPTURE_STATUS",
-          target: "background",
+          target: "background"
         },
         5000
-      );
+      )
 
-      runtimeStatus = status;
+      runtimeStatus = status
       runtimeError =
-        status.reason === "content_unreachable" ? "content_unreachable" : null;
-      failureCount = 0;
-      renderCapsule();
-      syncPosition();
+        status.reason === "content_unreachable" ? "content_unreachable" : null
+      failureCount = 0
+      renderCapsule()
+      syncPosition()
       logger.info("content", "Capsule status", {
         host: hostname,
         platform: status.platform,
@@ -2199,374 +2485,445 @@ const mount = async () => {
         reason: status.reason,
         messageCount: status.messageCount,
         turnCount: status.turnCount,
-        updatedAt: status.updatedAt,
-      });
+        updatedAt: status.updatedAt
+      })
 
-      scheduleNextPoll(POLL_INTERVAL_MS);
+      scheduleNextPoll(POLL_INTERVAL_MS)
     } catch (error) {
-      failureCount += 1;
-      runtimeError = (error as Error).message || "ACTIVE_TAB_UNAVAILABLE";
-      renderCapsule();
-      scheduleNextPoll(getRetryDelay(failureCount));
+      failureCount += 1
+      runtimeError = (error as Error).message || "ACTIVE_TAB_UNAVAILABLE"
+      renderCapsule()
+      scheduleNextPoll(getRetryDelay(failureCount))
       logger.warn("content", "Capsule status polling failed", {
         host: hostname,
         failureCount,
-        error: runtimeError,
-      });
+        error: runtimeError
+      })
     }
-  };
+  }
 
   const handleArchiveNow = async () => {
-    if (!isPrimaryRolloutHost || uiState !== "ready_to_archive") return;
+    if (!isPrimaryRolloutHost || uiState !== "ready_to_archive") return
 
-    const startedAt = Date.now();
-    inFlightArchive = true;
-    runtimeError = null;
-    renderCapsule();
+    const startedAt = Date.now()
+    inFlightArchive = true
+    runtimeError = null
+    renderCapsule()
 
     try {
       await sendRequest<"FORCE_ARCHIVE_TRANSIENT">(
         {
           type: "FORCE_ARCHIVE_TRANSIENT",
-          target: "background",
+          target: "background"
         },
         10000
-      );
+      )
 
-      inFlightArchive = false;
-      savedUntil = Date.now() + settings.autoCollapseMs;
-      renderCapsule();
-      scheduleAutoCollapse();
-      logAction("archive_now", true, { durationMs: Date.now() - startedAt });
-      void pollRuntimeStatus();
+      inFlightArchive = false
+      savedUntil = Date.now() + settings.autoCollapseMs
+      renderCapsule()
+      scheduleAutoCollapse()
+      logAction("archive_now", true, { durationMs: Date.now() - startedAt })
+      void pollRuntimeStatus()
     } catch (error) {
-      inFlightArchive = false;
-      runtimeError = (error as Error).message || "FORCE_ARCHIVE_FAILED";
-      renderCapsule();
+      inFlightArchive = false
+      runtimeError = (error as Error).message || "FORCE_ARCHIVE_FAILED"
+      renderCapsule()
       logAction("archive_now", false, {
         durationMs: Date.now() - startedAt,
-        error: runtimeError,
-      });
+        error: runtimeError
+      })
     }
-  };
+  }
 
   const beginDrag = (event: PointerEvent, source: DragSource) => {
-    if (!event.isPrimary || event.button !== 0 || dragSession.active) return;
+    if (!event.isPrimary || event.button !== 0 || dragSession.active) return
 
-    dragSession.active = true;
-    dragSession.pointerId = event.pointerId;
-    dragSession.source = source;
-    dragSession.startedWithModifier = source === "collapsed" && event.altKey;
-    dragSession.canDrag = true;
-    dragSession.dragging = false;
-    dragSession.startX = event.clientX;
-    dragSession.startY = event.clientY;
+    dragSession.active = true
+    dragSession.pointerId = event.pointerId
+    dragSession.source = source
+    dragSession.startedWithModifier = source === "collapsed" && event.altKey
+    dragSession.canDrag = true
+    dragSession.dragging = false
+    dragSession.startX = event.clientX
+    dragSession.startY = event.clientY
 
-    const rect = shell.getBoundingClientRect();
-    dragSession.startLeft = rect.left;
-    dragSession.startTop = rect.top;
+    const rect = shell.getBoundingClientRect()
+    dragSession.startLeft = rect.left
+    dragSession.startTop = rect.top
 
-    const target = event.currentTarget as HTMLElement;
-    target.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  };
+    const target = event.currentTarget as HTMLElement
+    target.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
 
   const moveDrag = (event: PointerEvent) => {
-    if (!dragSession.active || dragSession.pointerId !== event.pointerId) return;
-    if (!dragSession.canDrag) return;
+    if (!dragSession.active || dragSession.pointerId !== event.pointerId) return
+    if (!dragSession.canDrag) return
 
-    const dx = event.clientX - dragSession.startX;
-    const dy = event.clientY - dragSession.startY;
+    const dx = event.clientX - dragSession.startX
+    const dy = event.clientY - dragSession.startY
 
-    if (!dragSession.dragging && Math.hypot(dx, dy) <= DRAG_THRESHOLD_PX) return;
+    if (!dragSession.dragging && Math.hypot(dx, dy) <= DRAG_THRESHOLD_PX) return
     if (!dragSession.dragging) {
-      dragSession.dragging = true;
-      shell.classList.add("is-dragging");
+      dragSession.dragging = true
+      shell.classList.add("is-dragging")
     }
 
-    const { width, height } = getShellSize();
+    const { width, height } = getShellSize()
     const nextLeft = clamp(
       dragSession.startLeft + dx,
       VIEWPORT_MARGIN,
       window.innerWidth - width - VIEWPORT_MARGIN
-    );
+    )
     const nextTop = clamp(
       dragSession.startTop + dy,
       VIEWPORT_MARGIN,
       window.innerHeight - height - VIEWPORT_MARGIN
-    );
+    )
 
-    shell.style.left = `${nextLeft}px`;
-    shell.style.top = `${nextTop}px`;
-    shell.style.right = "auto";
-    shell.style.bottom = "auto";
-    event.preventDefault();
-  };
+    shell.style.left = `${nextLeft}px`
+    shell.style.top = `${nextTop}px`
+    shell.style.right = "auto"
+    shell.style.bottom = "auto"
+    event.preventDefault()
+  }
 
   const endDrag = (event: PointerEvent, cancelled: boolean) => {
-    if (!dragSession.active || dragSession.pointerId !== event.pointerId) return;
+    if (!dragSession.active || dragSession.pointerId !== event.pointerId) return
 
-    const target = event.currentTarget as HTMLElement;
+    const target = event.currentTarget as HTMLElement
     if (target.hasPointerCapture(event.pointerId)) {
-      target.releasePointerCapture(event.pointerId);
+      target.releasePointerCapture(event.pointerId)
     }
 
-    const completedDragging = dragSession.dragging;
-    const startedWithModifier = dragSession.startedWithModifier;
-    const source = dragSession.source;
+    const completedDragging = dragSession.dragging
+    const startedWithModifier = dragSession.startedWithModifier
+    const source = dragSession.source
 
     if (completedDragging) {
-      const rect = shell.getBoundingClientRect();
+      const rect = shell.getBoundingClientRect()
       const anchor: CapsuleAnchor =
         rect.left + rect.width / 2 >= window.innerWidth / 2
           ? "bottom_right"
-          : "bottom_left";
+          : "bottom_left"
 
       const offsetXRaw =
-        anchor === "bottom_right"
-          ? window.innerWidth - rect.right
-          : rect.left;
-      const offsetYRaw = window.innerHeight - rect.bottom;
-      const next = clampOffsetsToViewport(anchor, offsetXRaw, offsetYRaw);
+        anchor === "bottom_right" ? window.innerWidth - rect.right : rect.left
+      const offsetYRaw = window.innerHeight - rect.bottom
+      const next = clampOffsetsToViewport(anchor, offsetXRaw, offsetYRaw)
       positionRef = {
         anchor: next.anchor,
         offsetX: next.offsetX,
-        offsetY: next.offsetY,
-      };
-      lastDragAt = Date.now();
-      applyAnchoredPosition();
+        offsetY: next.offsetY
+      }
+      lastDragAt = Date.now()
+      applyAnchoredPosition()
       persistSettingsPatch({
         anchor: next.anchor,
         offsetX: next.offsetX,
-        offsetY: next.offsetY,
-      });
+        offsetY: next.offsetY
+      })
       logAction("drag_end", true, {
         anchor: next.anchor,
         offsetX: next.offsetX,
-        offsetY: next.offsetY,
-      });
-      suppressCollapsedClick = true;
+        offsetY: next.offsetY
+      })
+      suppressCollapsedClick = true
     } else if (source === "collapsed" && startedWithModifier && !cancelled) {
-      suppressCollapsedClick = true;
+      suppressCollapsedClick = true
     }
 
-    dragSession.active = false;
-    dragSession.pointerId = null;
-    dragSession.source = null;
-    dragSession.canDrag = false;
-    dragSession.startedWithModifier = false;
-    dragSession.dragging = false;
-    shell.classList.remove("is-dragging");
-  };
+    dragSession.active = false
+    dragSession.pointerId = null
+    dragSession.source = null
+    dragSession.canDrag = false
+    dragSession.startedWithModifier = false
+    dragSession.dragging = false
+    shell.classList.remove("is-dragging")
+  }
 
   const onStorageChanged = (
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string
   ) => {
-    if (destroyed || areaName !== "local") return;
+    if (destroyed || areaName !== "local") return
 
-    const languageChange = changes["vesti_language_settings"];
+    const languageChange = changes["vesti_language_settings"]
     if (languageChange && languageChange.newValue) {
-      const { locale: nextLocale } = languageChange.newValue as { locale?: string };
+      const { locale: nextLocale } = languageChange.newValue as {
+        locale?: string
+      }
       if (nextLocale && nextLocale !== capsuleLocale) {
-        capsuleLocale = resolveLocale(nextLocale);
-        capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en;
-        renderCapsule();
-        syncPosition();
+        capsuleLocale = resolveLocale(nextLocale)
+        capsuleT = capsuleTranslations[capsuleLocale] ?? capsuleTranslations.en
+        renderCapsule()
+        syncPosition()
       }
     }
 
-    const uiThemeChange = changes[UI_SETTINGS_STORAGE_KEY];
+    const uiThemeChange = changes[UI_SETTINGS_STORAGE_KEY]
     if (uiThemeChange) {
-      const nextTheme = parseThemeModeFromStorageValue(uiThemeChange.newValue);
+      const nextTheme = parseThemeModeFromStorageValue(uiThemeChange.newValue)
       if (nextTheme !== themeMode) {
-        themeMode = nextTheme;
-        renderCapsule();
-        syncPosition();
+        themeMode = nextTheme
+        renderCapsule()
+        syncPosition()
         logger.info("content", "Capsule theme updated", {
           host: hostname,
-          themeMode,
-        });
+          themeMode
+        })
       }
     }
 
-    const capsuleChange = changes[CAPSULE_SETTINGS_STORAGE_KEY];
-    if (!capsuleChange) return;
+    const capsuleChange = changes[CAPSULE_SETTINGS_STORAGE_KEY]
+    if (!capsuleChange) return
 
     void (async () => {
-      if (destroyed) return;
-      if (dragSession.dragging) return;
-      if (Date.now() - lastDragAt < POSITION_SYNC_GRACE_MS) return;
+      if (destroyed) return
+      if (dragSession.dragging) return
+      if (Date.now() - lastDragAt < POSITION_SYNC_GRACE_MS) return
       try {
-        const nextSettings = await getCapsuleSettingsForHost(hostname);
-        if (destroyed) return;
-        settings = nextSettings;
+        const nextSettings = await getCapsuleSettingsForHost(hostname)
+        if (destroyed) return
+        settings = nextSettings
         positionRef = {
           anchor: nextSettings.anchor,
           offsetX: nextSettings.offsetX,
-          offsetY: nextSettings.offsetY,
-        };
-        renderCapsule();
-        syncPosition();
+          offsetY: nextSettings.offsetY
+        }
+        renderCapsule()
+        syncPosition()
       } catch (error) {
         logger.warn("content", "Failed to sync capsule settings", {
           host: hostname,
-          error: (error as Error).message,
-        });
+          error: (error as Error).message
+        })
       }
-    })();
-  };
+    })()
+  }
 
   const onResize = () => {
-    syncPosition();
-  };
+    syncPosition()
+  }
 
   const destroy = () => {
-    if (destroyed) return;
-    destroyed = true;
+    if (destroyed) return
+    destroyed = true
     if (pollTimer) {
-      window.clearTimeout(pollTimer);
-      pollTimer = null;
+      window.clearTimeout(pollTimer)
+      pollTimer = null
     }
     if (autoCollapseTimer) {
-      window.clearTimeout(autoCollapseTimer);
-      autoCollapseTimer = null;
+      window.clearTimeout(autoCollapseTimer)
+      autoCollapseTimer = null
     }
     if (pmSearchDebounce) {
-      window.clearTimeout(pmSearchDebounce);
-      pmSearchDebounce = null;
+      window.clearTimeout(pmSearchDebounce)
+      pmSearchDebounce = null
     }
     if (unsubscribePromptAssist) {
-      unsubscribePromptAssist();
-      unsubscribePromptAssist = null;
+      unsubscribePromptAssist()
+      unsubscribePromptAssist = null
     }
-    window.removeEventListener("resize", onResize);
-    window.removeEventListener("pagehide", onPageHide);
-    window.removeEventListener("beforeunload", destroy);
-    document.removeEventListener("input", onDocInput, true);
+    if (unsubscribeOnboarding) {
+      unsubscribeOnboarding()
+      unsubscribeOnboarding = null
+    }
+    deepSeekCoachmark?.destroy()
+    deepSeekCoachmark = null
+    deepSeekGuideObserver?.disconnect()
+    deepSeekGuideObserver = null
+    if (deepSeekGuideSyncFrame !== null) {
+      window.cancelAnimationFrame(deepSeekGuideSyncFrame)
+      deepSeekGuideSyncFrame = null
+    }
+    window.removeEventListener("resize", onResize)
+    window.removeEventListener("pagehide", onPageHide)
+    window.removeEventListener("beforeunload", destroy)
+    document.removeEventListener("input", onDocInput, true)
+    document.removeEventListener("click", onDeepSeekGuideClick, true)
     if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
-      chrome.storage.onChanged.removeListener(onStorageChanged);
+      chrome.storage.onChanged.removeListener(onStorageChanged)
     }
-    host.remove();
-  };
+    host.remove()
+  }
 
   // Track the composer the user last typed in (rich editors lose focus when the
   // shadow panel is clicked). Hoisted (not anonymous) so destroy() can remove it —
   // otherwise it leaks and runs composer resolution on every page keystroke.
   const onDocInput = (event: Event) => {
-    const target = resolveComposerFromEvent(event.target, window.location.hostname);
-    if (target) lastComposer = target;
-  };
+    const target = resolveComposerFromEvent(
+      event.target,
+      window.location.hostname
+    )
+    if (target) lastComposer = target
+    if (
+      target &&
+      deepSeekGuideActive &&
+      deepSeekGuideStep === 3 &&
+      getComposerText(target).trim() ===
+        "从生物作息的角度让我简单明白为什么小猫晚上睡不着"
+    ) {
+      void setOnboardingGuideProgressIfActive("deepseek", { step: 4 })
+    }
+  }
+
+  const onDeepSeekGuideClick = (event: MouseEvent) => {
+    if (!deepSeekGuideActive || !(event.target instanceof Node)) return
+    if (deepSeekGuideStep === 2) {
+      const newChat = findDeepSeekNewChatControl()
+      if (newChat && (newChat === event.target || newChat.contains(event.target))) {
+        void setOnboardingGuideProgressIfActive("deepseek", { step: 3 })
+      }
+      return
+    }
+    if (deepSeekGuideStep === 6) {
+      const send = findDeepSeekSendControl()
+      if (send && (send === event.target || send.contains(event.target))) {
+        showDeepSeekActionToast(
+          "小猫优化您的提示词，为您给出提问思路，帮助您更高效且准确的得到想要的回答。"
+        )
+        void setOnboardingGuideProgressIfActive("deepseek", {
+          step: 7,
+          completed: true
+        })
+      }
+    }
+  }
 
   const onPageHide = (event: PageTransitionEvent) => {
     // Skip teardown for bfcache: the page (and capsule) is frozen, not unloaded,
     // and resumes intact on pageshow. Destroying here would leave the dock gone
     // until a full reload after a back/forward navigation.
-    if (event.persisted) return;
-    destroy();
-  };
+    if (event.persisted) return
+    destroy()
+  }
 
   collapsedButton.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
+    if (event.key !== "Enter" && event.key !== " ") return
+    event.preventDefault()
     if (isPrimaryRolloutHost) {
-      setViewMode("expanded");
-      return;
+      setViewMode("expanded")
+      if (
+        deepSeekGuideActive &&
+        (deepSeekGuideStep === 0 || deepSeekGuideStep === 4)
+      ) {
+        void setOnboardingGuideProgressIfActive("deepseek", {
+          step: deepSeekGuideStep === 0 ? 1 : 5
+        })
+      }
+      return
     }
-    void triggerOpenDock();
-  });
+    void triggerOpenDock()
+  })
 
   if (!isPrimaryRolloutHost) {
     collapsedButton.addEventListener("click", () => {
-      void triggerOpenDock();
-    });
+      void triggerOpenDock()
+    })
   } else {
     collapsedButton.addEventListener("click", (event) => {
       if (suppressCollapsedClick) {
-        suppressCollapsedClick = false;
-        event.preventDefault();
-        return;
+        suppressCollapsedClick = false
+        event.preventDefault()
+        return
       }
-      setViewMode("expanded");
-    });
+      setViewMode("expanded")
+      if (
+        deepSeekGuideActive &&
+        (deepSeekGuideStep === 0 || deepSeekGuideStep === 4)
+      ) {
+        void setOnboardingGuideProgressIfActive("deepseek", {
+          step: deepSeekGuideStep === 0 ? 1 : 5
+        })
+      }
+    })
 
     collapsedButton.addEventListener("pointerdown", (event) => {
-      beginDrag(event, "collapsed");
-    });
+      beginDrag(event, "collapsed")
+    })
     collapsedButton.addEventListener("pointermove", (event) => {
-      moveDrag(event);
-    });
+      moveDrag(event)
+    })
     collapsedButton.addEventListener("pointerup", (event) => {
-      endDrag(event, false);
-    });
+      endDrag(event, false)
+    })
     collapsedButton.addEventListener("pointercancel", (event) => {
-      endDrag(event, true);
-    });
+      endDrag(event, true)
+    })
 
     dragHandle.addEventListener("pointerdown", (event) => {
-      beginDrag(event, "expanded");
-    });
+      beginDrag(event, "expanded")
+    })
     dragHandle.addEventListener("pointermove", (event) => {
-      moveDrag(event);
-    });
+      moveDrag(event)
+    })
     dragHandle.addEventListener("pointerup", (event) => {
-      endDrag(event, false);
-    });
+      endDrag(event, false)
+    })
     dragHandle.addEventListener("pointercancel", (event) => {
-      endDrag(event, true);
-    });
+      endDrag(event, true)
+    })
 
     collapseBtn.addEventListener("click", () => {
-      setViewMode("collapsed");
-    });
+      setViewMode("collapsed")
+    })
     archiveBtn.addEventListener("click", () => {
-      void handleArchiveNow();
-    });
+      void handleArchiveNow()
+    })
     openDockBtn.addEventListener("click", () => {
-      void triggerOpenDock();
-    });
+      void triggerOpenDock()
+    })
+    expertExplainBtn.addEventListener("click", () => {
+      void runDeepSeekAction("expert", runDeepSeekExpertExplainAction)
+    })
+    deepSeekOptimizeBtn.addEventListener("click", () => {
+      void runDeepSeekAction("optimize", runDeepSeekOptimizeAction)
+    })
 
     // ---- prompt manager listeners ----
     optimizeBtn.addEventListener("click", () => {
-      void runCompletion("optimize");
-    });
+      void runCompletion("optimize")
+    })
     continueBtn.addEventListener("click", () => {
-      void runCompletion("continue");
-    });
+      void runCompletion("continue")
+    })
     pmSearch.addEventListener("input", () => {
-      if (pmSearchDebounce) window.clearTimeout(pmSearchDebounce);
+      if (pmSearchDebounce) window.clearTimeout(pmSearchDebounce)
       pmSearchDebounce = window.setTimeout(() => {
-        void renderPromptResults(pmSearch.value);
-      }, 180);
-    });
+        void renderPromptResults(pmSearch.value)
+      }, 180)
+    })
     pmSearch.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      event.preventDefault();
+      if (event.key !== "Enter") return
+      event.preventDefault()
       // Smart 唤醒: Enter fills the top match in one shot.
-      if (pmResults.length > 0) insertPrompt(pmResults[0]);
-    });
+      if (pmResults.length > 0) insertPrompt(pmResults[0])
+    })
     pmFillBtn.addEventListener("click", () => {
       if (pmPreviewBody) {
         if (fillComposer(pmPreviewBody, true)) {
-          hidePmPreview();
-          setViewMode("collapsed");
+          hidePmPreview()
+          setViewMode("collapsed")
         }
       }
-    });
+    })
     pmCancelBtn.addEventListener("click", () => {
-      hidePmPreview();
-    });
+      hidePmPreview()
+    })
 
     // Capture phase to see nested editor nodes (handler hoisted as onDocInput so
     // destroy() can detach it).
-    document.addEventListener("input", onDocInput, true);
+    document.addEventListener("input", onDocInput, true)
+    document.addEventListener("click", onDeepSeekGuideClick, true)
   }
 
-  window.addEventListener("resize", onResize);
-  window.addEventListener("pagehide", onPageHide);
-  window.addEventListener("beforeunload", destroy);
+  window.addEventListener("resize", onResize)
+  window.addEventListener("pagehide", onPageHide)
+  window.addEventListener("beforeunload", destroy)
   if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener(onStorageChanged);
+    chrome.storage.onChanged.addListener(onStorageChanged)
   }
 
   // Load + subscribe the prompt-manager master toggle. It reuses the existing
@@ -2574,76 +2931,47 @@ const mount = async () => {
   // now that the standalone assist UI is merged into this dock.
   if (isPrimaryRolloutHost) {
     try {
-      pmEnabled = (await getPromptAssistSettingsForHost(hostname)).realtimeEnabled;
+      pmEnabled = (await getPromptAssistSettingsForHost(hostname))
+        .realtimeEnabled
     } catch {
-      pmEnabled = true;
+      pmEnabled = true
     }
-    unsubscribePromptAssist = subscribePromptAssistSettings(hostname, (next) => {
-      if (destroyed) return;
-      pmEnabled = next.realtimeEnabled;
-      if (!pmEnabled) hidePmPreview();
-      renderCapsule();
-      syncPosition();
-      if (pmEnabled && viewMode === "expanded") {
-        void renderPromptResults(pmSearch.value);
+    unsubscribePromptAssist = subscribePromptAssistSettings(
+      hostname,
+      (next) => {
+        if (destroyed) return
+        pmEnabled = next.realtimeEnabled
+        if (!pmEnabled) hidePmPreview()
+        renderCapsule()
+        syncPosition()
+        if (pmEnabled && viewMode === "expanded") {
+          void renderPromptResults(pmSearch.value)
+        }
       }
-    });
+    )
   }
 
-  renderCapsule();
-  syncPosition();
+  renderCapsule()
+  syncPosition()
 
   if (isPrimaryRolloutHost) {
-    void pollRuntimeStatus();
+    void pollRuntimeStatus()
   } else {
     logger.info("content", "Capsule fallback mode enabled for host", {
       host: hostname,
-      mode: "fallback_open_dock_only",
-    });
+      mode: "fallback_open_dock_only"
+    })
   }
-};
+}
 
 if (document.readyState === "loading") {
   window.addEventListener(
     "DOMContentLoaded",
     () => {
-      void mount();
+      void mount()
     },
     { once: true }
-  );
+  )
 } else {
-  void mount();
+  void mount()
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
