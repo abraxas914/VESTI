@@ -118,26 +118,45 @@ describe("selectBestTopicMatch", () => {
     expect(result?.id).toBe(11);
   });
 
-  // V2: embedding similarity blend
-  it("boosts a topic with higher embedding similarity", () => {
-    // "Docker/K8s" topic matches poorly on keywords but well on embedding.
-    const candidates = [
+  it("allows a strong embedding match to cross the default archive threshold", () => {
+    const semanticOnly = [
       { id: 1, name: "Docker/K8s", depth: 1, tags: ["container", "devops"] },
-      { id: 2, name: "前端工具", depth: 1, tags: ["frontend", "build"] },
     ];
-    // Conversation about "容器编排" (no keyword overlap with "Docker/K8s"
-    // but semantically identical). Without embedding, both score 0.
-    // With embedding similarity 0.8 for topic 1, it should win.
-    const embeddingSim = new Map<number, number>();
-    embeddingSim.set(1, 0.8);
-    embeddingSim.set(2, 0.1);
 
     const result = selectBestTopicMatch(
-      { keywords: ["容器", "编排"], text: "讨论容器编排方案" },
-      candidates,
-      0.15, // low threshold to allow embedding to carry
-      embeddingSim,
+      { keywords: ["orchestration"], text: "cluster scheduling strategy" },
+      semanticOnly,
+      TOPIC_MATCH_THRESHOLD,
+      new Map([[1, 0.8]]),
     );
+
+    expect(result).toEqual({ id: 1, score: expect.closeTo(0.32, 5) });
+  });
+
+  it("keeps a medium embedding match below the default archive threshold", () => {
+    const semanticOnly = [
+      { id: 1, name: "Docker/K8s", depth: 1, tags: ["container", "devops"] },
+    ];
+
+    const result = selectBestTopicMatch(
+      { keywords: ["orchestration"], text: "cluster scheduling strategy" },
+      semanticOnly,
+      TOPIC_MATCH_THRESHOLD,
+      new Map([[1, 0.6]]),
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("combines medium embedding similarity with lexical evidence", () => {
+    const result = selectBestTopicMatch(
+      { keywords: ["react"], text: "react rendering" },
+      [{ id: 1, name: "React", depth: 1, tags: [] }],
+      TOPIC_MATCH_THRESHOLD,
+      new Map([[1, 0.6]]),
+    );
+
     expect(result?.id).toBe(1);
+    expect(result!.score).toBeGreaterThanOrEqual(TOPIC_MATCH_THRESHOLD);
   });
 });

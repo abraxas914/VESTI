@@ -65,6 +65,11 @@ import { useNoteDraft, type NoteSaveStatus } from "../hooks/use-note-draft";
 import { buildMessagePreviewText } from "../lib/messagePackage";
 import { buildReaderTimestampFooterModel } from "../lib/reader-timestamps";
 import { serializeSelectionFragmentToMarkdown } from "../lib/selection-markdown";
+import {
+  collectTopicBranchNodeIds,
+  filterConversationsByTopic,
+  findTopicInTree,
+} from "../lib/libraryTopics";
 
 type ViewMode = "conversations" | "notes";
 type FolderItem = { name: string; isCustom: boolean; isTag: boolean };
@@ -82,6 +87,8 @@ type ReaderSelectionAction = PendingExcerpt & {
   top: number;
   left: number;
 };
+
+const MAX_GARDENER_BATCH_SIZE = 20;
 
 type LibraryTabProps = {
   storage: StorageApi;
@@ -541,6 +548,17 @@ export function LibraryTab({
     "all",
   );
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
+  const [expandedTopicIds, setExpandedTopicIds] = useState<Set<number>>(
+    () => new Set<number>(),
+  );
+  const [gardenerProgress, setGardenerProgress] = useState<{
+    done: number;
+    failed: number;
+    total: number;
+    running: boolean;
+  } | null>(null);
+  const discoveredTopicBranchIdsRef = useRef<Set<number>>(new Set<number>());
   const [relatedConversations, setRelatedConversations] = useState<
     RelatedConversation[]
   >([]);
@@ -1417,7 +1435,7 @@ export function LibraryTab({
 
   const activeTags = normalizeTags(selectedConversation?.tags);
   const activeTopicName = selectedConversation?.topic_id
-    ? findTopicById(topics, selectedConversation.topic_id)?.name
+    ? findTopicInTree(topics, selectedConversation.topic_id)?.name
     : undefined;
   const hasAnalysis = Boolean(activeTags.length > 0 || activeTopicName);
   const overviewSectionLabel = activeTopicName ?? activeTags[0] ?? labels.general ?? "General";
@@ -1465,6 +1483,16 @@ export function LibraryTab({
     );
     return sorted.slice(0, 20);
   }, [conversations]);
+  const unclassifiedConversations = useMemo(
+    () =>
+      conversations.filter(
+        (conversation) =>
+          conversation.topic_id === null &&
+          !conversation.is_archived &&
+          !conversation.is_trash,
+      ),
+    [conversations],
+  );
   const folderItems = useMemo<FolderItem[]>(() => {
     const normalize = (value: string) => value.trim().toLowerCase();
     const used = new Set<string>();
@@ -1497,17 +1525,46 @@ export function LibraryTab({
     return items;
   }, [tagCounts, customFolders]);
 
+  useEffect(() => {
+    const branchIds = collectTopicBranchNodeIds(topics);
+    setExpandedTopicIds((current) => {
+      const next = new Set(current);
+      let changed = false;
+      for (const topicId of branchIds) {
+        if (discoveredTopicBranchIdsRef.current.has(topicId)) continue;
+        discoveredTopicBranchIdsRef.current.add(topicId);
+        next.add(topicId);
+        changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [topics]);
+
+  useEffect(() => {
+    if (
+      selectedTopicId !== null &&
+      !findTopicInTree(topics, selectedTopicId)
+    ) {
+      setSelectedTopicId(null);
+    }
+  }, [selectedTopicId, topics]);
+
   const baseConversations =
     listFilter === "starred"
       ? conversations.filter((conversation) => conversation.is_starred)
       : listFilter === "recent"
         ? recentConversations
         : conversations;
+  const topicFilteredConversations = filterConversationsByTopic(
+    baseConversations,
+    topics,
+    selectedTopicId,
+  );
   const tagFilteredConversations = selectedTag
-    ? baseConversations.filter((conversation) =>
+    ? topicFilteredConversations.filter((conversation) =>
         normalizeTags(conversation.tags).includes(selectedTag),
       )
-    : baseConversations;
+    : topicFilteredConversations;
 
   const filteredConversations = tagFilteredConversations;
   const isSplitActive =
@@ -1686,6 +1743,7 @@ export function LibraryTab({
     if (options?.resetFilters) {
       setListFilter("all");
       setSelectedTag(null);
+      setSelectedTopicId(null);
     }
     setSelectedConversationId(conversationId);
     if (options?.resetSelectedNote) {
@@ -1927,6 +1985,7 @@ export function LibraryTab({
     setViewMode("conversations");
     setListFilter("all");
     setSelectedTag(trimmed);
+    setSelectedTopicId(null);
     setSelectedConversationId(null);
   };
 
@@ -3125,17 +3184,6 @@ export function LibraryTab({
     );
   };
 
-  function findTopicById(nodes: Topic[], id: number): Topic | null {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children && node.children.length > 0) {
-        const match = findTopicById(node.children, id);
-        if (match) return match;
-      }
-    }
-    return null;
-  }
-
   const switchToConversation = (conversationId: number) => {
     void selectConversation(conversationId, {
       resetFilters: true,
@@ -3144,11 +3192,139 @@ export function LibraryTab({
   };
 
   const isAllActive =
-    viewMode === "conversations" && !selectedTag && listFilter === "all";
+    viewMode === "conversations" &&
+    !selectedTag &&
+    selectedTopicId === null &&
+    listFilter === "all";
   const isStarredActive =
-    viewMode === "conversations" && listFilter === "starred";
+    viewMode === "conversations" &&
+    !selectedTag &&
+    selectedTopicId === null &&
+    listFilter === "starred";
   const isRecentActive =
-    viewMode === "conversations" && listFilter === "recent";
+    viewMode === "conversations" &&
+    !selectedTag &&
+    selectedTopicId === null &&
+    listFilter === "recent";
+  const selectedNavigationTopic =
+    selectedTopicId === null ? null : findTopicInTree(topics, selectedTopicId);
+
+  const selectTopic = (topicId: number) => {
+    void flushPendingNoteSave();
+    setViewMode("conversations");
+    setListFilter("all");
+    setSelectedTag(null);
+    setSelectedTopicId(topicId);
+    setSelectedConversationId(null);
+    setIsSplitNavigationOpen(false);
+  };
+
+  const toggleTopicExpansion = (topicId: number) => {
+    setExpandedTopicIds((current) => {
+      const next = new Set(current);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
+  };
+
+  const organizeUnclassified = async () => {
+    if (!storage.runGardener || gardenerProgress?.running) return;
+    const batch = unclassifiedConversations.slice(0, MAX_GARDENER_BATCH_SIZE);
+    if (batch.length === 0) return;
+
+    const template =
+      labels.organizeUnclassifiedConfirm ??
+      "Analyze the next {count} unclassified conversations?";
+    if (!window.confirm(template.replace("{count}", String(batch.length)))) return;
+
+    let failed = 0;
+    setGardenerProgress({ done: 0, failed: 0, total: batch.length, running: true });
+    for (let index = 0; index < batch.length; index += 1) {
+      try {
+        await storage.runGardener(batch[index].id);
+      } catch (error) {
+        failed += 1;
+        console.warn("[library] Gardener batch item failed", {
+          conversationId: batch[index].id,
+          error,
+        });
+      }
+      setGardenerProgress({
+        done: index + 1,
+        failed,
+        total: batch.length,
+        running: true,
+      });
+    }
+    await refresh();
+    setGardenerProgress({
+      done: batch.length,
+      failed,
+      total: batch.length,
+      running: false,
+    });
+  };
+
+  const renderTopicNode = (topic: Topic, depth = 0): ReactNode => {
+    const children = topic.children ?? [];
+    const hasChildren = children.length > 0;
+    const isExpanded = hasChildren && expandedTopicIds.has(topic.id);
+    const isSelected =
+      viewMode === "conversations" && selectedTopicId === topic.id;
+
+    return (
+      <div key={topic.id}>
+        <div
+          className={`my-0.5 flex min-w-0 items-center rounded-lg transition-colors ${
+            isSelected
+              ? "bg-bg-surface-card-active"
+              : "hover:bg-bg-surface-card"
+          }`}
+          style={{ paddingLeft: `${Math.min(depth, 6) * 12 + 4}px` }}
+        >
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={() => toggleTopicExpansion(topic.id)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:text-text-primary"
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${topic.name}`}
+              aria-expanded={isExpanded}
+            >
+              <ChevronDown
+                strokeWidth={1.5}
+                className={`h-3.5 w-3.5 transition-transform ${
+                  isExpanded ? "rotate-0" : "-rotate-90"
+                }`}
+              />
+            </button>
+          ) : (
+            <span className="h-7 w-7 shrink-0" aria-hidden="true" />
+          )}
+          <button
+            type="button"
+            onClick={() => selectTopic(topic.id)}
+            className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 text-left"
+            aria-current={isSelected ? "page" : undefined}
+          >
+            <span
+              className={`min-w-0 flex-1 truncate text-sm font-sans ${
+                isSelected ? "text-accent-primary" : "text-text-primary"
+              }`}
+            >
+              {topic.name}
+            </span>
+            <span className="shrink-0 text-xs font-sans text-text-tertiary">
+              {topic.count ?? 0}
+            </span>
+          </button>
+        </div>
+        {isExpanded && children.length > 0 ? (
+          <div>{children.map((child) => renderTopicNode(child, depth + 1))}</div>
+        ) : null}
+      </div>
+    );
+  };
   const splitContextValue: LibrarySplitContextValue = {
     isSplitActive,
     isSplitNavigationOpen,
@@ -3219,6 +3395,7 @@ export function LibraryTab({
                     setViewMode("conversations");
                     setListFilter("all");
                     setSelectedTag(null);
+                    setSelectedTopicId(null);
                     setSelectedConversationId(null);
                     setIsSplitNavigationOpen(false);
                   }}
@@ -3249,6 +3426,7 @@ export function LibraryTab({
                     setViewMode("conversations");
                     setListFilter("starred");
                     setSelectedTag(null);
+                    setSelectedTopicId(null);
                     setSelectedConversationId(null);
                     setIsSplitNavigationOpen(false);
                   }}
@@ -3281,6 +3459,7 @@ export function LibraryTab({
                     setViewMode("conversations");
                     setListFilter("recent");
                     setSelectedTag(null);
+                    setSelectedTopicId(null);
                     setSelectedConversationId(null);
                     setIsSplitNavigationOpen(false);
                   }}
@@ -3310,9 +3489,57 @@ export function LibraryTab({
               </div>
 
               <div className="flex-1 overflow-y-auto px-2">
+                <div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
+                  <span className="text-[10px] font-sans font-semibold text-text-tertiary uppercase tracking-wider">
+                    {labels.smartClassification ?? "SMART CATEGORIES"}
+                  </span>
+                  {storage.runGardener && unclassifiedConversations.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void organizeUnclassified()}
+                      disabled={gardenerProgress?.running}
+                      className="inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-sans font-medium text-text-tertiary transition-colors hover:bg-bg-surface-card hover:text-text-primary disabled:cursor-wait disabled:opacity-60"
+                      title={labels.organizeUnclassified ?? "Organize unclassified"}
+                    >
+                      <RefreshCw
+                        strokeWidth={1.6}
+                        className={`h-3 w-3 shrink-0 ${gardenerProgress?.running ? "animate-spin" : ""}`}
+                      />
+                      <span className="truncate">
+                        {gardenerProgress?.running
+                          ? (labels.organizingConversations ?? "Organizing {done}/{total}")
+                              .replace("{done}", String(gardenerProgress.done))
+                              .replace("{total}", String(gardenerProgress.total))
+                          : `${labels.organizeUnclassified ?? "Organize"} (${Math.min(unclassifiedConversations.length, MAX_GARDENER_BATCH_SIZE)})`}
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+                {topics.length > 0 ? (
+                  <div className="flex flex-col pb-2">
+                    {topics.map((topic) => renderTopicNode(topic))}
+                  </div>
+                ) : (
+                  <p className="px-3 pb-3 text-xs font-sans leading-relaxed text-text-tertiary">
+                    {labels.noSmartClassification ??
+                      "Smart categories will appear after conversations are analyzed."}
+                  </p>
+                )}
+                {gardenerProgress && !gardenerProgress.running ? (
+                  <p className="px-3 pb-2 text-[11px] font-sans leading-relaxed text-text-tertiary">
+                    {(gardenerProgress.failed > 0
+                      ? labels.classificationPartial ??
+                        "Organized {done}; {failed} failed."
+                      : labels.classificationComplete ?? "Organized {done} conversations.")
+                      .replace("{done}", String(gardenerProgress.done))
+                      .replace("{failed}", String(gardenerProgress.failed))}
+                  </p>
+                ) : null}
+
+                <div className="mt-1 border-t border-border-subtle" />
                 <div className="flex items-center justify-between px-2 py-2">
                   <span className="text-[10px] font-sans font-semibold text-text-tertiary uppercase tracking-wider">
-                    {labels.folders ?? "FOLDERS"}
+                    {labels.tags ?? labels.folders ?? "TAGS"}
                   </span>
                   <button
                     onClick={handleCreateFolder}
@@ -3337,6 +3564,7 @@ export function LibraryTab({
                             setViewMode("conversations");
                             setListFilter("all");
                             setSelectedTag(folder.name);
+                            setSelectedTopicId(null);
                             setSelectedConversationId(null);
                             setIsSplitNavigationOpen(false);
                           }}
@@ -3347,6 +3575,7 @@ export function LibraryTab({
                               setViewMode("conversations");
                               setListFilter("all");
                               setSelectedTag(folder.name);
+                              setSelectedTopicId(null);
                               setSelectedConversationId(null);
                               setIsSplitNavigationOpen(false);
                             }
@@ -3457,13 +3686,15 @@ export function LibraryTab({
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-serif font-normal text-text-primary">
-                          {selectedTag
-                            ? selectedTag
-                            : listFilter === "starred"
-                              ? (labels.starred ?? "Starred")
-                              : listFilter === "recent"
-                                ? (labels.recent ?? "Recent")
-                                : (labels.allConversations ?? "All Conversations")}
+                          {selectedNavigationTopic
+                            ? selectedNavigationTopic.name
+                            : selectedTag
+                              ? selectedTag
+                              : listFilter === "starred"
+                                ? (labels.starred ?? "Starred")
+                                : listFilter === "recent"
+                                  ? (labels.recent ?? "Recent")
+                                  : (labels.allConversations ?? "All Conversations")}
                         </h2>
                         <span className="text-xs font-sans text-text-tertiary">
                           · {filteredConversations.length} {labels.conversationCount ?? "conversations"}

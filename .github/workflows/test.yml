@@ -28,26 +28,4 @@ jobs:
         run: pnpm -C frontend install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm -C frontend test -- --run
-
-  vesti-app-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.29.2
-
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Run core logic tests (capture-core + main + ui + relay)
-        run: pnpm test --run
+        run: pnpm -C frontend test

@@ -21,6 +21,8 @@ export interface ClassificationPromptInput {
   messages: string[];
   /** Existing topic tree as flattened hierarchy paths. */
   topicPaths: ClassificationTopicOption[];
+  /** Frequently used user tags, ordered by observed frequency. */
+  existingTags?: string[];
 }
 
 export interface ConversationClassification {
@@ -38,7 +40,8 @@ export const CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.5;
 export const NEW_TOPIC_CONFIDENCE_THRESHOLD = 0.6;
 
 const MAX_TOPIC_OPTIONS = 60;
-const MAX_MESSAGE_EXCERPTS = 8;
+const MAX_EXISTING_TAG_OPTIONS = 80;
+const MAX_MESSAGE_EXCERPTS = 12;
 const MAX_MESSAGE_CHARS = 420;
 const MAX_PATH_SEGMENTS = 3;
 const MAX_SEGMENT_LENGTH = 40;
@@ -49,7 +52,7 @@ export const CLASSIFICATION_SYSTEM_PROMPT = [
   "You are a librarian who files AI chat conversations into a personal topic tree.",
   "Read the conversation and decide:",
   '1) "topic_path": the best matching EXISTING topic path copied EXACTLY from the provided list. Only if nothing reasonably fits, propose ONE new path (at most 3 segments, reuse existing parent segments when possible) and set "is_new_topic": true. Use [] if the conversation is too generic to file.',
-  '2) "tags": 3-6 semantic tags describing what the conversation is ABOUT (themes, goals, domains), not just technology names. Write tags in the same language as the conversation itself.',
+  '2) "tags": 3-6 semantic tags describing what the conversation is ABOUT (themes, goals, domains), not just technology names. Prefer an EXACT tag from the existing tag vocabulary when it expresses the same concept; create a concise new tag when none fits. Write tags in the same language as the conversation itself.',
   '3) "confidence": 0-1 number for how certain you are about topic_path.',
   'Return ONLY a JSON object: {"topic_path": ["segment", ...], "is_new_topic": false, "tags": ["..."], "confidence": 0.8}.',
   "No markdown, no code fences, no explanations.",
@@ -71,9 +74,16 @@ export function buildClassificationPrompt(
     .map((message, index) => `[${index + 1}] ${message.slice(0, MAX_MESSAGE_CHARS)}`)
     .join("\n");
 
+  const existingTagLine = (input.existingTags ?? [])
+    .slice(0, MAX_EXISTING_TAG_OPTIONS)
+    .join(", ");
+
   return [
     `Existing topic paths (separator "${TOPIC_PATH_SEPARATOR.trim()}"):`,
     topicLines,
+    "",
+    "Existing tag vocabulary (reuse exact spelling when appropriate):",
+    existingTagLine || "(no tags exist yet)",
     "",
     `Conversation title: ${input.title || "(untitled)"}`,
     input.snippet ? `Summary: ${input.snippet}` : "",
@@ -205,7 +215,7 @@ export function resolveTopicPathAgainstExisting(
   options: ClassificationTopicOption[]
 ):
   | { kind: "existing"; id: number }
-  | { kind: "create"; parentId: number | null; name: string }
+  | { kind: "create"; parentId: number | null; segments: string[] }
   | null {
   if (topicPath.length === 0) return null;
 
@@ -223,23 +233,30 @@ export function resolveTopicPathAgainstExisting(
     return { kind: "existing", id: exact };
   }
 
-  // Last segment matches an existing topic anywhere in the tree
-  // (models often return just the leaf name).
+  // A unique last-segment match is safe when models return only the leaf name.
+  // Ambiguous leaves are deliberately ignored instead of choosing an arbitrary
+  // branch in the user's topic tree.
   const leaf = topicPath[topicPath.length - 1].toLowerCase();
-  for (const option of options) {
+  const leafMatches = options.filter((option) => {
     const segments = option.path.split(TOPIC_PATH_SEPARATOR);
-    if (segments[segments.length - 1].toLowerCase() === leaf) {
-      return { kind: "existing", id: option.id };
-    }
+    return segments[segments.length - 1].toLowerCase() === leaf;
+  });
+  if (leafMatches.length === 1) {
+    return { kind: "existing", id: leafMatches[0].id };
   }
 
-  // Deepest existing prefix; suggest creating the next missing segment there.
+  // Deepest existing prefix; return every missing segment so callers can
+  // create the complete hierarchy instead of stopping at the first level.
   for (let depth = topicPath.length - 1; depth >= 1; depth -= 1) {
     const prefixId = byPath.get(joinPath(topicPath.slice(0, depth)));
     if (prefixId !== undefined) {
-      return { kind: "create", parentId: prefixId, name: topicPath[depth] };
+      return {
+        kind: "create",
+        parentId: prefixId,
+        segments: topicPath.slice(depth),
+      };
     }
   }
 
-  return { kind: "create", parentId: null, name: topicPath[0] };
+  return { kind: "create", parentId: null, segments: topicPath };
 }
