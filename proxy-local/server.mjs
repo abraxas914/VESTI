@@ -22,11 +22,16 @@ const LEGACY_CHAT_MODELS = new Set([
   "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
   "Qwen/Qwen3-14B",
 ]);
-const ALLOWED_CHAT_MODELS = new Set([
-  CHAT_PRIMARY_MODEL,
-  CHAT_BACKUP_MODEL,
-  ...LEGACY_CHAT_MODELS,
-]);
+// Model allowlist is an opt-in escape hatch, not a default. The client UI
+// already curates the model list, and a gateway-side list meant every model
+// change needed a redeploy — the old code even silently rewrote unknown
+// models to the primary. Empty = pass any requested model through verbatim.
+const ALLOWED_CHAT_MODELS = new Set(
+  (process.env.VESTI_ALLOWED_CHAT_MODELS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
 
 const EMBEDDING_MODEL =
   (process.env.VESTI_EMBEDDING_MODEL || "").trim() || "text-embedding-v2";
@@ -348,10 +353,14 @@ function handleNotionOAuthSession(req, res, requestId) {
 
 function sanitizeChatPayload(body) {
   const requestedModel = typeof body.model === "string" ? body.model.trim() : "";
-  const model =
-    ALLOWED_CHAT_MODELS.has(requestedModel)
-      ? requestedModel
-      : CHAT_PRIMARY_MODEL;
+  // Default-open: the requested model passes through verbatim (no silent
+  // rewrite to the primary). The env allowlist, when set, clamps explicitly.
+  const model = requestedModel || CHAT_PRIMARY_MODEL;
+  if (ALLOWED_CHAT_MODELS.size > 0 && !ALLOWED_CHAT_MODELS.has(model)) {
+    const error = new Error(`Model "${model}" is not allowed by this proxy.`);
+    error.code = "UNSUPPORTED_MODEL";
+    throw error;
+  }
 
   const messages = Array.isArray(body.messages)
     ? body.messages
@@ -419,7 +428,21 @@ async function handleChat(req, res, requestId, origin, allowedOrigin) {
     return;
   }
 
-  const payload = sanitizeChatPayload(body);
+  let payload;
+  try {
+    payload = sanitizeChatPayload(body);
+  } catch (error) {
+    writeJson(
+      res,
+      400,
+      buildErrorPayload(
+        "UNSUPPORTED_MODEL",
+        error instanceof Error ? error.message : "Unsupported model.",
+        requestId
+      )
+    );
+    return;
+  }
   if (!Array.isArray(payload.messages) || payload.messages.length === 0) {
     writeJson(
       res,
