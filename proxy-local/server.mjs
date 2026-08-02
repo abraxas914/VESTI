@@ -14,10 +14,6 @@ const CHAT_PRIMARY_MODEL =
   "moonshotai/Kimi-K2.5";
 const CHAT_BACKUP_MODEL =
   (process.env.VESTI_CHAT_BACKUP_MODEL || "").trim() || "stepfun-ai/Step-3.5-Flash";
-const CHAT_MAX_TOKENS = Number.parseInt(
-  process.env.VESTI_CHAT_MAX_TOKENS || "1600",
-  10
-);
 const LEGACY_CHAT_MODELS = new Set([
   "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
   "Qwen/Qwen3-14B",
@@ -169,11 +165,15 @@ function buildErrorPayload(code, message, requestId, extras = {}) {
   };
 }
 
-function clampMaxTokens(value) {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return CHAT_MAX_TOKENS;
-  }
-  return Math.max(1, Math.min(Math.floor(value), CHAT_MAX_TOKENS));
+/**
+ * max_tokens passes through verbatim: the proxy imposes no per-request output
+ * cap of its own (the old 1600 clamp silently truncated long structured
+ * answers). The field is simply omitted when the client doesn't send one.
+ */
+function passthroughMaxTokens(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : null;
 }
 
 function purgeExpiredNotionOAuthRecords() {
@@ -383,9 +383,10 @@ function sanitizeChatPayload(body) {
       typeof body.temperature === "number" && Number.isFinite(body.temperature)
         ? body.temperature
         : 0.3,
-    max_tokens: clampMaxTokens(body.max_tokens),
     messages,
   };
+  const maxTokens = passthroughMaxTokens(body.max_tokens);
+  if (maxTokens !== null) payload.max_tokens = maxTokens;
 
   if (
     body.response_format &&
@@ -512,8 +513,8 @@ async function handleChat(req, res, requestId, origin, allowedOrigin) {
   res.setHeader("x-proxy-model-used", finalModel);
   res.setHeader("x-proxy-attempt", String(finalAttempt));
   res.setHeader("x-proxy-requested-max-tokens", String(body?.max_tokens ?? ""));
-  res.setHeader("x-proxy-effective-max-tokens", String(payload.max_tokens));
-  res.setHeader("x-proxy-max-tokens-limit", String(CHAT_MAX_TOKENS));
+  res.setHeader("x-proxy-effective-max-tokens", String(payload.max_tokens ?? ""));
+  // No proxy-side max_tokens limit: requested values pass through verbatim.
   setCommonHeaders(res, requestId);
   setCorsHeaders(res, origin, allowedOrigin);
   res.end(finalBody);

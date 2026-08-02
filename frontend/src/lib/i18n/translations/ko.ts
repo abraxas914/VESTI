@@ -230,11 +230,7 @@ export const koTranslations = {
       serviceTokenLabel: "서비스 토큰",
       serviceTokenOptional: "선택 사항",
       serviceTokenPlaceholder: "기본값으로 미리 입력됨",
-<<<<<<< HEAD
-      baseUrlPlaceholder: "https://api.ccvg1218.online",
-=======
       baseUrlPlaceholder: "https://api.ccvg1218.online/api",
->>>>>>> origin/main
       save: "저장",
       test: "테스트",
       testing: "실행 중...",

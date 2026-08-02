@@ -233,11 +233,7 @@ export const jaTranslations = {
       serviceTokenLabel: "サービストークン",
       serviceTokenOptional: "任意",
       serviceTokenPlaceholder: "デフォルトで入力済み",
-<<<<<<< HEAD
-      baseUrlPlaceholder: "https://api.ccvg1218.online",
-=======
       baseUrlPlaceholder: "https://api.ccvg1218.online/api",
->>>>>>> origin/main
       save: "保存",
       test: "テスト",
       testing: "実行中...",

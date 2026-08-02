@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   Annotation,
   Conversation,
   ExploreAskOptions,
@@ -741,7 +741,9 @@ function isNearTokenLimit(
     typeof completionTokens !== "number" ||
     !Number.isFinite(completionTokens) ||
     typeof effectiveMaxTokens !== "number" ||
-    !Number.isFinite(effectiveMaxTokens)
+    !Number.isFinite(effectiveMaxTokens) ||
+    // 0 = uncapped (no max_tokens sent): nothing to be "near" to.
+    effectiveMaxTokens <= 0
   ) {
     return false;
   }

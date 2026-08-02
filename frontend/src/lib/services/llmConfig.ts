@@ -37,9 +37,12 @@ export const DEFAULT_BACKUP_MODEL = "qwen-turbo";
 export const LEGACY_KIMI_K2_5_MODEL = KIMI_K2_5_MODEL;
 export const LEGACY_STEP_3_5_FLASH_MODEL = STEP_3_5_FLASH_MODEL;
 
-export const DEFAULT_MAX_TOKENS = 1600;
+// 0 = uncapped: no max_tokens is sent and the model's own default applies.
+// The old 1600 default/cap silently truncated long structured answers.
+export const DEFAULT_MAX_TOKENS = 0;
 const LEGACY_DEFAULT_MAX_TOKENS = 800;
-const MAX_TOKENS_CAP = 1600;
+const LEGACY_CAPPED_DEFAULT_MAX_TOKENS = 1600;
+const MAX_TOKENS_CAP = 16384;
 
 // BYOK model whitelist: recommended models for the unified AI gateway.
 // We keep legacy ModelScope / Moonshot / StepFun IDs so existing BYOK users don't break.
@@ -122,8 +125,10 @@ function normalizeMaxTokens(value: number | undefined): number {
     return DEFAULT_MAX_TOKENS;
   }
 
-  const normalized = Math.max(1, Math.min(Math.floor(value), MAX_TOKENS_CAP));
-  if (normalized === LEGACY_DEFAULT_MAX_TOKENS) {
+  const normalized = Math.max(0, Math.min(Math.floor(value), MAX_TOKENS_CAP));
+  // Legacy stored defaults (800, then 1600) migrate to 0 (uncapped) — they
+  // were product defaults, not user choices. Other explicit values survive.
+  if (normalized === LEGACY_DEFAULT_MAX_TOKENS || normalized === LEGACY_CAPPED_DEFAULT_MAX_TOKENS) {
     return DEFAULT_MAX_TOKENS;
   }
 

@@ -242,11 +242,7 @@ export const enTranslations = {
       serviceTokenLabel: "Service Token",
       serviceTokenOptional: "optional",
       serviceTokenPlaceholder: "Pre-filled by default",
-<<<<<<< HEAD
-      baseUrlPlaceholder: "https://api.ccvg1218.online",
-=======
       baseUrlPlaceholder: "https://api.ccvg1218.online/api",
->>>>>>> origin/main
       save: "Save",
       test: "Test",
       testing: "Working...",
