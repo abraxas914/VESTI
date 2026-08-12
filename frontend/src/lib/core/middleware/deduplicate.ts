@@ -265,7 +265,14 @@ export async function deduplicateAndSave(
       );
 
       await db.conversations.update(existing.id, {
-        updated_at: persistedAt,
+        // Prefer the draft's own timeline: live recaptures carry ~now anyway,
+        // while a richer history re-import keeps the platform's real day
+        // instead of being dragged to the re-import instant.
+        updated_at:
+          typeof conversation.updated_at === "number" &&
+          Number.isFinite(conversation.updated_at)
+            ? conversation.updated_at
+            : persistedAt,
         last_captured_at: persistedAt,
         message_count: cleanMessages.length,
         turn_count: turnCount,
@@ -296,12 +303,27 @@ export async function deduplicateAndSave(
       ...conversation,
       first_captured_at: firstCapturedAt,
       last_captured_at: persistedAt,
-      created_at: persistedAt,
-      updated_at: persistedAt,
+      // History-import drafts carry the platform's real created/updated times
+      // (see buildConversationDraft); live-capture drafts carry ~now. Honor
+      // the draft so imported history buckets onto its true activity days.
+      created_at:
+        typeof conversation.created_at === "number" &&
+        Number.isFinite(conversation.created_at)
+          ? conversation.created_at
+          : persistedAt,
+      updated_at:
+        typeof conversation.updated_at === "number" &&
+        Number.isFinite(conversation.updated_at)
+          ? conversation.updated_at
+          : persistedAt,
       origin_at: resolveConversationRecordOriginAt({
         source_created_at: conversation.source_created_at,
         first_captured_at: firstCapturedAt,
-        created_at: persistedAt,
+        created_at:
+          typeof conversation.created_at === "number" &&
+          Number.isFinite(conversation.created_at)
+            ? conversation.created_at
+            : persistedAt,
       }),
       message_count: cleanMessages.length,
       turn_count: turnCount,
