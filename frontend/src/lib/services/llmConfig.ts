@@ -13,10 +13,17 @@ import {
 // Legacy ModelScope endpoints (kept for BYOK users still on ModelScope)
 export const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1/";
 
-// Demo proxy routing. The legacy Vercel deployment remains a transport-level
-// fallback only; model fallback is owned by the primary gateway.
-export const PRIMARY_PROXY_BASE_URL = "https://api.ccvg1218.online/api";
-export const FALLBACK_PROXY_BASE_URL = "https://vesti-gate.vercel.app/api";
+// Demo proxy routing. The official gateway (vesti.world, keys server-side,
+// no model whitelist) is the primary; the previous ccvg deployment remains a
+// transport-level fallback only.
+export const PRIMARY_PROXY_BASE_URL = "https://vesti.world/gate/api";
+export const FALLBACK_PROXY_BASE_URL = "https://api.ccvg1218.online/api";
+// Pre-2026-08 built-in endpoints: any stored config still pointing at them is
+// migrated to the current primary (see resolveProxyBaseUrl).
+export const LEGACY_PROXY_BASE_URLS = [
+  "https://api.ccvg1218.online/api",
+  "https://vesti-gate.vercel.app/api",
+];
 export const DEFAULT_PROXY_BASE_URL = PRIMARY_PROXY_BASE_URL;
 export const DEFAULT_PROXY_URL = `${DEFAULT_PROXY_BASE_URL}/chat`;
 export const DEFAULT_PROXY_EMBEDDINGS_URL = `${DEFAULT_PROXY_BASE_URL}/embeddings`;
@@ -30,8 +37,9 @@ export const DEFAULT_PROXY_SERVICE_TOKEN = "vesti-kcq-default-d850d4dcd610a0e2e9
 export const DEFAULT_BYOK_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/";
 
 // Default chat models for demo proxy / BYOK fallback
-export const DEFAULT_STABLE_MODEL = "qwen-plus";
-export const DEFAULT_BACKUP_MODEL = "qwen-turbo";
+// 新官方网关按前缀路由(deepseek*→DeepSeek, kimi*→Kimi):默认走最快的 v4-flash
+export const DEFAULT_STABLE_MODEL = "deepseek-v4-flash";
+export const DEFAULT_BACKUP_MODEL = "deepseek-chat";
 
 // Kept for backward compatibility with older stored configs and legacy BYOK users
 export const LEGACY_KIMI_K2_5_MODEL = KIMI_K2_5_MODEL;
@@ -140,17 +148,17 @@ function resolveProxyBaseUrl(
 ): string {
   const explicit = normalizeProxyBaseCandidate(settings.proxyBaseUrl);
   if (explicit) {
-    // Migrate the previously persisted built-in endpoint. The old deployment
-    // is still reached automatically when the new gateway has a retryable
+    // Migrate previously persisted built-in endpoints. Old deployments are
+    // still reached automatically when the new gateway has a retryable
     // transport failure.
-    return explicit === FALLBACK_PROXY_BASE_URL
+    return LEGACY_PROXY_BASE_URLS.includes(explicit)
       ? PRIMARY_PROXY_BASE_URL
       : explicit;
   }
 
   const legacy = normalizeProxyBaseCandidate(settings.proxyUrl);
   if (legacy) {
-    return legacy === FALLBACK_PROXY_BASE_URL
+    return LEGACY_PROXY_BASE_URLS.includes(legacy)
       ? PRIMARY_PROXY_BASE_URL
       : legacy;
   }
