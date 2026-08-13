@@ -6,7 +6,8 @@ import { runHistoryImport } from "./importRunner"
 const mocks = vi.hoisted(() => ({ sendRequest: vi.fn() }))
 
 vi.mock("../../messaging/runtime", () => ({
-  sendRequest: mocks.sendRequest
+  sendRequest: mocks.sendRequest,
+  CAPTURE_TIMEOUT_MS: 60_000
 }))
 
 function built(id: string, sourceCreatedAt: number) {
@@ -75,6 +76,10 @@ describe("runHistoryImport date range", () => {
       "old-unknown"
     ])
     expect(mocks.sendRequest).toHaveBeenCalledTimes(1)
+    expect(mocks.sendRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "CAPTURE_CONVERSATION" }),
+      60_000
+    )
     expect(result).toMatchObject({
       phase: "done",
       discovered: 2,

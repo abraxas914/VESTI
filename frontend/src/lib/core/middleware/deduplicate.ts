@@ -32,27 +32,27 @@ function buildParsedSignatures(messages: ParsedMessage[]): string[] {
   );
 }
 
-function buildStoredSignatures(messages: MessageRecord[]): string[] {
-  return [...messages]
-    .sort((a, b) => {
-      if (a.created_at !== b.created_at) return a.created_at - b.created_at;
-      const aId = a.id ?? 0;
-      const bId = b.id ?? 0;
-      return aId - bId;
-    })
-    .map((message) =>
-      buildSignature({
-        role: message.role,
-        contentText: message.content_text,
-        contentAst: isAstRoot(message.content_ast) ? message.content_ast : null,
-        contentAstVersion: message.content_ast_version ?? null,
-        degradedNodesCount: message.degraded_nodes_count,
-        citations: message.citations ?? [],
-        attachments: message.attachments ?? [],
-        artifacts: message.artifacts ?? [],
-        normalizedHtmlSnapshot: message.normalized_html_snapshot ?? null,
-      })
-    );
+function sortByStoredOrder(messages: MessageRecord[]): MessageRecord[] {
+  return [...messages].sort((a, b) => {
+    if (a.created_at !== b.created_at) return a.created_at - b.created_at;
+    const aId = a.id ?? 0;
+    const bId = b.id ?? 0;
+    return aId - bId;
+  });
+}
+
+function buildStoredSignature(message: MessageRecord): string {
+  return buildSignature({
+    role: message.role,
+    contentText: message.content_text,
+    contentAst: isAstRoot(message.content_ast) ? message.content_ast : null,
+    contentAstVersion: message.content_ast_version ?? null,
+    degradedNodesCount: message.degraded_nodes_count,
+    citations: message.citations ?? [],
+    attachments: message.attachments ?? [],
+    artifacts: message.artifacts ?? [],
+    normalizedHtmlSnapshot: message.normalized_html_snapshot ?? null,
+  });
 }
 
 function signaturesMatch(a: string[], b: string[]): boolean {
@@ -170,6 +170,84 @@ function resolveFirstCapturedAt(
   return fallbackCreatedAt;
 }
 
+type ReferenceResolution =
+  | { action: "keep" }
+  | { action: "remap"; messageId: number }
+  | { action: "drop" };
+
+/**
+ * After a recapture's delete+reinsert, references from other tables
+ * (annotations.message_id, prompts.source_message_id) must not dangle.
+ * References to a reused id still resolve; references to a discarded id are
+ * remapped to a surviving message with the same content signature when one
+ * exists (duplicate messages), otherwise dropped (annotation deleted, prompt
+ * provenance nulled).
+ */
+async function reconcileMessageReferences(params: {
+  conversationId: number;
+  insertedIds: number[];
+  incomingSignatures: string[];
+  reusedMessageIds: Set<number>;
+  storedSignatureById: Map<number, string>;
+}): Promise<void> {
+  const {
+    conversationId,
+    insertedIds,
+    incomingSignatures,
+    reusedMessageIds,
+    storedSignatureById,
+  } = params;
+
+  const survivingIdBySignature = new Map<string, number>();
+  incomingSignatures.forEach((signature, index) => {
+    const id = insertedIds[index];
+    if (typeof id !== "number" || survivingIdBySignature.has(signature)) return;
+    survivingIdBySignature.set(signature, id);
+  });
+
+  const resolveReference = (messageId: number): ReferenceResolution => {
+    if (reusedMessageIds.has(messageId)) return { action: "keep" };
+    const signature = storedSignatureById.get(messageId);
+    const remapped =
+      signature === undefined ? undefined : survivingIdBySignature.get(signature);
+    return remapped === undefined
+      ? { action: "drop" }
+      : { action: "remap", messageId: remapped };
+  };
+
+  const annotations = await db.annotations
+    .where("conversation_id")
+    .equals(conversationId)
+    .toArray();
+  for (const annotation of annotations) {
+    if (annotation.id === undefined) continue;
+    const resolution = resolveReference(annotation.message_id);
+    if (resolution.action === "remap") {
+      await db.annotations.update(annotation.id, {
+        message_id: resolution.messageId,
+      });
+    } else if (resolution.action === "drop") {
+      await db.annotations.delete(annotation.id);
+    }
+  }
+
+  const prompts = await db.prompts
+    .where("source_conversation_id")
+    .equals(conversationId)
+    .toArray();
+  for (const prompt of prompts) {
+    if (prompt.id === undefined || prompt.source_message_id === null) continue;
+    const resolution = resolveReference(prompt.source_message_id);
+    if (resolution.action === "remap") {
+      await db.prompts.update(prompt.id, {
+        source_message_id: resolution.messageId,
+      });
+    } else if (resolution.action === "drop") {
+      await db.prompts.update(prompt.id, { source_message_id: null });
+    }
+  }
+}
+
 export async function deduplicateAndSave(
   conversation: ConversationDraft,
   messages: ParsedMessage[]
@@ -183,7 +261,13 @@ export async function deduplicateAndSave(
   const turnCount = countAiTurns(cleanMessages);
   const persistedAt = Date.now();
 
-  return db.transaction("rw", db.conversations, db.messages, async () => {
+  return db.transaction(
+    "rw",
+    db.conversations,
+    db.messages,
+    db.annotations,
+    db.prompts,
+    async () => {
     const existing = await db.conversations
       .where("[platform+uuid]")
       .equals([conversation.platform, conversation.uuid])
@@ -195,8 +279,9 @@ export async function deduplicateAndSave(
         .equals(existing.id)
         .toArray();
 
+      const sortedExistingMessages = sortByStoredOrder(existingMessages);
       const incomingSignatures = buildParsedSignatures(cleanMessages);
-      const storedSignatures = buildStoredSignatures(existingMessages);
+      const storedSignatures = sortedExistingMessages.map(buildStoredSignature);
 
       if (signaturesMatch(incomingSignatures, storedSignatures)) {
         if (conversation.isMock === true && existing.isMock !== true) {
@@ -226,32 +311,68 @@ export async function deduplicateAndSave(
         return { saved: false, newMessages: 0, conversationId: existing.id };
       }
 
+      // Reuse stored message ids across the delete+reinsert below: incoming
+      // messages are matched to stored ones by content signature (same sort
+      // order and signature pairing as the dedup comparison above), so rows
+      // that survive the recapture keep their id and references from other
+      // tables (annotations.message_id, prompts.source_message_id) stay valid.
+      const storedIdsBySignature = new Map<string, number[]>();
+      const storedSignatureById = new Map<number, string>();
+      sortedExistingMessages.forEach((message, index) => {
+        if (message.id === undefined) return;
+        const signature = storedSignatures[index];
+        storedSignatureById.set(message.id, signature);
+        const queue = storedIdsBySignature.get(signature);
+        if (queue) {
+          queue.push(message.id);
+        } else {
+          storedIdsBySignature.set(signature, [message.id]);
+        }
+      });
+
       await db.messages.where("conversation_id").equals(existing.id).delete();
 
       const baseTimestamp = Date.now();
-      const inserts: MessageRecord[] = cleanMessages.map((message, index) => ({
-        conversation_id: existing.id!,
-        role: message.role,
-        content_text: message.textContent,
-        content_ast: message.contentAst ?? null,
-        content_ast_version: message.contentAstVersion ?? null,
-        degraded_nodes_count: normalizeDegradedNodesCount(message.degradedNodesCount),
-        citations: normalizeMessageCitations(message.citations ?? []),
-        attachments: normalizeMessageAttachments(message.attachments ?? []),
-        artifacts: normalizeMessageArtifacts(message.artifacts ?? []),
-        normalized_html_snapshot:
-          message.normalizedHtmlSnapshot ??
-          buildRichOnlyNormalizedHtmlSnapshot({
-            html: message.htmlContent ?? null,
-            ast: message.contentAst ?? null,
-            hasCitations: (message.citations ?? []).length > 0,
-            hasAttachments: (message.attachments ?? []).length > 0,
-            hasArtifacts: (message.artifacts ?? []).length > 0,
-          }),
-        created_at: message.timestamp ?? baseTimestamp + index,
-      }));
+      const reusedMessageIds = new Set<number>();
+      const inserts: MessageRecord[] = cleanMessages.map((message, index) => {
+        const queue = storedIdsBySignature.get(incomingSignatures[index]);
+        const reusedId = queue?.shift();
+        if (reusedId !== undefined) {
+          reusedMessageIds.add(reusedId);
+        }
+        return {
+          ...(reusedId !== undefined ? { id: reusedId } : {}),
+          conversation_id: existing.id!,
+          role: message.role,
+          content_text: message.textContent,
+          content_ast: message.contentAst ?? null,
+          content_ast_version: message.contentAstVersion ?? null,
+          degraded_nodes_count: normalizeDegradedNodesCount(message.degradedNodesCount),
+          citations: normalizeMessageCitations(message.citations ?? []),
+          attachments: normalizeMessageAttachments(message.attachments ?? []),
+          artifacts: normalizeMessageArtifacts(message.artifacts ?? []),
+          normalized_html_snapshot:
+            message.normalizedHtmlSnapshot ??
+            buildRichOnlyNormalizedHtmlSnapshot({
+              html: message.htmlContent ?? null,
+              ast: message.contentAst ?? null,
+              hasCitations: (message.citations ?? []).length > 0,
+              hasAttachments: (message.attachments ?? []).length > 0,
+              hasArtifacts: (message.artifacts ?? []).length > 0,
+            }),
+          created_at: message.timestamp ?? baseTimestamp + index,
+        };
+      });
 
-      await db.messages.bulkAdd(inserts);
+      const insertedIds = await db.messages.bulkAdd(inserts, { allKeys: true });
+
+      await reconcileMessageReferences({
+        conversationId: existing.id,
+        insertedIds,
+        incomingSignatures,
+        reusedMessageIds,
+        storedSignatureById,
+      });
 
       // Keep user-renamed titles stable across recaptures.
       const mergedSourceCreatedAt = resolveSourceCreatedAt(
