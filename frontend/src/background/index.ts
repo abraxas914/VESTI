@@ -23,6 +23,7 @@ import {
   deleteNote,
   exportAllData,
   getAllSummaries,
+  getConversationById,
   getDashboardStats,
   getDataOverview,
   getExploreMessages,
@@ -910,6 +911,10 @@ async function handleOffscreenRequest(
       }
       case "GET_CONVERSATIONS": {
         const data = await listConversations(message.payload)
+        return { ok: true, type: messageType, data }
+      }
+      case "GET_CONVERSATION": {
+        const data = await getConversationById(message.payload.id)
         return { ok: true, type: messageType, data }
       }
       case "GET_TOPICS": {
