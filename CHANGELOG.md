@@ -10,6 +10,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+---
+
+## [1.2.0-rc.9] - 2026-08-16
+
 ### Added
 
 - **First-run onboarding system**: fresh installs now open a minimal,
@@ -488,7 +492,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ---
 
-[Unreleased]: https://github.com/abraxas914/VESTI/compare/v1.2.0-rc.7...HEAD
+[Unreleased]: https://github.com/abraxas914/VESTI/compare/v1.2.0-rc.9...HEAD
+[1.2.0-rc.9]: https://github.com/abraxas914/VESTI/releases/tag/v1.2.0-rc.9
+[1.2.0-rc.8]: https://github.com/abraxas914/VESTI/tree/v1.2.0-rc.8
 [1.2.0-rc.7]: https://github.com/abraxas914/VESTI/releases/tag/v1.2.0-rc.7
 [1.2.0-rc.6]: https://github.com/abraxas914/VESTI/releases/tag/v1.2.0-rc.6
 [1.2.0-rc.3]: https://github.com/abraxas914/VESTI/releases/tag/v1.2.0-rc.3
