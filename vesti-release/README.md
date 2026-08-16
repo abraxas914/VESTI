@@ -11,9 +11,12 @@ Release bundles and older mirrored artifacts are retained locally under the igno
 
 ## Current public baseline
 
-- Version: `v1.2.0-rc.7`
-- Source commit: `7804262cd3304cc2cbf95a7693c1b6e5df2f7ab2`
-- Built at: `2026-03-08 13:45:00 +08:00`
+- Version: `v1.2.0-rc.9`
+- Source commit: `c2b842c7f2c5fd5fa0af86c29b3a3c4cdb9b93ee`
+- Built at: `2026-08-16 13:37:07 +08:00`
+- CI run: `https://github.com/abraxas914/VESTI/actions/runs/31929384427`
+- SHA256: `f8c869e42b8070008c7723104eea8b62d29b31f7c4f6c11579f2d53be0a652b9`
+- Size: `20.64 MB` (`21,640,117` bytes)
 
 ## Public release truth
 
