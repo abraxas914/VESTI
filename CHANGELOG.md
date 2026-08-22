@@ -10,6 +10,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Fixed
+
+- 工具栏猫头鹰图标原先为深灰色描边、透明底，在 Chrome 深色工具栏上几乎不可见。现为 action 提供浅色/深色两套字形（`theme_icons`），浅色字形为工具栏默认。
+
 ---
 
 ## [1.2.0-rc.9] - 2026-08-16
