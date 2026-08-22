@@ -90,30 +90,9 @@
         "16": "../assets/icon-theme-contrast-16.png",
         "32": "../assets/icon-theme-contrast-32.png",
         "48": "../assets/icon-theme-contrast-48.png",
+        "64": "../assets/icon-theme-contrast-64.png",
         "128": "../assets/icon-theme-contrast-128.png"
-      },
-      "theme_icons": [
-        {
-          "light": "../assets/icon-theme-light-16.png",
-          "dark": "../assets/icon-theme-dark-16.png",
-          "size": 16
-        },
-        {
-          "light": "../assets/icon-theme-light-32.png",
-          "dark": "../assets/icon-theme-dark-32.png",
-          "size": 32
-        },
-        {
-          "light": "../assets/icon-theme-light-48.png",
-          "dark": "../assets/icon-theme-dark-48.png",
-          "size": 48
-        },
-        {
-          "light": "../assets/icon-theme-light-128.png",
-          "dark": "../assets/icon-theme-dark-128.png",
-          "size": 128
-        }
-      ]
+      }
     },
     "web_accessible_resources": [
       {

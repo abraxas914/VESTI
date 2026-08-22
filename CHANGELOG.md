@@ -12,7 +12,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Fixed
 
-- 工具栏猫头鹰图标原先为深灰色描边、透明底：深色工具栏上看不见，改成浅色字形后又在浅色工具栏上看不见。Chrome 的 action 只认 `default_icon`（`theme_icons` 是 Firefox 的）。现用深色猫头鹰加浅色描边作为默认工具栏图标，两套外观都可辨认。
+- 原工具栏猫头鹰图标为深灰色描边、透明底，在深色工具栏上几乎不可见。现改为深色猫头鹰加浅色描边，浅色与深色工具栏均可辨认。
 
 ---
 
