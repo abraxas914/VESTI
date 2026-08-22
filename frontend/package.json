@@ -87,10 +87,10 @@
     ],
     "action": {
       "default_icon": {
-        "16": "../assets/icon-theme-light-16.png",
-        "32": "../assets/icon-theme-light-32.png",
-        "48": "../assets/icon-theme-light-48.png",
-        "128": "../assets/icon-theme-light-128.png"
+        "16": "../assets/icon-theme-contrast-16.png",
+        "32": "../assets/icon-theme-contrast-32.png",
+        "48": "../assets/icon-theme-contrast-48.png",
+        "128": "../assets/icon-theme-contrast-128.png"
       },
       "theme_icons": [
         {
