@@ -859,6 +859,7 @@ export interface SummaryRecord {
   status?: InsightStatus
   schemaVersion?: "conversation_summary.v1" | "conversation_summary.v2"
   modelId: string
+  promptVersion?: string
   createdAt: number
   sourceUpdatedAt: number
 }

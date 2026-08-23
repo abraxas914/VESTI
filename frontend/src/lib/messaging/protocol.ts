@@ -595,7 +595,7 @@ export type RequestMessage =
       target?: "offscreen"
       via?: "background"
       requestId?: string
-      payload: { conversationId: number }
+      payload: { conversationId: number; force?: boolean }
     }
   | {
       type: "GET_WEEKLY_REPORT"

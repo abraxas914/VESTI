@@ -781,13 +781,14 @@ export async function getAllSummaries(): Promise<SummaryRecord[]> {
 }
 
 export async function generateConversationSummary(
-  conversationId: number
+  conversationId: number,
+  options?: { force?: boolean }
 ): Promise<SummaryRecord> {
   return sendRequest(
     {
       type: "GENERATE_CONVERSATION_SUMMARY",
       target: "offscreen",
-      payload: { conversationId }
+      payload: { conversationId, force: options?.force === true }
     },
     LONG_RUNNING_TIMEOUT_MS
   ) as Promise<SummaryRecord>

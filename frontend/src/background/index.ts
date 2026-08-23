@@ -1180,7 +1180,8 @@ async function handleOffscreenRequest(
         const settings = requireSettings(await getLlmSettings())
         const record = await generateConversationSummary(
           settings,
-          message.payload.conversationId
+          message.payload.conversationId,
+          { force: message.payload.force === true }
         )
         return { ok: true, type: messageType, data: record }
       }

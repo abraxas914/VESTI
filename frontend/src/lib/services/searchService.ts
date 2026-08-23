@@ -33,6 +33,7 @@ import {
 } from "../db/repository";
 import {
   embedTextWithMetadata,
+  getSessionEmbeddingIndexVersion,
   type EmbeddingIndexMetadata,
 } from "./embeddingService";
 import {
@@ -2088,6 +2089,43 @@ async function ensureVectorsForConversations(conversationIds: number[]): Promise
   }
 }
 
+// A stored vector is reusable only when its text hash matches AND its
+// index_version is the version the server actually produced this session. The
+// client has no static knowledge of the gateway's embedding model, so a row
+// written before a server-side model swap must miss and re-embed — this is
+// what migrates the corpus to the current model over time. When nothing has
+// been learned yet this session, treat as a miss: one real embed call learns
+// the version, and later rows matching it reuse with zero network calls.
+// Versions embed the route, so a demo proxy ↔ BYOK switch misses naturally.
+async function findReusableVectorMetadata(
+  conversationId: number,
+  textHash: string
+): Promise<EmbeddingIndexMetadata | null> {
+  const settings = await getLlmSettings();
+  if (!settings) return null;
+  const route = getLlmAccessMode(settings) === "custom_byok" ? "byok" : "proxy";
+  const sessionVersion = getSessionEmbeddingIndexVersion(route);
+  if (!sessionVersion) return null;
+
+  const row = await db.vectors
+    .where("conversation_id")
+    .equals(conversationId)
+    .and(
+      (record) =>
+        record.text_hash === textHash &&
+        record.index_version === sessionVersion
+    )
+    .first();
+
+  if (!row) return null;
+  return {
+    provider: row.embedding_provider,
+    model: row.embedding_model,
+    dimensions: row.embedding_dimensions,
+    version: row.index_version,
+  };
+}
+
 export async function ensureVectorForConversation(
   conversationId: number,
   text: string
@@ -2096,6 +2134,11 @@ export async function ensureVectorForConversation(
   if (!preparedText) return null;
 
   const textHash = await hashText(preparedText);
+  // Hash-check BEFORE embedding: unchanged conversations already have a
+  // vectors row with this text_hash, so skip the network call entirely.
+  const reusable = await findReusableVectorMetadata(conversationId, textHash);
+  if (reusable) return reusable;
+
   const { vector: embedding, metadata } = await embedTextWithMetadata(preparedText);
   const existing = await db.vectors
     .where("conversation_id")
