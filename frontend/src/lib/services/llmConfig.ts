@@ -14,10 +14,12 @@ import {
 export const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1/";
 
 // Demo proxy routing. The official gateway (vesti.world, keys server-side,
-// no model whitelist) is the primary; the previous ccvg deployment remains a
-// transport-level fallback only.
+// no model whitelist, pooled upstream keys with failover) is the primary.
+// The previous ccvg deployment is decommissioned (404), so the transport-level
+// "fallback" is simply a retry against the primary — with gateway-side key
+// pooling a retry can land on a different upstream entry.
 export const PRIMARY_PROXY_BASE_URL = "https://vesti.world/gate/api";
-export const FALLBACK_PROXY_BASE_URL = "https://api.ccvg1218.online/api";
+export const FALLBACK_PROXY_BASE_URL = PRIMARY_PROXY_BASE_URL;
 // Pre-2026-08 built-in endpoints: any stored config still pointing at them is
 // migrated to the current primary (see resolveProxyBaseUrl).
 export const LEGACY_PROXY_BASE_URLS = [
