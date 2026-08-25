@@ -85,6 +85,15 @@
       "sidePanel",
       "unlimitedStorage"
     ],
+    "action": {
+      "default_icon": {
+        "16": "../assets/icon-theme-contrast-16.png",
+        "32": "../assets/icon-theme-contrast-32.png",
+        "48": "../assets/icon-theme-contrast-48.png",
+        "64": "../assets/icon-theme-contrast-64.png",
+        "128": "../assets/icon-theme-contrast-128.png"
+      }
+    },
     "web_accessible_resources": [
       {
         "resources": [

@@ -10,6 +10,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Fixed
+
+- 原工具栏猫头鹰图标为深灰色描边、透明底，在深色工具栏上几乎不可见。现改为深色猫头鹰加浅色描边，浅色与深色工具栏均可辨认。
+
 ---
 
 ## [1.2.0-rc.9] - 2026-08-16
