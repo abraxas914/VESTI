@@ -74,6 +74,8 @@ export function buildConversationDraft(args: {
   const turnCount = args.messages.filter((m) => m.role === "ai").length;
   const sourceCreatedAt =
     typeof args.sourceCreatedAt === "number" ? args.sourceCreatedAt : null;
+  const sourceUpdatedAt =
+    typeof args.sourceUpdatedAt === "number" ? args.sourceUpdatedAt : null;
   return {
     uuid: args.uuid,
     platform: args.platform,
@@ -83,8 +85,11 @@ export function buildConversationDraft(args: {
     source_created_at: sourceCreatedAt,
     first_captured_at: now,
     last_captured_at: now,
-    created_at: now,
-    updated_at: now,
+    // History imports carry the platform's real timeline so downstream
+    // day-bucketing (daily logs, learning map) lands on the true activity
+    // day; first/last_captured_at keep the import's provenance instead.
+    created_at: sourceCreatedAt ?? now,
+    updated_at: sourceUpdatedAt ?? sourceCreatedAt ?? now,
     message_count: args.messages.length,
     turn_count: turnCount,
     is_archived: false,

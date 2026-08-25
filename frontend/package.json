@@ -57,8 +57,8 @@
     "version": "1.2.0",
     "version_name": "1.2.0-rc.9",
     "host_permissions": [
+      "https://vesti.world/*",
       "https://api.ccvg1218.online/*",
-      "https://vesti-gate.vercel.app/*",
       "https://vesti-proxy.vercel.app/*",
       "https://dashscope.aliyuncs.com/*",
       "https://api-inference.modelscope.cn/*",
@@ -81,7 +81,6 @@
       "storage",
       "alarms",
       "notifications",
-      "offscreen",
       "sidePanel",
       "unlimitedStorage"
     ],

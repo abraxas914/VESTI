@@ -1,4 +1,5 @@
 import { deduplicateAndSave } from "../core/middleware/deduplicate";
+import { notifyDataUpdated } from "../messaging/dataUpdated";
 import type { ConversationDraft, ParsedMessage } from "../messaging/protocol";
 import { getCaptureSettings } from "../services/captureSettingsService";
 import { runGardener } from "../services/gardenerService";
@@ -208,9 +209,10 @@ export async function interceptAndPersistCapture(
       void (async () => {
         try {
           const result = await runGardener(persisted.conversationId);
-          if (result.updated && chrome?.runtime?.sendMessage) {
-            chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-              void chrome.runtime.lastError;
+          if (result.updated) {
+            notifyDataUpdated({
+              kind: "conversation-upsert",
+              conversationId: persisted.conversationId,
             });
           }
         } catch (error) {

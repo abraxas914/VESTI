@@ -242,6 +242,56 @@ async function requestEmbeddingsFromRoute(
   );
 }
 
+const EMBEDDING_RESULT_CACHE_LIMIT = 32;
+const embeddingInFlight = new Map<string, Promise<EmbeddingResult>>();
+const embeddingResultCache = new Map<string, EmbeddingResult>();
+
+// Last index version actually produced by the server this session, per route.
+// The client has no static knowledge of the gateway's embedding model — it is
+// learned from response metadata — so this is the only way to tell a current
+// stored vector from one written before a server-side model swap.
+const sessionEmbeddingIndexVersions = new Map<EmbeddingRoute, string>();
+
+export function getSessionEmbeddingIndexVersion(
+  route: EmbeddingRoute,
+): string | undefined {
+  return sessionEmbeddingIndexVersions.get(route);
+}
+
+function noteSessionEmbeddingIndexVersion(result: EmbeddingResult): void {
+  sessionEmbeddingIndexVersions.set(result.route, result.version);
+}
+
+async function hashEmbeddingCacheInput(input: string[]): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(input)),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+async function buildEmbeddingCacheKey(
+  config: LlmConfig,
+  route: EmbeddingRoute,
+  input: string[],
+  options: EmbeddingRequestOptions,
+): Promise<string> {
+  const baseUrl =
+    route === "proxy"
+      ? getProxyBaseUrl(config)
+      : config.baseUrl.replace(/\/+$/, "");
+  // The demo gateway owns the embedding model (nothing is sent client-side),
+  // so the route+base pair already identifies it.
+  const modelKey =
+    route === "proxy"
+      ? "server-selected"
+      : (options.model || DEFAULT_BYOK_EMBEDDING_MODEL).trim();
+  const inputHash = await hashEmbeddingCacheInput(input);
+  return `${route}:${baseUrl}:${modelKey}:${inputHash}`;
+}
+
 export async function requestEmbeddings(
   config: LlmConfig,
   input: string | string[],
@@ -252,7 +302,42 @@ export async function requestEmbeddings(
     throw createEmbeddingError("EMBEDDING_INPUT_EMPTY", "Embedding input cannot be empty.");
   }
   const route: EmbeddingRoute = getLlmAccessMode(config) === "custom_byok" ? "byok" : "proxy";
-  return requestEmbeddingsFromRoute(config, route, normalizedInput, options);
+
+  // Cache reuse: identical in-flight requests share one promise, and recently
+  // resolved results are replayed from a small LRU. Failures are never cached.
+  // The key carries route + base URL + model, so a settings change naturally
+  // misses; stale entries age out of the LRU on their own.
+  const cacheKey = await buildEmbeddingCacheKey(config, route, normalizedInput, options);
+
+  const cached = embeddingResultCache.get(cacheKey);
+  if (cached) {
+    // Re-insert to refresh recency (Map iteration order doubles as LRU order).
+    embeddingResultCache.delete(cacheKey);
+    embeddingResultCache.set(cacheKey, cached);
+    noteSessionEmbeddingIndexVersion(cached);
+    return cached;
+  }
+
+  const inFlight = embeddingInFlight.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const request = requestEmbeddingsFromRoute(config, route, normalizedInput, options)
+    .then((result) => {
+      embeddingResultCache.delete(cacheKey);
+      embeddingResultCache.set(cacheKey, result);
+      while (embeddingResultCache.size > EMBEDDING_RESULT_CACHE_LIMIT) {
+        const oldestKey = embeddingResultCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        embeddingResultCache.delete(oldestKey);
+      }
+      noteSessionEmbeddingIndexVersion(result);
+      return result;
+    })
+    .finally(() => {
+      embeddingInFlight.delete(cacheKey);
+    });
+  embeddingInFlight.set(cacheKey, request);
+  return request;
 }
 
 async function requireLlmSettings(): Promise<LlmConfig> {

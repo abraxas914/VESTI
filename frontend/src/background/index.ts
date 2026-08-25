@@ -23,6 +23,7 @@ import {
   deleteNote,
   exportAllData,
   getAllSummaries,
+  getConversationById,
   getDashboardStats,
   getDataOverview,
   getExploreMessages,
@@ -912,6 +913,10 @@ async function handleOffscreenRequest(
         const data = await listConversations(message.payload)
         return { ok: true, type: messageType, data }
       }
+      case "GET_CONVERSATION": {
+        const data = await getConversationById(message.payload.id)
+        return { ok: true, type: messageType, data }
+      }
       case "GET_TOPICS": {
         const data = await getTopics()
         return { ok: true, type: messageType, data }
@@ -1175,7 +1180,8 @@ async function handleOffscreenRequest(
         const settings = requireSettings(await getLlmSettings())
         const record = await generateConversationSummary(
           settings,
-          message.payload.conversationId
+          message.payload.conversationId,
+          { force: message.payload.force === true }
         )
         return { ok: true, type: messageType, data: record }
       }

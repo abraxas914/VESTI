@@ -6,7 +6,7 @@
 // platform API; an AbortSignal cancels mid-run. Progress is reported via the
 // callback so the content script can stream it to the UI.
 
-import { sendRequest } from "../../messaging/runtime";
+import { CAPTURE_TIMEOUT_MS, sendRequest } from "../../messaging/runtime";
 import { logger } from "../../utils/logger";
 import type { HistoryProvider } from "./types";
 
@@ -124,7 +124,7 @@ export async function runHistoryImport(
               messages: built.messages,
               forceFlag: true,
             },
-          });
+          }, CAPTURE_TIMEOUT_MS);
           if (result.saved) {
             progress.saved += 1;
             progress.newMessages += result.newMessages ?? 0;

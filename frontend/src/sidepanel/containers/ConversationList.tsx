@@ -6,6 +6,7 @@ import {
   getConversationOriginAt,
   getConversationSourceCreatedAt
 } from "~lib/conversations/timestamps"
+import { upsertConversations } from "~lib/conversations/upsertConversations"
 import { useI18n } from "~lib/i18n"
 import { parseQuery, scoreText } from "~lib/search/textSearch"
 import {
@@ -59,6 +60,9 @@ interface ConversationListProps {
   onSelectFromMenu?: (id: number) => void
   onFilteredConversationsChange?: (conversations: Conversation[]) => void
   onConversationsLoaded?: (conversations: Conversation[]) => void
+  /** Incremental single-row updates (VESTI_DATA_UPDATED upserts); applied by
+   *  seq so each batch merges into the master list exactly once. */
+  conversationPatches?: { seq: number; items: Conversation[] } | null
   bottomInsetPx?: number
   topInsetPx?: number
   /** Order/group by the conversation's own time ("origin") or capture time. */
@@ -209,6 +213,7 @@ export function ConversationList({
   onSelectFromMenu,
   onFilteredConversationsChange,
   onConversationsLoaded,
+  conversationPatches = null,
   bottomInsetPx = 16,
   topInsetPx = 0,
   sortMode = "origin",
@@ -223,6 +228,11 @@ export function ConversationList({
     [sortMode]
   )
   const [conversations, setConversations] = useState<Conversation[]>([])
+  // Mirror of `conversations` so action callbacks can read the current row
+  // without depending on the array — keeps their identity stable across data
+  // reloads, which is what lets the memoized cards skip re-rendering.
+  const conversationsRef = useRef<Conversation[]>([])
+  conversationsRef.current = conversations
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [isMessageSearchPending, setIsMessageSearchPending] = useState(false)
@@ -275,20 +285,35 @@ export function ConversationList({
         if (!cancelled) {
           setConversations(data)
           setLoading(false)
-          onConversationsLoaded?.(data)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setConversations([])
           setLoading(false)
-          onConversationsLoaded?.([])
         }
       })
     return () => {
       cancelled = true
     }
-  }, [refreshToken, onConversationsLoaded])
+  }, [refreshToken])
+
+  // Keep the parent in sync with the master list (initial load plus every
+  // local patch/delete/rename), so parent-side derivations (timeline domain,
+  // dashboard stats) stay fresh without a second read of the full table.
+  useEffect(() => {
+    if (loading) return
+    onConversationsLoaded?.(conversations)
+  }, [conversations, loading, onConversationsLoaded])
+
+  // Incremental VESTI_DATA_UPDATED upserts: merge the fetched rows into the
+  // master list instead of triggering a full reload.
+  useEffect(() => {
+    if (!conversationPatches || conversationPatches.items.length === 0) return
+    setConversations((prev) =>
+      upsertConversations(prev, conversationPatches.items, timeOf)
+    )
+  }, [conversationPatches, timeOf])
 
   useEffect(() => {
     const requestSeq = searchRequestSeqRef.current + 1
@@ -610,28 +635,27 @@ export function ConversationList({
     window.open(conversation.url, "_blank", "noopener,noreferrer")
   }, [])
 
-  const handleDeleteConversation = useCallback(
-    async (id: number) => {
-      const targetConversation = conversations.find((item) => item.id === id)
-      if (!targetConversation) return
+  const handleDeleteConversation = useCallback(async (id: number) => {
+    const targetConversation = conversationsRef.current.find(
+      (item) => item.id === id
+    )
+    if (!targetConversation) return
 
-      trackCardActionClick({
-        action_type: "delete_conversation",
-        platform_source: targetConversation.platform,
-        has_full_text_cache: null,
-        conversation_id: id
-      })
+    trackCardActionClick({
+      action_type: "delete_conversation",
+      platform_source: targetConversation.platform,
+      has_full_text_cache: null,
+      conversation_id: id
+    })
 
-      await deleteConversation(id)
-      fullTextCacheRef.current.delete(id)
-      setConversations((prev) => prev.filter((item) => item.id !== id))
-    },
-    [conversations]
-  )
+    await deleteConversation(id)
+    fullTextCacheRef.current.delete(id)
+    setConversations((prev) => prev.filter((item) => item.id !== id))
+  }, [])
 
   const handleRenameTitle = useCallback(
     async (conversationId: number, title: string) => {
-      const targetConversation = conversations.find(
+      const targetConversation = conversationsRef.current.find(
         (item) => item.id === conversationId
       )
       if (!targetConversation) return false
@@ -668,22 +692,17 @@ export function ConversationList({
         return false
       }
     },
-    [conversations]
+    []
   )
 
   const handleConversationUpdated = useCallback(
     (updatedConversation: Conversation) => {
-      setConversations((prev) => {
-        const next = prev.map((item) =>
-          item.id === updatedConversation.id
-            ? { ...item, ...updatedConversation }
-            : item
-        )
-        // Update the MASTER list only. Search filtering lives in the
-        // filteredConversations memo; filtering here would permanently prune
-        // non-matching threads from state until a reload.
-        return next.sort((a, b) => timeOf(b) - timeOf(a))
-      })
+      // Update the MASTER list only. Search filtering lives in the
+      // filteredConversations memo; filtering here would permanently prune
+      // non-matching threads from state until a reload.
+      setConversations((prev) =>
+        upsertConversations(prev, [updatedConversation], timeOf)
+      )
     },
     [timeOf]
   )
@@ -760,7 +779,7 @@ export function ConversationList({
                     ? item.summary?.firstMatchedSurface ?? null
                     : null
                 }
-                onClick={() => onSelect(item.conversation)}
+                onClick={onSelect}
                 onCopyFullText={handleCopyFullText}
                 onOpenSource={handleOpenSource}
                 onDelete={handleDeleteConversation}
@@ -770,10 +789,8 @@ export function ConversationList({
                 // Batch selection
                 isBatchMode={isBatchMode}
                 isSelected={selectedIds.has(item.conversation.id)}
-                onToggleSelect={() => onToggleSelection?.(item.conversation.id)}
-                onSelectFromMenu={() =>
-                  onSelectFromMenu?.(item.conversation.id)
-                }
+                onToggleSelect={onToggleSelection}
+                onSelectFromMenu={onSelectFromMenu}
               />
             ))}
           </div>

@@ -1,5 +1,6 @@
 import type { ConversationUpdateChanges } from "../messaging/protocol"
 import type { SupportedLocale } from "../i18n/locales"
+import { notifyDataUpdated } from "../messaging/dataUpdated"
 import { sendRequest } from "../messaging/runtime"
 import type {
   ActiveCaptureStatus,
@@ -70,6 +71,16 @@ export async function getConversations(filters?: {
   }, READ_TIMEOUT_MS) as Promise<Conversation[]>
 }
 
+export async function getConversation(
+  id: number
+): Promise<Conversation | null> {
+  return sendRequest({
+    type: "GET_CONVERSATION",
+    target: "offscreen",
+    payload: { id }
+  }, READ_TIMEOUT_MS) as Promise<Conversation | null>
+}
+
 export async function getTopics(): Promise<Topic[]> {
   return sendRequest({
     type: "GET_TOPICS",
@@ -87,9 +98,7 @@ export async function createTopic(
     payload: { name, parent_id }
   })) as { topic: Topic }
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 
   return result.topic
 }
@@ -105,9 +114,7 @@ export async function updateConversationTopic(
   })) as { updated: boolean; conversation: Conversation }
 
   if (result.updated) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "conversation-upsert", conversationId: id })
   }
 
   return result.conversation
@@ -124,9 +131,7 @@ export async function updateConversation(
   })) as { updated: boolean; conversation: Conversation }
 
   if (result.updated) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "conversation-upsert", conversationId: id })
   }
 
   return result
@@ -150,9 +155,7 @@ export async function runGardener(
   }
 
   if (result.updated) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "conversation-upsert", conversationId })
   }
 
   return result
@@ -199,9 +202,7 @@ export async function renameFolderTag(
   )) as { updated: number }
 
   if (result.updated > 0) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "structural" })
   }
 
   return result
@@ -221,9 +222,7 @@ export async function moveFolderTag(
   )) as { updated: number }
 
   if (result.updated > 0) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "structural" })
   }
 
   return result
@@ -242,9 +241,7 @@ export async function removeFolderTag(
   )) as { updated: number }
 
   if (result.updated > 0) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "structural" })
   }
 
   return result
@@ -264,9 +261,7 @@ export async function bulkSetConversationFlags(
   )) as { updated: number }
 
   if (result.updated > 0) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "structural" })
   }
 
   return result
@@ -286,9 +281,7 @@ export async function bulkAddTagToConversations(
   )) as { updated: number }
 
   if (result.updated > 0) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "structural" })
   }
 
   return result
@@ -323,9 +316,7 @@ export async function saveAnnotation(payload: {
     payload
   })) as { annotation: Annotation }
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 
   return result.annotation
 }
@@ -337,9 +328,7 @@ export async function deleteAnnotation(annotationId: number): Promise<void> {
     payload: { annotationId }
   })
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 }
 
 export async function exportAnnotationToNote(
@@ -351,9 +340,7 @@ export async function exportAnnotationToNote(
     payload: { annotationId }
   })) as { note: Note }
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 
   return result.note
 }
@@ -629,9 +616,7 @@ export async function deleteConversation(id: number): Promise<void> {
     payload: { id }
   })
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 }
 
 export async function deleteConversations(ids: number[]): Promise<void> {
@@ -646,9 +631,7 @@ export async function deleteConversations(ids: number[]): Promise<void> {
     })
   }
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 }
 
 export async function updateConversationTitle(
@@ -662,9 +645,7 @@ export async function updateConversationTitle(
   })) as { updated: boolean; conversation: Conversation }
 
   if (result.updated) {
-    chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-      void chrome.runtime.lastError
-    })
+    notifyDataUpdated({ kind: "conversation-upsert", conversationId: id })
   }
 
   return result.conversation
@@ -717,9 +698,7 @@ export async function importData(content: string): Promise<ImportDataResult> {
     LONG_RUNNING_TIMEOUT_MS
   )) as ImportDataResult
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 
   return result
 }
@@ -730,9 +709,7 @@ export async function clearAllData(): Promise<void> {
     target: "offscreen"
   })
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 }
 
 export async function clearInsightsCache(): Promise<void> {
@@ -741,9 +718,7 @@ export async function clearInsightsCache(): Promise<void> {
     target: "offscreen"
   })
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 }
 
 export async function getLlmSettings(): Promise<LlmConfig | null> {
@@ -806,13 +781,14 @@ export async function getAllSummaries(): Promise<SummaryRecord[]> {
 }
 
 export async function generateConversationSummary(
-  conversationId: number
+  conversationId: number,
+  options?: { force?: boolean }
 ): Promise<SummaryRecord> {
   return sendRequest(
     {
       type: "GENERATE_CONVERSATION_SUMMARY",
       target: "offscreen",
-      payload: { conversationId }
+      payload: { conversationId, force: options?.force === true }
     },
     LONG_RUNNING_TIMEOUT_MS
   ) as Promise<SummaryRecord>

@@ -211,6 +211,8 @@ interface SummaryGenerationHooks {
 
 interface InsightGenerationControl {
   signal?: AbortSignal;
+  /** Explicit user-triggered regenerate: bypasses the freshness gate. */
+  force?: boolean;
 }
 
 interface WeeklyGenerationHooks {
@@ -2709,17 +2711,39 @@ export async function generateConversationSummary(
   throwIfGenerationAborted(control.signal);
   const { locale } = await getLanguageSettings();
 
+  const summaryPrompt = getPrompt("conversationSummary", { variant: "current" });
+  const previous = await getSummary(conversationId);
+  const sourceFreshnessAt = getConversationCaptureFreshnessAt(conversation);
+
+  // Freshness gate: reuse the stored summary when the conversation has not
+  // changed since it was generated and the prompt/logic version is unchanged.
+  // Fallback rows are always regenerated; control.force bypasses the gate.
+  if (
+    !control.force &&
+    previous &&
+    previous.status !== "fallback" &&
+    previous.promptVersion === summaryPrompt.version &&
+    typeof previous.sourceUpdatedAt === "number" &&
+    previous.sourceUpdatedAt >= sourceFreshnessAt
+  ) {
+    logger.debug("service", "Summary reused: conversation unchanged since last generation", {
+      conversationId,
+      promptVersion: summaryPrompt.version,
+      sourceUpdatedAt: previous.sourceUpdatedAt,
+    });
+    return previous;
+  }
+
   const pipelineEmitter = createPipelineProgressEmitter({
     scope: "summary",
     targetId: String(conversationId),
     route: resolvePipelineRoute(settings),
     modelId: getEffectiveModelId(settings),
-    promptVersion: getPrompt("conversationSummary", { variant: "current" }).version,
+    promptVersion: summaryPrompt.version,
   });
   pipelineEmitter.emit("initiating_pipeline", "in_progress");
 
   try {
-    const previous = await getSummary(conversationId);
     const generated = await generateStructuredSummary(
       settings,
       conversation,
@@ -2790,6 +2814,7 @@ export async function generateConversationSummary(
       status: generated.status,
       schemaVersion: generated.schemaVersion,
       modelId: getEffectiveModelId(settings),
+      promptVersion: generated.promptVersion,
       createdAt: Date.now(),
       sourceUpdatedAt: getConversationCaptureFreshnessAt(conversation),
     });

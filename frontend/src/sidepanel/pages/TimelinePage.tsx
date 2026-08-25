@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import { computeDashboardStats } from "~lib/conversations/dashboardStats"
 import {
   getConversationCaptureFreshnessAt,
   getConversationOriginAt
@@ -20,8 +21,7 @@ import { useI18n } from "~lib/i18n"
 import {
   bulkAddTagToConversations,
   bulkSetConversationFlags,
-  deleteConversations,
-  getDashboardStats
+  deleteConversations
 } from "~lib/services/storageService"
 import type {
   Conversation,
@@ -86,6 +86,8 @@ interface TimelinePageProps {
   dispatch: (event: ThreadsEvent) => void
   onSelectConversation: (conversation: Conversation) => void
   refreshToken: number
+  /** Incremental single-row updates from VESTI_DATA_UPDATED upserts. */
+  conversationPatches?: { seq: number; items: Conversation[] } | null
 }
 
 function toggleSetMember<T>(set: Set<T>, value: T): Set<T> {
@@ -136,7 +138,8 @@ export function TimelinePage({
   session,
   dispatch,
   onSelectConversation,
-  refreshToken
+  refreshToken,
+  conversationPatches = null
 }: TimelinePageProps) {
   const { t, locale } = useI18n()
   const compactExportVariant = "experimental" as const
@@ -224,19 +227,14 @@ export function TimelinePage({
 
   const showTimeline = Boolean(timelineDomain && allConversations.length >= 3)
 
-  useEffect(() => {
-    let cancelled = false
-    getDashboardStats()
-      .then((data) => {
-        if (!cancelled) setStats(data)
-      })
-      .catch(() => {
-        if (!cancelled) setStats(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [refreshToken])
+  // Stats are derived locally from the conversation list the sidebar already
+  // fetched — no second full-table read (and no second 1500-row IPC payload).
+  // The list syncs through onConversationsLoaded on every refresh, so stats
+  // follow refreshToken just like the removed getDashboardStats effect did.
+  const handleConversationsLoaded = useCallback((data: Conversation[]) => {
+    setAllConversations(data)
+    setStats(computeDashboardStats(data))
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -698,13 +696,16 @@ export function TimelinePage({
     [consumeSuppressNextReaderOpen, onSelectConversation]
   )
 
-  const handleSelectFromMenu = (id: number) => {
-    setDeleteConfirmValue("")
-    setBatchFeedback(null)
-    clearCopySuccess()
-    armSuppressNextReaderOpen()
-    enterBatchMode(id)
-  }
+  const handleSelectFromMenu = useCallback(
+    (id: number) => {
+      setDeleteConfirmValue("")
+      setBatchFeedback(null)
+      clearCopySuccess()
+      armSuppressNextReaderOpen()
+      enterBatchMode(id)
+    },
+    [armSuppressNextReaderOpen, clearCopySuccess, enterBatchMode]
+  )
 
   return (
     <div className="relative flex h-full flex-col bg-bg-app">
@@ -891,6 +892,7 @@ export function TimelinePage({
           selectedPlatforms={selectedPlatforms}
           onSelect={handleConversationSelect}
           refreshToken={refreshToken + listReloadNonce}
+          conversationPatches={conversationPatches}
           resultSummaryMap={resultSummaryMap}
           anchorConversationId={anchorConversationId}
           onAnchorConsumed={handleAnchorConsumed}
@@ -902,7 +904,7 @@ export function TimelinePage({
           onToggleSelection={toggleSelection}
           onSelectFromMenu={handleSelectFromMenu}
           onFilteredConversationsChange={setVisibleConversations}
-          onConversationsLoaded={setAllConversations}
+          onConversationsLoaded={handleConversationsLoaded}
           sortMode={sortMode}
           timeRange={timeRange}
           bottomInsetPx={listBottomInset}
