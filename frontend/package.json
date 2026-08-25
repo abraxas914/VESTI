@@ -1,7 +1,7 @@
 {
   "name": "vesti",
   "displayName": "Vesti",
-  "version": "1.2.0-rc.8",
+  "version": "1.2.0-rc.9",
   "description": "AI Chat Memory - Capture and review your conversations",
   "author": "Vesti",
   "scripts": {
@@ -55,7 +55,7 @@
   },
   "manifest": {
     "version": "1.2.0",
-    "version_name": "1.2.0-rc.8",
+    "version_name": "1.2.0-rc.9",
     "host_permissions": [
       "https://vesti.world/*",
       "https://api.ccvg1218.online/*",
@@ -84,6 +84,15 @@
       "sidePanel",
       "unlimitedStorage"
     ],
+    "action": {
+      "default_icon": {
+        "16": "../assets/icon-theme-contrast-16.png",
+        "32": "../assets/icon-theme-contrast-32.png",
+        "48": "../assets/icon-theme-contrast-48.png",
+        "64": "../assets/icon-theme-contrast-64.png",
+        "128": "../assets/icon-theme-contrast-128.png"
+      }
+    },
     "web_accessible_resources": [
       {
         "resources": [
