@@ -76,6 +76,13 @@ https://github.com/user-attachments/assets/7d9affef-5a97-4959-aada-c4ef916b80dc
 <br>
 ---
 
+## 🔎 公开证据与边界
+
+- [Chenxi Huang 的公开贡献说明](documents/public_evidence/chenxi-huang-contributions.md)：以 8 个已合并 PR 映射可核验的产品、前端与数据链路贡献。
+- [Vesti 公开 Eval 现状](documents/public_evidence/evaluation-status.md)：当前 10 个样例是 Mock 契约回归；Nightly Live Eval 因缺少模型密钥实际跳过，不作为线上模型效果证明。
+
+---
+
 ## ⚡ 为什么我们需要心迹
 
 在这个与AI共处的时代，我们的思考方式正在发生深刻的变化。与ChatGPT、Claude等大语言模型的对话已经不再是简单的信息查询，而是成为了思考、创作和决策的核心过程。我们在AI的协助下探索新概念、推演复杂问题、打磨创意方案、澄清模糊直觉。这些对话承载着我们最真实的思维轨迹——那些尚未成型的想法、反复权衡的选择、顿悟的瞬间。
