@@ -21,6 +21,7 @@ import { astPerfModeController, type AstPerfMode } from "../shared/astPerfMode";
 import { logger } from "../../../utils/logger";
 
 const USER_ROLE_ANCHORS = [
+  "[data-message-id][class*='justify-end']",
   "[data-testid='send_message']",
   "[data-testid*='send_message']",
   "[data-role='user']",
@@ -32,6 +33,7 @@ const USER_ROLE_ANCHORS = [
 ];
 
 const ASSISTANT_ROLE_ANCHORS = [
+  "[data-message-id]:not([class*='justify-end'])",
   "[data-testid='receive_message']",
   "[data-testid*='receive_message']",
   "[data-role='assistant']",
@@ -57,6 +59,7 @@ const ROLE_ANCESTOR_HINTS = [
 ];
 
 const PREFERRED_MESSAGE_CONTENT = [
+  "[class*='md-box-root']",
   "[data-testid='message_text_content']",
   "[data-testid*='message_text_content']",
   ".flow-markdown-body",
@@ -78,6 +81,7 @@ const AI_COT_LEAVES = [
 ];
 
 const AI_FINAL_LEAVES = [
+  "[class*='md-box-root']",
   ".flow-markdown-body",
   "[class*='flow-markdown-body']",
   "[class*='markdown-body']",
