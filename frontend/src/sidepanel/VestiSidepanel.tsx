@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 
 import {
   ONBOARDING_EXPLORE_PROMPT_PENDING_KEY
@@ -8,8 +8,10 @@ import {
   isSidepanelRoute,
   type SidepanelRoute
 } from "~lib/features/sidepanelNavigation"
+import { parseDataUpdatedPayload } from "~lib/messaging/dataUpdated"
 import type { InsightPipelineProgressPayload } from "~lib/messaging/protocol"
 import { isInsightPipelineProgressMessage } from "~lib/messaging/protocol"
+import { getConversation } from "~lib/services/storageService"
 import type { Conversation, PageId } from "~lib/types"
 
 import { Dock } from "./components/Dock"
@@ -79,6 +81,17 @@ export function VestiSidepanel() {
     createInitialThreadsState()
   )
   const [refreshToken, setRefreshToken] = useState(0)
+  // Incremental single-row patches from VESTI_DATA_UPDATED upserts; applied by
+  // ConversationList without a full reload. `seq` bumps per batch so the list
+  // applies each batch exactly once.
+  const [conversationPatches, setConversationPatches] = useState<{
+    seq: number
+    items: Conversation[]
+  } | null>(null)
+  const selectedConversationIdRef = useRef<number | null>(null)
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversation?.id ?? null
+  }, [selectedConversation])
   const [pipelineProgressEvent, setPipelineProgressEvent] =
     useState<InsightPipelineProgressPayload | null>(null)
   const latestPipelineSeqRef = useRef<Record<string, number>>({})
@@ -87,6 +100,48 @@ export function VestiSidepanel() {
 
   useEffect(() => {
     let refreshTimer: number | null = null
+    // Within one debounce window a structural change (or a legacy payload-less
+    // message) supersedes any queued upserts — the full reload covers them.
+    let fullReloadPending = false
+    const pendingUpsertIds = new Set<number>()
+
+    const flushDataUpdates = () => {
+      refreshTimer = null
+      if (fullReloadPending) {
+        fullReloadPending = false
+        pendingUpsertIds.clear()
+        setRefreshToken(Date.now())
+        return
+      }
+      if (pendingUpsertIds.size === 0) return
+      const ids = Array.from(pendingUpsertIds)
+      pendingUpsertIds.clear()
+      void (async () => {
+        try {
+          const fetched = await Promise.all(
+            ids.map((id) => getConversation(id))
+          )
+          const items = fetched.filter(
+            (item): item is Conversation => item !== null
+          )
+          if (items.length > 0) {
+            setConversationPatches((prev) => ({
+              seq: (prev?.seq ?? 0) + 1,
+              items
+            }))
+          }
+          if (items.length < ids.length) {
+            // Some rows vanished mid-flight (deleted elsewhere) — only a full
+            // reload can reconcile the list.
+            setRefreshToken(Date.now())
+          }
+        } catch {
+          // Single-row fetch failed; fall back to the full reload path.
+          setRefreshToken(Date.now())
+        }
+      })()
+    }
+
     const handler = (message: unknown) => {
       if (!message || typeof message !== "object") return
 
@@ -102,13 +157,27 @@ export function VestiSidepanel() {
 
       const type = (message as { type?: string }).type
       if (type === "VESTI_DATA_UPDATED") {
+        const payload = parseDataUpdatedPayload(message)
+        if (
+          payload?.kind === "conversation-upsert" &&
+          !fullReloadPending &&
+          // The open reader conversation still needs the full reload so
+          // ReaderView re-fetches its messages via refreshToken.
+          payload.conversationId !== selectedConversationIdRef.current
+        ) {
+          pendingUpsertIds.add(payload.conversationId)
+        } else {
+          // Structural changes and legacy payload-less messages reload fully.
+          fullReloadPending = true
+          pendingUpsertIds.clear()
+        }
         if (refreshTimer !== null) {
           window.clearTimeout(refreshTimer)
         }
-        refreshTimer = window.setTimeout(() => {
-          refreshTimer = null
-          setRefreshToken(Date.now())
-        }, DATA_REFRESH_DEBOUNCE_MS)
+        refreshTimer = window.setTimeout(
+          flushDataUpdates,
+          DATA_REFRESH_DEBOUNCE_MS
+        )
       }
     }
     chrome?.runtime?.onMessage?.addListener(handler)
@@ -120,18 +189,21 @@ export function VestiSidepanel() {
     }
   }, [])
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    const firstMatchedMessageId = resolveFirstMatchedIdForConversation(
-      threadsState.session,
-      conversation.id
-    )
-    dispatch({
-      type: "OPEN_READER",
-      conversationId: conversation.id,
-      firstMatchedMessageId
-    })
-    setSelectedConversation(conversation)
-  }
+  const handleSelectConversation = useCallback(
+    (conversation: Conversation) => {
+      const firstMatchedMessageId = resolveFirstMatchedIdForConversation(
+        threadsState.session,
+        conversation.id
+      )
+      dispatch({
+        type: "OPEN_READER",
+        conversationId: conversation.id,
+        firstMatchedMessageId
+      })
+      setSelectedConversation(conversation)
+    },
+    [threadsState.session]
+  )
 
   const handleOpenWeeklyHighlight = (
     conversation: Conversation,
@@ -289,6 +361,7 @@ export function VestiSidepanel() {
               dispatch={dispatch}
               onSelectConversation={handleSelectConversation}
               refreshToken={refreshToken}
+              conversationPatches={conversationPatches}
             />
           ) : currentPage === "insights" ? (
             <InsightsPage

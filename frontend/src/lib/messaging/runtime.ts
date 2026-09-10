@@ -1,6 +1,15 @@
-﻿import type { RequestMessage, ResponseMessage, ResponseDataMap } from "./protocol";
+import type { RequestMessage, ResponseMessage, ResponseDataMap } from "./protocol";
 
 const DEFAULT_TIMEOUT_MS = 4000;
+
+/**
+ * CAPTURE_CONVERSATION persists through deduplicateAndSave, which on large
+ * libraries easily exceeds the generic 4s default — the background still
+ * commits while the content side misreads the timeout as a capture failure.
+ * Capture-class sends use this explicit budget instead (aligned with the
+ * read path's READ_TIMEOUT_MS=20s in storageService, scaled up for writes).
+ */
+export const CAPTURE_TIMEOUT_MS = 60_000;
 
 export class RequestTimeoutError extends Error {
   readonly timeoutMs: number;

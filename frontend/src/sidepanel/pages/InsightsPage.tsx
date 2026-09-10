@@ -1117,7 +1117,7 @@ export function InsightsPage({
     setSummaryError(null);
 
     try {
-      const data = await generateConversationSummary(conversation.id);
+      const data = await generateConversationSummary(conversation.id, { force: true });
       setSummary(data);
       setSummaryStatus("ready");
     } catch (error) {

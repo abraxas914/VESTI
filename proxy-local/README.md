@@ -57,6 +57,8 @@ Set `proxyServiceToken` in Vesti settings to match `VESTI_SERVICE_TOKEN`.
   - backup: `stepfun-ai/Step-3.5-Flash`
   - retry only on network/timeout/429/5xx
   - default upstream timeout: `30000ms`
-  - legacy DS/Qwen models remain allowed, but only legacy requests force `enable_thinking=false`
+  - requested models pass through verbatim by default — no whitelist, no silent rewrite (upstream errors surface as-is); set `VESTI_ALLOWED_CHAT_MODELS` only as an emergency clamp
+  - `max_tokens` passes through verbatim when the client sends one, omitted otherwise — the proxy imposes no per-request output cap
+  - legacy DS/Qwen requests still force `enable_thinking=false`
 - `/api/embeddings` forwards to DashScope OpenAI-compatible embeddings endpoint.
 - logs include `requestId`, route, model, upstream status, and latency.

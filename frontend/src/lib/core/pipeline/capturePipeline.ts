@@ -1,4 +1,5 @@
 import { countAiTurns } from "../../capture/turn-metrics"
+import { notifyDataUpdated } from "../../messaging/dataUpdated"
 import type { ConversationDraft } from "../../messaging/protocol"
 import type { CaptureDecisionMeta } from "../../types"
 import { logger } from "../../utils/logger"
@@ -101,10 +102,15 @@ export class CapturePipeline {
         })
       )
 
-      if (result.saved && chrome?.runtime?.sendMessage) {
-        chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-          void chrome.runtime.lastError
-        })
+      if (result.saved) {
+        notifyDataUpdated(
+          typeof result.conversationId === "number"
+            ? {
+                kind: "conversation-upsert",
+                conversationId: result.conversationId
+              }
+            : { kind: "structural" }
+        )
       }
 
       const logMethod = result.saved ? logger.success : logger.info

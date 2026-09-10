@@ -2,3 +2,12 @@ packages:
   - "frontend"
   - "vesti-web"
   - "packages/*"
+
+# pnpm v10+ reads overrides from here (the package.json "pnpm" field is
+# ignored); kept in sync with package.json for older pnpm versions.
+overrides:
+  "@types/react": 18.2.48
+  "@types/react-dom": 18.2.18
+  lucide-react: 0.564.0
+  react: 18.2.0
+  react-dom: 18.2.0

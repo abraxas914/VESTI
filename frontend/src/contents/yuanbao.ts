@@ -5,7 +5,7 @@ import { createTransientCaptureStore } from "../lib/capture/transient-store"
 import { ConversationObserver } from "../lib/core/observer/ConversationObserver"
 import { YuanbaoParser } from "../lib/core/parser/yuanbao/YuanbaoParser"
 import { CapturePipeline } from "../lib/core/pipeline/capturePipeline"
-import { sendRequest } from "../lib/messaging/runtime"
+import { CAPTURE_TIMEOUT_MS, sendRequest } from "../lib/messaging/runtime"
 import { registerRelayInjection } from "../lib/relay/registerContentRelay"
 import { logger } from "../lib/utils/logger"
 
@@ -28,7 +28,7 @@ if (!parser.detect()) {
       type: "CAPTURE_CONVERSATION",
       target: "offscreen",
       payload
-    })
+    }, CAPTURE_TIMEOUT_MS)
     transientStore.setDecision(result.decision)
     return result
   })

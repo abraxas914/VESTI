@@ -9,6 +9,7 @@
 import type { PlasmoCSConfig } from "plasmo";
 import { getHistoryProvider } from "../lib/contents/history/registry";
 import { runHistoryImport, type ImportProgress } from "../lib/contents/history/importRunner";
+import { notifyDataUpdated } from "../lib/messaging/dataUpdated";
 import { logger } from "../lib/utils/logger";
 
 export const config: PlasmoCSConfig = {
@@ -127,11 +128,7 @@ if (window.top === window.self) {
             }
           } finally {
             abortController = null;
-            if (chrome?.runtime?.sendMessage) {
-              chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-                void chrome.runtime.lastError;
-              });
-            }
+            notifyDataUpdated({ kind: "structural" });
           }
         })();
         return request.waitForCompletion ? true : undefined;

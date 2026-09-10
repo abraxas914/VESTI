@@ -3,7 +3,8 @@ import {
   CapturePipeline,
   type CaptureResult
 } from "../core/pipeline/capturePipeline"
-import { sendRequest } from "../messaging/runtime"
+import { notifyDataUpdated } from "../messaging/dataUpdated"
+import { CAPTURE_TIMEOUT_MS, sendRequest } from "../messaging/runtime"
 import {
   createSeedConversations,
   type SeedConversation
@@ -65,7 +66,7 @@ async function seedConversation(
           isMock: true
         }
       }
-    })
+    }, CAPTURE_TIMEOUT_MS)
   )
   return pipeline.capture({ forceFlag: true })
 }
@@ -82,9 +83,7 @@ export async function seedMockData(): Promise<SeedMockDataResult> {
     throw new Error("SEED_DATA_INCOMPLETE")
   }
 
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+  notifyDataUpdated({ kind: "structural" })
 
   return {
     requested: seeds.length,

@@ -191,6 +191,13 @@ export type RequestMessage =
       payload?: ConversationFilters
     }
   | {
+      type: "GET_CONVERSATION"
+      target?: "offscreen"
+      via?: "background"
+      requestId?: string
+      payload: { id: number }
+    }
+  | {
       type: "GET_TOPICS"
       target?: "offscreen"
       via?: "background"
@@ -588,7 +595,7 @@ export type RequestMessage =
       target?: "offscreen"
       via?: "background"
       requestId?: string
-      payload: { conversationId: number }
+      payload: { conversationId: number; force?: boolean }
     }
   | {
       type: "GET_WEEKLY_REPORT"
@@ -822,6 +829,7 @@ export type ResponseDataMap = {
     decision: CaptureDecisionMeta
   }
   GET_CONVERSATIONS: Conversation[]
+  GET_CONVERSATION: Conversation | null
   GET_TOPICS: Topic[]
   CREATE_TOPIC: { topic: Topic }
   UPDATE_CONVERSATION_TOPIC: { updated: boolean; conversation: Conversation }

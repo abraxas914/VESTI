@@ -527,7 +527,8 @@ function buildPayload(
   const payload: Record<string, unknown> = {
     model: getEffectiveModelId(config),
     temperature: config.temperature,
-    max_tokens: config.maxTokens,
+    // 0 = uncapped: omit max_tokens entirely, the model's default applies.
+    ...(config.maxTokens > 0 ? { max_tokens: config.maxTokens } : {}),
     messages,
     stream: false,
   };

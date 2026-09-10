@@ -1,5 +1,6 @@
 import type { CaptureResult } from "../core/pipeline/capturePipeline"
-import { sendRequest } from "../messaging/runtime"
+import { notifyDataUpdated } from "../messaging/dataUpdated"
+import { CAPTURE_TIMEOUT_MS, sendRequest } from "../messaging/runtime"
 import type { createTransientCaptureStore } from "./transient-store"
 
 type TransientCaptureStore = ReturnType<typeof createTransientCaptureStore>
@@ -12,11 +13,13 @@ type CaptureCommandResponse =
   | { ok: true; result: CaptureResult }
   | { ok: false; error: string }
 
-function notifyDataUpdated(result: CaptureResult): void {
-  if (!result.saved || !chrome?.runtime?.sendMessage) return
-  chrome.runtime.sendMessage({ type: "VESTI_DATA_UPDATED" }, () => {
-    void chrome.runtime.lastError
-  })
+function notifyCaptureSaved(result: CaptureResult): void {
+  if (!result.saved) return
+  notifyDataUpdated(
+    typeof result.conversationId === "number"
+      ? { kind: "conversation-upsert", conversationId: result.conversationId }
+      : { kind: "structural" }
+  )
 }
 
 export function registerCaptureRuntime({
@@ -53,9 +56,9 @@ export function registerCaptureRuntime({
           type: "CAPTURE_CONVERSATION",
           target: "offscreen",
           payload: { ...latestPayload, forceFlag: true }
-        })
+        }, CAPTURE_TIMEOUT_MS)
         transientStore.setDecision(result.decision)
-        notifyDataUpdated(result)
+        notifyCaptureSaved(result)
 
         const response: CaptureCommandResponse = { ok: true, result }
         sendResponse(response)

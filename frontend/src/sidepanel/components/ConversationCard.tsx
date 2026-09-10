@@ -11,6 +11,7 @@
   Trash2
 } from "lucide-react"
 import {
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -153,7 +154,7 @@ function ActionIconButton({
 
 interface ConversationCardProps {
   conversation: Conversation
-  onClick: () => void
+  onClick: (conversation: Conversation) => void
   onCopyFullText?: (conversation: Conversation) => Promise<boolean>
   onOpenSource?: (conversation: Conversation) => void
   onDelete?: (id: number) => Promise<void> | void
@@ -170,11 +171,13 @@ interface ConversationCardProps {
   // Batch selection support
   isBatchMode?: boolean
   isSelected?: boolean
-  onToggleSelect?: () => void
-  onSelectFromMenu?: () => void
+  onToggleSelect?: (id: number) => void
+  onSelectFromMenu?: (id: number) => void
 }
 
-export function ConversationCard({
+// memoized: a loaded library keeps every card mounted, and the callbacks below
+// are referentially stable, so unrelated list state changes skip re-rendering.
+export const ConversationCard = memo(function ConversationCard({
   conversation,
   onClick,
   onCopyFullText,
@@ -403,9 +406,9 @@ export function ConversationCard({
       return
     }
     if (isBatchMode) {
-      onToggleSelect?.()
+      onToggleSelect?.(conversation.id)
     } else {
-      onClick()
+      onClick(conversation)
     }
   }
 
@@ -484,7 +487,7 @@ export function ConversationCard({
             }
             onClick={(event) => {
               event.stopPropagation()
-              onToggleSelect?.()
+              onToggleSelect?.(conversation.id)
             }}
             className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors ${
               isSelected
@@ -678,7 +681,7 @@ export function ConversationCard({
                   onSelect={async (event) => {
                     event.stopPropagation()
                     await handleOverflowAction(() => {
-                      onSelectFromMenu?.()
+                      onSelectFromMenu?.(conversation.id)
                     })
                   }}
                   className={`${THREADS_OVERFLOW_ITEM_CLASS} focus:!bg-accent-primary-light data-[highlighted]:!bg-accent-primary-light`}>
@@ -753,4 +756,4 @@ export function ConversationCard({
       )}
     </div>
   )
-}
+})
