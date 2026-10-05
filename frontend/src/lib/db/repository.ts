@@ -1842,12 +1842,12 @@ export async function searchConversationMatchesByText(
 export async function deleteConversation(id: number): Promise<boolean> {
   await db.transaction(
     "rw",
-    db.conversations,
-    db.messages,
-    db.annotations,
+    [db.conversations, db.messages, db.annotations, db.summaries, db.vectors],
     async () => {
       await db.messages.where("conversation_id").equals(id).delete()
       await db.annotations.where("conversation_id").equals(id).delete()
+      await db.summaries.where("conversationId").equals(id).delete()
+      await db.vectors.where("conversation_id").equals(id).delete()
       await db.conversations.delete(id)
     }
   )

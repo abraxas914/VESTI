@@ -116,6 +116,9 @@ importers:
       esbuild:
         specifier: 0.18.20
         version: 0.18.20
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       postcss:
         specifier: ^8.5.0
         version: 8.5.8
@@ -3700,6 +3703,10 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
 
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
@@ -9113,6 +9120,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  fake-indexeddb@6.2.5: {}
 
   fflate@0.8.2: {}
 
