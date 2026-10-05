@@ -656,7 +656,7 @@ async function handleEmbeddings(req, res, requestId, origin, allowedOrigin) {
   }
 }
 
-export const server = createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const requestId = randomUUID();
   const method = req.method || "GET";
   const path = trimTrailingSlashes((req.url || "").split("?")[0] || "");
@@ -757,6 +757,6 @@ export const server = createServer(async (req, res) => {
 
 server.listen(PORT, "127.0.0.1", () => {
   console.info(
-    `[vesti-local-proxy] listening on http://127.0.0.1:${server.address().port} (allowed origins: ${ALLOWED_ORIGIN_RULES.join(", ") || "none"})`
+    `[vesti-local-proxy] listening on http://${server.address().address}:${server.address().port} (allowed origins: ${ALLOWED_ORIGIN_RULES.join(", ") || "none"})`
   );
 });
