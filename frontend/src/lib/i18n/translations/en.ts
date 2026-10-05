@@ -252,6 +252,9 @@ export const enTranslations = {
       apiKeyRequired: "API key is required in custom mode."
     },
     captureEngine: {
+      remoteAiNotice: "Automatic remote AI is off by default. Enabling it or manually using AI features sends necessary content to the configured AI gateway and its providers. Choose automatic processing in Capture settings.",
+      automaticAiLabel: "Allow automatic remote AI processing (off by default)",
+      automaticAiHint: "I agree to send captured titles, messages and annotations to the configured AI gateway and its providers for automatic classification and embeddings. Turning this off keeps capture local; manually requested summaries and semantic AI features still send necessary content.",
       title: "Capture Engine",
       description: "Mode and archive controls.",
       modeLabel: "Capture Mode",

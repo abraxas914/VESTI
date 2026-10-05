@@ -22,6 +22,7 @@ import {
   getConversationOriginAt,
 } from "../conversations/timestamps";
 import { db } from "../db/schema";
+import { isAutomaticAiEnabled } from "./captureSettingsService";
 import {
   addExploreMessage,
   createExploreSession,
@@ -2338,11 +2339,12 @@ export async function getVectorStats(): Promise<{
   };
 }
 
-export async function vectorizeAllConversations(): Promise<number> {
+export async function vectorizeAllConversations(options: { automatic?: boolean } = {}): Promise<number> {
   const conversations = await db.conversations.toArray();
 
   let created = 0;
   for (const conversation of conversations) {
+    if (options.automatic && !await isAutomaticAiEnabled()) break;
     if (!conversation?.id) continue;
     try {
       const { text } = await getConversationText(conversation.id);

@@ -639,6 +639,7 @@ export type CapsuleState = "RECORDING" | "STANDBY" | "PAUSED" | "SAVED"
 export type CaptureMode = "mirror" | "smart" | "manual"
 
 export interface CaptureSettings {
+  automaticAi?: { enabled: boolean; consentVersion: number }
   mode: CaptureMode
   smartConfig: {
     minTurns: number

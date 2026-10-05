@@ -16,6 +16,7 @@ const LEGACY_MODE_MAP: Record<string, CaptureMode> = {
 
 export const DEFAULT_CAPTURE_SETTINGS: CaptureSettings = {
   mode: "mirror",
+  automaticAi: { enabled: false, consentVersion: 1 },
   smartConfig: {
     minTurns: DEFAULT_MIN_TURNS,
     blacklistKeywords: [],
@@ -71,11 +72,16 @@ export function normalizeCaptureSettings(input: unknown): CaptureSettings {
 
   const raw = input as {
     mode?: unknown;
+    automaticAi?: { enabled?: unknown; consentVersion?: unknown };
     smartConfig?: { minTurns?: unknown; blacklistKeywords?: unknown };
   };
 
   return {
     mode: normalizeMode(raw.mode),
+    automaticAi: {
+      enabled: raw.automaticAi?.enabled === true && raw.automaticAi?.consentVersion === 1,
+      consentVersion: 1,
+    },
     smartConfig: {
       minTurns: normalizeMinTurns(raw.smartConfig?.minTurns),
       blacklistKeywords: normalizeBlacklistKeywords(raw.smartConfig?.blacklistKeywords),
@@ -110,4 +116,13 @@ export async function setCaptureSettings(settings: CaptureSettings): Promise<voi
       resolve();
     });
   });
+}
+
+// Fail closed if preferences cannot be read. Capturing locally remains allowed.
+export async function isAutomaticAiEnabled(): Promise<boolean> {
+  try {
+    return (await getCaptureSettings()).automaticAi?.enabled === true;
+  } catch {
+    return false;
+  }
 }
