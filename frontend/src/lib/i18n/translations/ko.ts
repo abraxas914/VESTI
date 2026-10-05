@@ -504,7 +504,7 @@ export const koTranslations = {
     cacheClearedMessage:
       "인사이트 캐시를 삭제했습니다. 대화와 메시지는 유지되었습니다.",
     clearAllConfirm:
-      "로컬의 모든 대화, 메시지, 요약, 주간 리포트가 삭제됩니다.\n계속하려면 DELETE를 입력하세요:",
+      "대화, 메시지, 주석, 요약, 주간 보고서, 벡터, 주제, 노트와 첨부 파일, Explore 기록, 프롬프트를 포함한 모든 로컬 콘텐츠를 삭제합니다. 앱 설정과 LLM 구성은 유지됩니다.\n계속하려면 DELETE를 입력하세요:",
     clearCancelled: "삭제를 취소했습니다.",
     dataCleared: "로컬 데이터를 삭제했습니다. LLM 설정은 유지됩니다.",
     history: {
@@ -571,7 +571,7 @@ export const koTranslations = {
     clearCacheDesc:
       "캐시된 스레드 요약과 주간 리포트를 지우면서 대화와 메시지는 유지합니다.",
     dangerDesc:
-      "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
+      "대화, 메시지, 주석, 요약, 주간 보고서, 벡터, 주제, 노트와 첨부 파일, Explore 기록, 프롬프트를 포함한 모든 로컬 콘텐츠를 삭제합니다. 앱 설정과 LLM 구성은 유지됩니다.",
     exportAllData: "모든 데이터 내보내기",
     importData: "데이터 가져오기",
     clearAllData: "모든 데이터 지우기",
@@ -1438,10 +1438,10 @@ export const koTranslations = {
         "JSON은 복원 가능하며 요약과 주간 캐시를 포함합니다. TXT/MD는 사람이 읽을 수 있는 내보내기입니다.",
       dangerZone: "위험 구역",
       dangerDesc:
-        "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
+        "대화, 메시지, 주석, 요약, 주간 보고서, 벡터, 주제, 노트와 첨부 파일, Explore 기록, 프롬프트를 포함한 모든 로컬 콘텐츠를 삭제합니다. 앱 설정과 LLM 구성은 유지됩니다.",
       clearLocalData: "로컬 데이터 지우기",
       clearPrompt:
-        "이 작업은 모든 로컬 대화와 캐시된 인사이트를 지웁니다.\\n계속하려면 DELETE를 입력하세요:",
+        "대화, 메시지, 주석, 요약, 주간 보고서, 벡터, 주제, 노트와 첨부 파일, Explore 기록, 프롬프트를 포함한 모든 로컬 콘텐츠를 삭제합니다. 앱 설정과 LLM 구성은 유지됩니다.\n계속하려면 DELETE를 입력하세요:",
       clearCancelled: "지우기를 취소했습니다.",
       localDataCleared: "로컬 데이터를 지웠습니다. LLM 설정은 유지됩니다.",
       exportedFile: "{filename}을 내보냈습니다",
