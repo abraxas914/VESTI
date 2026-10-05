@@ -183,7 +183,7 @@ export async function deduplicateAndSave(
   const turnCount = countAiTurns(cleanMessages);
   const persistedAt = Date.now();
 
-  return db.transaction("rw", db.conversations, db.messages, async () => {
+  return db.transaction("rw", db.conversations, db.messages, db.annotations, async () => {
     const existing = await db.conversations
       .where("[platform+uuid]")
       .equals([conversation.platform, conversation.uuid])
@@ -193,7 +193,7 @@ export async function deduplicateAndSave(
       const existingMessages = await db.messages
         .where("conversation_id")
         .equals(existing.id)
-        .toArray();
+        .sortBy("created_at");
 
       const incomingSignatures = buildParsedSignatures(cleanMessages);
       const storedSignatures = buildStoredSignatures(existingMessages);
@@ -208,7 +208,7 @@ export async function deduplicateAndSave(
       // Guard against destructive recaptures: a perf-mode downgrade or a
       // virtualized (partially-rendered) thread can yield FEWER or more-degraded
       // messages than we already stored. Overwriting then silently loses data,
-      // so skip the wholesale delete+reinsert when the incoming set is clearly
+      // so skip replacement when the incoming set is clearly
       // poorer (fewer messages, or same count but more degraded nodes).
       const incomingDegraded = cleanMessages.reduce(
         (sum, message) => sum + normalizeDegradedNodesCount(message.degradedNodesCount),
@@ -226,10 +226,44 @@ export async function deduplicateAndSave(
         return { saved: false, newMessages: 0, conversationId: existing.id };
       }
 
-      await db.messages.where("conversation_id").equals(existing.id).delete();
+      // Capture payloads have no stable source message IDs. Reuse IDs only
+      // for unchanged role/text pairs; reject ambiguous annotated matches.
+      const keyFor = (role: string, text: string) => `${role}:${normalizeText(text)}`;
+      const available = new Map<string, MessageRecord[]>();
+      const incomingCounts = new Map<string, number>();
+      for (const stored of existingMessages) {
+        const key = keyFor(stored.role, stored.content_text);
+        const bucket = available.get(key);
+        if (bucket) bucket.push(stored);
+        else available.set(key, [stored]);
+      }
+      for (const message of cleanMessages) {
+        const key = keyFor(message.role, message.textContent);
+        incomingCounts.set(key, (incomingCounts.get(key) ?? 0) + 1);
+      }
+      const annotations = await db.annotations.where("conversation_id").equals(existing.id).toArray();
+      const storedById = new Map(existingMessages.map((record) => [record.id, record]));
+      for (const annotation of annotations) {
+        const stored = storedById.get(annotation.message_id);
+        const key = stored && keyFor(stored.role, stored.content_text);
+        if (!key || available.get(key)?.length !== incomingCounts.get(key)) {
+          // A removed/edited message or a changed duplicate count cannot be
+          // identified reliably. Abort atomically, keeping the last capture.
+          throw new Error("ANNOTATED_MESSAGE_IDENTITY_AMBIGUOUS");
+        }
+      }
+      const retained = cleanMessages.map((message) =>
+        available.get(keyFor(message.role, message.textContent))?.shift()
+      );
+      const usedIds = new Set(retained.flatMap((record) => record?.id === undefined ? [] : [record.id]));
+      const removedIds = existingMessages.flatMap((record) =>
+        record.id !== undefined && !usedIds.has(record.id) ? [record.id] : []
+      );
+      await db.messages.bulkDelete(removedIds);
 
       const baseTimestamp = Date.now();
       const inserts: MessageRecord[] = cleanMessages.map((message, index) => ({
+        ...(retained[index]?.id !== undefined ? { id: retained[index].id } : {}),
         conversation_id: existing.id!,
         role: message.role,
         content_text: message.textContent,
@@ -251,7 +285,7 @@ export async function deduplicateAndSave(
         created_at: message.timestamp ?? baseTimestamp + index,
       }));
 
-      await db.messages.bulkAdd(inserts);
+      await db.messages.bulkPut(inserts);
 
       // Keep user-renamed titles stable across recaptures.
       const mergedSourceCreatedAt = resolveSourceCreatedAt(
