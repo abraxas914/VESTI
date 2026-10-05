@@ -74,6 +74,7 @@ export interface VectorRecord {
   embedding_model: string;
   embedding_dimensions: number;
   index_version: string;
+  embedding_cache_key?: string;
 }
 export interface NoteRecord {
   id?: number;

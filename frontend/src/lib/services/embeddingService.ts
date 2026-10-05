@@ -255,6 +255,17 @@ export async function requestEmbeddings(
   return requestEmbeddingsFromRoute(config, route, normalizedInput, options);
 }
 
+// Cache configuration separately from response metadata: discovering provider
+// metadata must not require sending already-indexed text to the gateway.
+export async function buildEmbeddingCacheKey(config: LlmConfig): Promise<string> {
+  const route = getLlmAccessMode(config) === "custom_byok" ? "byok" : "proxy";
+  const endpoint = route === "proxy" ? getProxyBaseUrl(config) : config.baseUrl.replace(/\/+$/, "");
+  const model = route === "proxy" ? DEFAULT_DEMO_EMBEDDING_MODEL : DEFAULT_BYOK_EMBEDDING_MODEL;
+  const descriptor = JSON.stringify([EMBEDDING_INDEX_SCHEMA_VERSION, route, endpoint, model]);
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(descriptor));
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function requireLlmSettings(): Promise<LlmConfig> {
   const settings = await getLlmSettings();
   if (!settings) {
@@ -271,11 +282,11 @@ export async function fetchEmbeddings(
   return result.vectors.map((vector) => new Float32Array(vector));
 }
 
-export async function embedTextWithMetadata(text: string): Promise<{
+export async function embedTextWithMetadata(text: string, config?: LlmConfig): Promise<{
   vector: Float32Array;
   metadata: EmbeddingIndexMetadata;
 }> {
-  const result = await requestEmbeddings(await requireLlmSettings(), text);
+  const result = await requestEmbeddings(config ?? await requireLlmSettings(), text);
   const vector = result.vectors[0];
   if (!vector) {
     throw createEmbeddingError("EMBEDDING_EMPTY_RESULT", "Embedding response contains no vectors.");
