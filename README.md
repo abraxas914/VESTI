@@ -676,3 +676,10 @@ The repository also contains a top-level `archive/` directory for historical pro
 - `archive/` 归档的是仓库级历史代码和原型工程
 - `documents/archive/` 只归档文档
 - 当前活跃工程仍应以 `frontend/`、`packages/`、`vesti-web/` 以及 `documents/` 下的 canonical 文档为准
+
+
+### JSON 备份与恢复格式
+
+完整 JSON 导出使用 `vesti_export.v2`，包含当前全部内容与缓存：对话、消息、批注、摘要、周报、主题、向量、笔记、笔记来源和附件、Explore 会话和消息、提示词。附件以 base64 编码，向量恢复为 Float32Array。导入在校验、解码后，通过一个事务替换全部内容；失败时保留原数据。应用偏好与 AI / 集成凭据不在内容备份中。TXT/MD 仍是可读导出，不承担完整恢复用途。
+
+旧 `vesti_export.v1` 文件仍可导入，保持原来的对话/洞察替换范围；未包含的笔记等内容保持不变。桌面桥的完整和增量同步继续使用会话级 v1 协议，和完整内容备份是不同用途。

@@ -1,3 +1,4 @@
+import { exportFullBackup, importFullBackup } from "./fullBackup"
 import {
   getConversationCaptureFreshnessAt,
   getConversationFirstCapturedAt,
@@ -1996,6 +1997,7 @@ export async function getDataOverview(): Promise<DataOverviewSnapshot> {
 export async function exportAllData(
   format: ExportFormat
 ): Promise<ExportPayload> {
+  if (format === "json") return exportFullBackup()
   const dataset = await collectExportDataset()
   if (format === "txt") {
     return buildExportTxtV1(dataset)
@@ -2004,6 +2006,11 @@ export async function exportAllData(
     return buildExportMdV1(dataset)
   }
   return buildExportJsonV1(dataset)
+}
+
+// Desktop bridge peers still consume the conversation-only v1 wire format.
+export async function exportBridgeDataAsJson(): Promise<string> {
+  return buildExportJsonV1(await collectExportDataset()).content
 }
 
 export async function exportAllDataAsJson(): Promise<string> {
@@ -2016,9 +2023,10 @@ export async function importAllData(
 ): Promise<ImportDataResult> {
   const parsed = parseImportJsonContent(content)
   const root = asImportObject(parsed, "root")
+  if (root.schema_version === "vesti_export.v2") return importFullBackup(root)
   if (root.schema_version !== "vesti_export.v1") {
     throw new Error(
-      'Only Vesti JSON exports with schema_version "vesti_export.v1" can be imported.'
+      'Only Vesti JSON exports with schema_version "vesti_export.v1" or "vesti_export.v2" can be imported.'
     )
   }
 

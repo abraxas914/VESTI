@@ -500,10 +500,11 @@ export const jaTranslations = {
     exportFormatLabel: "エクスポート形式",
     exportedMessage: "{filename} をエクスポートしました",
     importConfirm:
-      "{filename} をインポートしますか？\n\nローカルの会話・メッセージ・要約・週次レポート・注釈・検索ベクトルが JSON バックアップで置き換えられます。\nLLM 設定・ノート・トピック・探索セッションは変更されません。",
+      "{filename} をインポートしますか？\n\nv2 はノート・添付、Explore、トピック、プロンプト、会話、キャッシュを含む全ローカル内容を置き換えます。旧 v1 は会話・洞察関連データのみ置き換えます。\n設定と AI 認証情報はインポートされません。先に現在の資料をバックアップしてください。",
     importCancelled: "インポートをキャンセルしました。",
     importedMessage: "{filename} から {summary} をインポートしました",
     importSummary: {
+      records: "合計 {count} 件の復元レコード",
       threads: "{count} 件の会話",
       messages: "{count} 件のメッセージ",
       summaries: "{count} 件の要約",
@@ -1466,7 +1467,7 @@ export const jaTranslations = {
       exportLocalData: "ローカルデータをエクスポート",
       exportFormat: "{format} をエクスポート",
       exportHint:
-        "JSON は復元可能で、サマリーと週次キャッシュを含みます。TXT/MD は人が読めるエクスポートです。",
+        "JSON v2 は会話、ノート・添付、Explore、トピック、プロンプト、キャッシュを復元します。設定・認証情報は含みません。TXT/MD は閲覧用です。",
       dangerZone: "危険な操作",
       dangerDesc:
         "すべての会話、メッセージ、キャッシュ済みサマリー、週次レポートを消去します。LLM の設定はそのまま残ります。",

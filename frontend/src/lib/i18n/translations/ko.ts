@@ -489,10 +489,11 @@ export const koTranslations = {
     exportFormatLabel: "내보내기 형식",
     exportedMessage: "{filename} 내보냄",
     importConfirm:
-      "{filename}을(를) 가져올까요?\n\n로컬 대화, 메시지, 요약, 주간 리포트, 주석, 검색 벡터가 JSON 백업으로 대체됩니다.\nLLM 설정, 노트, 주제, 탐색 세션은 변경되지 않습니다.",
+      "{filename}을 가져올까요?\n\nv2는 노트/첨부, Explore, 주제, 프롬프트, 대화와 캐시를 포함한 모든 로컬 내용을 교체합니다. 이전 v1은 대화/인사이트 데이터만 교체합니다.\n앱 설정과 AI 인증 정보는 가져오지 않습니다. 먼저 현재 자료를 백업하세요.",
     importCancelled: "가져오기를 취소했습니다.",
     importedMessage: "{filename}에서 {summary}을(를) 가져왔습니다",
     importSummary: {
+      records: "총 {count}개의 복원 레코드",
       threads: "대화 {count}개",
       messages: "메시지 {count}개",
       summaries: "요약 {count}개",
@@ -1435,7 +1436,7 @@ export const koTranslations = {
       exportLocalData: "로컬 데이터 내보내기",
       exportFormat: "{format} 내보내기",
       exportHint:
-        "JSON은 복원 가능하며 요약과 주간 캐시를 포함합니다. TXT/MD는 사람이 읽을 수 있는 내보내기입니다.",
+        "JSON v2는 대화, 노트/첨부, Explore, 주제, 프롬프트 및 캐시를 복원합니다. 설정과 인증 정보는 제외됩니다. TXT/MD는 읽기용입니다.",
       dangerZone: "위험 구역",
       dangerDesc:
         "모든 대화, 메시지, 캐시된 요약, 주간 리포트를 지웁니다. LLM 설정은 그대로 유지됩니다.",
