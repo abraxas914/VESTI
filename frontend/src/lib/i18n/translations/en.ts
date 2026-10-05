@@ -588,7 +588,7 @@ export const enTranslations = {
     cacheClearedMessage:
       "Insights cache cleared. Conversations and messages were kept.",
     clearAllConfirm:
-      "This will clear all local conversations, messages, summaries, and weekly reports.\nType DELETE to continue:",
+      "Deletes all local content: conversations, messages, annotations, summaries, weekly reports, vectors, topics, notes and attachments, Explore history and prompts. App preferences and LLM configuration remain unchanged.\nType DELETE to continue:",
     clearCancelled: "Clear cancelled.",
     dataCleared: "Local data cleared. LLM configuration is kept.",
     history: {
@@ -654,7 +654,7 @@ export const enTranslations = {
     clearCacheDesc:
       "Clears cached thread summaries and weekly reports while keeping conversations and messages.",
     dangerDesc:
-      "Clears all conversations, messages, cached summaries, and weekly reports. LLM configuration remains unchanged.",
+      "Deletes all local content: conversations, messages, annotations, summaries, weekly reports, vectors, topics, notes and attachments, Explore history and prompts. App preferences and LLM configuration remain unchanged.",
     exportAllData: "Export all data",
     importData: "Import data",
     clearAllData: "Clear all data",
@@ -1531,10 +1531,10 @@ export const enTranslations = {
         "JSON is reversible and includes summaries + weekly caches. TXT/MD are human-readable exports.",
       dangerZone: "Danger zone",
       dangerDesc:
-        "Clears all conversations, messages, cached summaries, and weekly reports. LLM configuration remains unchanged.",
+        "Deletes all local content: conversations, messages, annotations, summaries, weekly reports, vectors, topics, notes and attachments, Explore history and prompts. App preferences and LLM configuration remain unchanged.",
       clearLocalData: "Clear local data",
       clearPrompt:
-        "This will clear all local conversations and cached insights.\\nType DELETE to continue:",
+        "Deletes all local content: conversations, messages, annotations, summaries, weekly reports, vectors, topics, notes and attachments, Explore history and prompts. App preferences and LLM configuration remain unchanged.\nType DELETE to continue:",
       clearCancelled: "Clear cancelled.",
       localDataCleared: "Local data cleared. LLM configuration is kept.",
       exportedFile: "Exported {filename}",
