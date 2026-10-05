@@ -47,7 +47,7 @@ Set `proxyServiceToken` in Vesti settings to match `VESTI_SERVICE_TOKEN`.
 ## Notion OAuth Notes
 
 - Register `NOTION_REDIRECT_URI` in your Notion public integration settings.
-- `extension_redirect_uri` is supplied by the extension at runtime via `chrome.identity`.
+- `extension_redirect_uri` is supplied by `chrome.identity.getRedirectURL()` (`https://<extension-id>.chromiumapp.org/<path>`). Valid `chrome-extension://<extension-id>/<path>` callbacks remain supported; arbitrary web callbacks are rejected.
 - `/api/notion/oauth/session/:sessionId` returns the exchanged token once, then expires it.
 
 ## Notes
