@@ -1,7 +1,8 @@
 import type { LlmConfig } from "../types";
 import { getLlmAccessMode, getProxyBaseUrl } from "./llmConfig";
 import { getLlmSettings } from "./llmSettingsService";
-import { fetchDemoProxy, getProxyResponseMetadata } from "./proxyRequest";
+import { fetchBufferedWithTimeout } from "./fetchWithTimeout";
+import { PROXY_TOTAL_TIMEOUT_MS, fetchDemoProxy, getProxyResponseMetadata } from "./proxyRequest";
 
 const DEFAULT_DEMO_EMBEDDING_MODEL = "text-embedding-v1";
 const DEFAULT_BYOK_EMBEDDING_MODEL = "text-embedding-v2";
@@ -31,6 +32,7 @@ export interface EmbeddingResult extends EmbeddingIndexMetadata {
 }
 
 export interface EmbeddingRequestOptions {
+  timeoutMs?: number;
   model?: string;
   signal?: AbortSignal;
 }
@@ -202,10 +204,11 @@ async function requestEmbeddingsFromRoute(
       serviceToken: config.proxyServiceToken,
       body,
       signal: options.signal,
+      totalTimeoutMs: options.timeoutMs,
     });
   } else {
     const endpoint = `${config.baseUrl.replace(/\/+$/, "")}/embeddings`;
-    response = await fetch(endpoint, {
+    response = await fetchBufferedWithTimeout(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -216,8 +219,7 @@ async function requestEmbeddingsFromRoute(
         input,
         encoding_format: "float",
       }),
-      signal: options.signal,
-    });
+    }, options.timeoutMs ?? PROXY_TOTAL_TIMEOUT_MS, options.signal);
   }
 
   const payload = await readResponseJson(response);

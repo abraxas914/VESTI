@@ -1,3 +1,4 @@
+import { fetchBufferedWithTimeout } from "./fetchWithTimeout";
 import {
   FALLBACK_PROXY_BASE_URL,
   buildProxyRouteUrl,
@@ -66,25 +67,9 @@ async function fetchAttempt(
   timeoutMs: number,
   externalSignal?: AbortSignal,
 ): Promise<Response> {
-  if (externalSignal?.aborted) {
-    throw externalSignal.reason ?? new DOMException("Request aborted", "AbortError");
-  }
-
-  const controller = new AbortController();
-  const onAbort = () => controller.abort(externalSignal?.reason);
-  externalSignal?.addEventListener("abort", onAbort, { once: true });
-  const timer = setTimeout(() => controller.abort(new DOMException("Proxy request timed out", "TimeoutError")), timeoutMs);
-  try {
-    return await fetchImpl(endpoint, {
-      method: "POST",
-      headers,
-      body,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-    externalSignal?.removeEventListener("abort", onAbort);
-  }
+  return fetchBufferedWithTimeout(endpoint, {
+    method: "POST", headers, body,
+  }, timeoutMs, externalSignal, fetchImpl);
 }
 
 /**
