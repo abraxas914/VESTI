@@ -573,10 +573,11 @@ export const enTranslations = {
     exportFormatLabel: "Export format",
     exportedMessage: "Exported {filename}",
     importConfirm:
-      "Import {filename}?\n\nThis will replace local conversations, messages, summaries, weekly reports, annotations, and search vectors with the JSON backup.\nLLM settings, notes, topics, and Explore sessions stay unchanged.",
+      "Import {filename}?\n\nv2 replaces all local content, including notes/assets, Explore, topics, prompts, conversations and caches. Legacy v1 replaces conversation/insight data only.\nApp settings and AI credentials are not imported. Back up your current data first.",
     importCancelled: "Import cancelled.",
     importedMessage: "Imported {summary} from {filename}",
     importSummary: {
+      records: "{count} total restored records",
       threads: "{count} threads",
       messages: "{count} messages",
       summaries: "{count} summaries",
@@ -1528,7 +1529,7 @@ export const enTranslations = {
       exportLocalData: "Export local data",
       exportFormat: "Export {format}",
       exportHint:
-        "JSON is reversible and includes summaries + weekly caches. TXT/MD are human-readable exports.",
+        "JSON v2 restores conversations, notes/assets, Explore, topics, prompts and caches. Settings and credentials are excluded. TXT/MD are readable exports only.",
       dangerZone: "Danger zone",
       dangerDesc:
         "Clears all conversations, messages, cached summaries, and weekly reports. LLM configuration remains unchanged.",

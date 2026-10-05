@@ -532,10 +532,11 @@ export const zhTranslations = {
     exportFormatLabel: "导出格式",
     exportedMessage: "已导出 {filename}",
     importConfirm:
-      "导入 {filename}？\n\n这将用该 JSON 备份替换本地的对话、消息、摘要、周报、批注和搜索向量。\nLLM 设置、笔记、主题和 Explore 会话保持不变。",
+      "导入 {filename}？\n\nv2 备份将替换全部本地内容，包括笔记与附件、Explore、主题、提示词、对话及缓存。旧 v1 仅替换对话及洞察相关数据。\n应用设置和 AI 凭据不会导入。请先备份当前资料。",
     importCancelled: "已取消导入。",
     importedMessage: "已从 {filename} 导入 {summary}",
     importSummary: {
+      records: "共 {count} 条恢复记录",
       threads: "{count} 个对话",
       messages: "{count} 条消息",
       summaries: "{count} 条摘要",
@@ -1419,7 +1420,7 @@ export const zhTranslations = {
       disabled: "已禁用",
       exportLocalData: "导出本地数据",
       exportFormat: "导出 {format}",
-      exportHint: "JSON 可逆，且包含摘要与周报缓存。TXT/MD 为可读导出。",
+      exportHint: "JSON v2 可完整恢复对话、笔记与附件、Explore、主题、提示词和缓存；设置及凭据不在备份中。TXT/MD 仅为可读导出。",
       dangerZone: "危险操作",
       dangerDesc: "清除所有对话、消息、缓存摘要和周报。LLM 配置保持不变。",
       clearLocalData: "清除本地数据",

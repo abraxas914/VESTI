@@ -38,7 +38,7 @@
 // otherwise silent — an offline desktop must never interrupt the user.
 
 import type { DesktopBridgeStatus } from "../types"
-import { exportAllDataAsJson, exportIncrementalDataAsJson } from "../db/repository"
+import { exportBridgeDataAsJson, exportIncrementalDataAsJson } from "../db/repository"
 import { logger } from "../utils/logger"
 
 const BRIDGE_BASE_URL = "http://127.0.0.1:28765"
@@ -799,7 +799,7 @@ export async function syncWithDesktop(options: {
     let bundle: string
     try {
       bundle = full
-        ? await exportAllDataAsJson()
+        ? await exportBridgeDataAsJson()
         : await exportIncrementalDataAsJson(sinceMs as number)
     } catch (error) {
       await patchRecord({ syncing: false, lastError: "IMPORT_FAILED" })

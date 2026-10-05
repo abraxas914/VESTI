@@ -605,6 +605,7 @@ export interface ExportPayload {
 }
 
 export interface ImportDataResult {
+  restoredRecords?: number
   conversations: number
   messages: number
   summaries: number

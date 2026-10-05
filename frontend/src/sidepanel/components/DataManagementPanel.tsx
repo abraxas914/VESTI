@@ -117,6 +117,7 @@ function formatImportSummary(
     summaries: string
     weeklyReports: string
     annotations: string
+    records?: string
   }
 ): string {
   const fill = (tpl: string, count: number) =>
@@ -126,7 +127,8 @@ function formatImportSummary(
     fill(labels.messages, result.messages),
     fill(labels.summaries, result.summaries),
     fill(labels.weeklyReports, result.weeklyReports),
-    fill(labels.annotations, result.annotations)
+    fill(labels.annotations, result.annotations),
+    ...(result.restoredRecords !== undefined && labels.records ? [fill(labels.records, result.restoredRecords)] : [])
   ].join(", ")
 }
 
