@@ -1886,23 +1886,11 @@ export async function updateConversationTitle(
 }
 
 export async function clearAllData(): Promise<boolean> {
-  await db.transaction(
-    "rw",
-    [
-      db.conversations,
-      db.messages,
-      db.summaries,
-      db.weekly_reports,
-      db.annotations
-    ],
-    async () => {
-      await db.messages.clear()
-      await db.conversations.clear()
-      await db.summaries.clear()
-      await db.weekly_reports.clear()
-      await db.annotations.clear()
-    }
-  )
+  // Include every registered store so new data features cannot silently
+  // outlive the user's Clear All request. Preferences are stored separately.
+  await db.transaction("rw", db.tables, async () => {
+    for (const table of db.tables) await table.clear()
+  })
   return true
 }
 
