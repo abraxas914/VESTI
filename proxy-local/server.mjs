@@ -137,7 +137,11 @@ async function readJsonBody(req) {
     }
   }
   if (!raw) return {};
-  return JSON.parse(raw);
+  const body = JSON.parse(raw);
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("INVALID_JSON_OBJECT");
+  }
+  return body;
 }
 
 async function fetchWithTimeout(url, init, timeoutMs) {
@@ -414,7 +418,7 @@ async function handleChat(req, res, requestId, origin, allowedOrigin) {
     writeJson(
       res,
       400,
-      buildErrorPayload("INVALID_JSON", "Request body must be valid JSON.", requestId)
+      buildErrorPayload("INVALID_JSON", "Request body must be a valid JSON object.", requestId)
     );
     return;
   }
@@ -539,7 +543,7 @@ async function handleEmbeddings(req, res, requestId, origin, allowedOrigin) {
     writeJson(
       res,
       400,
-      buildErrorPayload("INVALID_JSON", "Request body must be valid JSON.", requestId)
+      buildErrorPayload("INVALID_JSON", "Request body must be a valid JSON object.", requestId)
     );
     return;
   }
@@ -656,7 +660,7 @@ async function handleEmbeddings(req, res, requestId, origin, allowedOrigin) {
   }
 }
 
-const server = createServer(async (req, res) => {
+async function handleRequest(req, res) {
   const requestId = randomUUID();
   const method = req.method || "GET";
   const path = trimTrailingSlashes((req.url || "").split("?")[0] || "");
@@ -753,6 +757,18 @@ const server = createServer(async (req, res) => {
     404,
     buildErrorPayload("NOT_FOUND", "Route not found.", requestId)
   );
+}
+
+const server = createServer((req, res) => {
+  void handleRequest(req, res).catch(() => {
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    const requestId = String(res.getHeader("x-request-id") || randomUUID());
+    setCommonHeaders(res, requestId);
+    writeJson(res, 500, buildErrorPayload("INTERNAL_ERROR", "Request could not be processed.", requestId));
+  });
 });
 
 server.listen(PORT, () => {
