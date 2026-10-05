@@ -137,7 +137,7 @@ https://github.com/user-attachments/assets/7d9affef-5a97-4959-aada-c4ef916b80dc
 
 * **数据管理（Data 页）**：独立的数据管理页面提供存储概览（Overview）、导出与清理操作（Operations）和近期路线图（Roadmap）三组功能。支持 JSON、TXT、Markdown 三种导出格式；双清理动作（对话记录与 Insights 缓存分开处理）防止误操作；存储用量超过阈值时触发软警告或硬限制保护机制。
 
-* **本地优先**：所有数据存储在你的本地设备中，不上传到任何云端服务器。你拥有完整的数据主权，可以随时导出、备份或删除。即使开发者也无法访问你的对话记录。这不仅是技术选择，更是价值立场。
+* **本地优先**：采集资料库持久化在本机。自动远程 AI 处理默认关闭，只有在设置中明确同意后，自动分类和向量化才会向配置的 AI 网关及其上游发送必要的标题、消息和批注。主动请求摘要、语义检索、知识问答等 AI 功能也可能发送必要内容；本地保存不等于远程计算不会接触正文。你可以关闭自动处理，并随时导出或删除本地资料。
 
 ### 知识管理平台（Web Dashboard）
 
@@ -153,7 +153,7 @@ https://github.com/user-attachments/assets/7d9affef-5a97-4959-aada-c4ef916b80dc
     <td width="50%" align="center" valign="top">
       <img src=".github/assets/web-view-1.png" alt="Vesti Explore Intent Analysis" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
       <br>
-      <sub><b>1. 意图解析与向量检索 (Explore)</b><br>用自然语言向自己的历史思考提问，系统在本地静默完成语义理解与上下文精确召回。</sub>
+      <sub><b>1. 意图解析与向量检索 (Explore)</b><br>用自然语言向自己的历史思考提问，系统通过配置的 AI 服务进行语义处理，并在本地索引中召回上下文。</sub>
     </td>
     <td width="50%" align="center" valign="top">
       <img src=".github/assets/web-view-2.png" alt="Vesti RAG Insights" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">

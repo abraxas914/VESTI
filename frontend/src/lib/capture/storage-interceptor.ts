@@ -1,6 +1,6 @@
 import { deduplicateAndSave } from "../core/middleware/deduplicate";
 import type { ConversationDraft, ParsedMessage } from "../messaging/protocol";
-import { getCaptureSettings } from "../services/captureSettingsService";
+import { getCaptureSettings, isAutomaticAiEnabled } from "../services/captureSettingsService";
 import { runGardener } from "../services/gardenerService";
 import { requestVectorization } from "../services/vectorizationService";
 import { countAiTurns } from "./turn-metrics";
@@ -203,7 +203,7 @@ export async function interceptAndPersistCapture(
       payload.conversation,
       payload.messages
     );
-    if (persisted.saved && typeof persisted.conversationId === "number") {
+    if (persisted.saved && typeof persisted.conversationId === "number" && await isAutomaticAiEnabled()) {
       requestVectorization();
       void (async () => {
         try {
