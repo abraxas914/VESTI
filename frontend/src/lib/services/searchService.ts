@@ -33,6 +33,7 @@ import {
 } from "../db/repository";
 import {
   embedTextWithMetadata,
+  buildEmbeddingCacheKey,
   type EmbeddingIndexMetadata,
 } from "./embeddingService";
 import {
@@ -2094,17 +2095,29 @@ export async function ensureVectorForConversation(
   if (!preparedText) return null;
 
   const textHash = await hashText(preparedText);
-  const { vector: embedding, metadata } = await embedTextWithMetadata(preparedText);
+  const config = await getLlmSettings();
+  if (!config) throw new Error("EMBEDDING_CONFIG_MISSING");
+  const cacheKey = await buildEmbeddingCacheKey(config);
   const existing = await db.vectors
     .where("conversation_id")
     .equals(conversationId)
     .and(
       (record) =>
         record.text_hash === textHash &&
-        record.index_version === metadata.version,
+        record.embedding_cache_key === cacheKey &&
+        record.embedding_dimensions > 0 &&
+        record.embedding?.length === record.embedding_dimensions,
     )
     .first();
-  if (existing && existing.id !== undefined) return metadata;
+  if (existing && existing.id !== undefined) {
+    return {
+      provider: existing.embedding_provider,
+      model: existing.embedding_model,
+      dimensions: existing.embedding_dimensions,
+      version: existing.index_version,
+    };
+  }
+  const { vector: embedding, metadata } = await embedTextWithMetadata(preparedText, config);
 
   await db.transaction("rw", db.vectors, async () => {
     // Replace only this index version. Other model/provider versions remain
@@ -2123,6 +2136,7 @@ export async function ensureVectorForConversation(
       embedding_model: metadata.model,
       embedding_dimensions: metadata.dimensions,
       index_version: metadata.version,
+      embedding_cache_key: cacheKey,
     });
   });
   return metadata;
