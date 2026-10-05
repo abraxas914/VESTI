@@ -60,3 +60,7 @@ Set `proxyServiceToken` in Vesti settings to match `VESTI_SERVICE_TOKEN`.
   - legacy DS/Qwen models remain allowed, but only legacy requests force `enable_thinking=false`
 - `/api/embeddings` forwards to DashScope OpenAI-compatible embeddings endpoint.
 - logs include `requestId`, route, model, upstream status, and latency.
+
+## Origin rule syntax
+
+Use exact origins (scheme, host and port), `https://*.example.com` for subdomains, or `chrome-extension://*` for valid extension IDs. Subdomain wildcards do not include the apex domain. Legacy `https://example.com*` rules now allow only the exact origin; arbitrary hostname prefixes are rejected. Credentials, paths, query strings and malformed origins are rejected. `*` explicitly permits all valid HTTP(S) and extension origins.
