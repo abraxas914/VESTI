@@ -676,3 +676,9 @@ The repository also contains a top-level `archive/` directory for historical pro
 - `archive/` 归档的是仓库级历史代码和原型工程
 - `documents/archive/` 只归档文档
 - 当前活跃工程仍应以 `frontend/`、`packages/`、`vesti-web/` 以及 `documents/` 下的 canonical 文档为准
+
+### Web type checks
+
+Run `bun run typecheck` and `bun run build` from `vesti-web`. Production builds enforce TypeScript errors. The shared UI package ships its TypeScript source as the type entry so optional dashboard props and the storage contract stay in sync with the implementation.
+
+The Web adapter requires an extension runtime; a standalone HTTP page does not gain access to extension data merely by building successfully. This change does not enable external messaging or grant websites access to saved conversations.

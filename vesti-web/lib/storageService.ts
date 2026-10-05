@@ -1,3 +1,4 @@
+import type { ExploreMode, ExploreAskOptions, CreateNoteInput, UpdateNoteChanges } from '../../packages/vesti-ui/src/types';
 import type {
   ChatSummaryData,
   Annotation,
@@ -66,7 +67,7 @@ type RequestMessage =
       type: 'GET_ALL_EDGES';
       target?: 'offscreen';
       requestId?: string;
-      payload?: { threshold?: number };
+      payload?: { threshold?: number; conversationIds?: number[] };
     }
   | {
       type: 'RENAME_FOLDER_TAG';
@@ -90,7 +91,7 @@ type RequestMessage =
       type: 'ASK_KNOWLEDGE_BASE';
       target?: 'offscreen';
       requestId?: string;
-      payload: { query: string; limit?: number };
+      payload: { query: string; sessionId?: string; limit?: number; mode?: ExploreMode; options?: ExploreAskOptions };
     }
   | {
       type: 'GET_MESSAGES';
@@ -137,13 +138,13 @@ type RequestMessage =
       type: 'CREATE_NOTE';
       target?: 'offscreen';
       requestId?: string;
-      payload: { title: string; content: string; linked_conversation_ids: number[] };
+      payload: CreateNoteInput;
     }
   | {
       type: 'UPDATE_NOTE';
       target?: 'offscreen';
       requestId?: string;
-      payload: { id: number; changes: { title?: string; content?: string } };
+      payload: { id: number; changes: UpdateNoteChanges };
     }
   | {
       type: 'DELETE_NOTE';
@@ -204,7 +205,7 @@ type ResponseDataMap = {
   RENAME_FOLDER_TAG: { updated: number };
   MOVE_FOLDER_TAG: { updated: number };
   REMOVE_FOLDER_TAG: { updated: number };
-  ASK_KNOWLEDGE_BASE: RagResponse;
+  ASK_KNOWLEDGE_BASE: RagResponse & { sessionId: string };
   GET_MESSAGES: Message[];
   GET_ANNOTATIONS_BY_CONVERSATION: Annotation[];
   SAVE_ANNOTATION: { annotation: Annotation };
@@ -504,12 +505,12 @@ export async function getRelatedConversations(
 }
 
 export async function getAllEdges(
-  threshold = 0.3
+  options: { threshold?: number; conversationIds?: number[] } = {}
 ): Promise<Array<{ source: number; target: number; weight: number }>> {
   return sendRequest({
     type: 'GET_ALL_EDGES',
     target: 'offscreen',
-    payload: { threshold },
+    payload: { threshold: options.threshold ?? 0.3, conversationIds: options.conversationIds },
   }, LONG_RUNNING_TIMEOUT_MS) as Promise<Array<{ source: number; target: number; weight: number }>>;
 }
 
@@ -571,13 +572,16 @@ export async function removeFolderTag(
 
 export async function askKnowledgeBase(
   query: string,
-  limit?: number
-): Promise<RagResponse> {
+  sessionId?: string,
+  limit?: number,
+  mode?: ExploreMode,
+  options?: ExploreAskOptions
+): Promise<RagResponse & { sessionId: string }> {
   return sendRequest({
     type: 'ASK_KNOWLEDGE_BASE',
     target: 'offscreen',
-    payload: { query, limit },
-  }, LONG_RUNNING_TIMEOUT_MS) as Promise<RagResponse>;
+    payload: { query, sessionId, limit, mode, options },
+  }, LONG_RUNNING_TIMEOUT_MS) as Promise<RagResponse & { sessionId: string }>;
 }
 
 export async function getMessages(
@@ -698,30 +702,30 @@ export async function getNotes(): Promise<Note[]> {
     type: 'GET_NOTES',
     target: 'offscreen',
   })) as Note[];
-  return data.map((note) => ({ ...note, tags: note.tags ?? [] }));
+  return data;
 }
 
 export async function saveNote(
-  data: { title: string; content: string; linked_conversation_ids: number[] }
+  data: CreateNoteInput
 ): Promise<Note> {
   const result = (await sendRequest({
     type: 'CREATE_NOTE',
     target: 'offscreen',
     payload: data,
   })) as { note: Note };
-  return { ...result.note, tags: result.note.tags ?? [] };
+  return result.note;
 }
 
 export async function updateNote(
   id: number,
-  changes: { title?: string; content?: string }
+  changes: UpdateNoteChanges
 ): Promise<Note> {
   const result = (await sendRequest({
     type: 'UPDATE_NOTE',
     target: 'offscreen',
     payload: { id, changes },
   })) as { note: Note };
-  return { ...result.note, tags: result.note.tags ?? [] };
+  return result.note;
 }
 
 export async function deleteNote(id: number): Promise<void> {

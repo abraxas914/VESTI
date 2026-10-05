@@ -1,6 +1,6 @@
 'use client';
 
-import { VestiDashboard } from '@vesti/ui';
+import { VestiDashboard, type StorageApi } from '@vesti/ui';
 import {
   getConversations,
   getTopics,
@@ -63,7 +63,7 @@ export default function VestiDashboardPage() {
         getStorageUsage,
         exportData,
         clearAllData,
-      }}
+      } satisfies StorageApi}
     />
   );
 }
