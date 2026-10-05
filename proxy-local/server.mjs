@@ -186,7 +186,14 @@ function purgeExpiredNotionOAuthRecords() {
 }
 
 function isValidExtensionRedirectUri(value) {
-  return typeof value === "string" && value.startsWith("chrome-extension://");
+  try {
+    const url = new URL(value);
+    if (url.username || url.password || url.port || url.search || url.hash) return false;
+    if (url.protocol === "chrome-extension:") return /^[a-p]{32}$/.test(url.hostname);
+    return url.protocol === "https:" && /^[a-p]{32}\.chromiumapp\.org$/.test(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 function buildNotionAuthorizeUrl(state) {
@@ -258,7 +265,7 @@ function handleNotionOAuthStart(req, res, requestId) {
       400,
       buildErrorPayload(
         "INVALID_EXTENSION_REDIRECT",
-        "A valid chrome-extension redirect URI is required.",
+        "A valid Chrome identity or extension redirect URI is required.",
         requestId
       )
     );
