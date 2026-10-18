@@ -198,7 +198,7 @@ function renderTable(node: AstTableNode, key: string): ReactNode {
     const headers =
       node.columns.length > 0
         ? node.columns
-        : [{ header: [{ type: "text", text: "Column 1" }], align: null }];
+        : [{ header: [{ type: "text" as const, text: "Column 1" }], align: null }];
 
     return (
       <div key={key} className="overflow-x-auto rounded-xl border border-border-subtle bg-bg-primary/70">

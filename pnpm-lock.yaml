@@ -338,6 +338,9 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@types/chrome':
+        specifier: 0.0.258
+        version: 0.0.258
       '@tailwindcss/postcss':
         specifier: ^4.1.13
         version: 4.2.1
