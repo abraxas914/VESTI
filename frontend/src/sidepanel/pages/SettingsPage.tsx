@@ -1700,6 +1700,17 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
               <p className="text-[11px] text-text-tertiary">
                 {t.settings.captureEngine.captureHint}
               </p>
+              <label className="grid gap-2 rounded-md border border-border-subtle p-3">
+                <span className="flex items-center gap-2 text-[12px]">
+                  <input type="checkbox" checked={captureSettings.automaticAi?.enabled === true}
+                    onChange={(event) => setCaptureSettingsState((previous) => ({
+                      ...previous, automaticAi: { enabled: event.target.checked, consentVersion: 1 }
+                    }))} />
+                  {t.settings.captureEngine.automaticAiLabel}
+                </span>
+                <span className="text-[11px] text-text-secondary">{t.settings.captureEngine.automaticAiHint}</span>
+              </label>
+
 
               <div className="grid gap-1 rounded-md border border-border-subtle bg-bg-surface-hover px-3 py-2 text-[11px] text-text-secondary">
                 <p>

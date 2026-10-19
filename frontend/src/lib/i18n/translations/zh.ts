@@ -237,6 +237,9 @@ export const zhTranslations = {
       apiKeyRequired: "自定义模式需要填写 API Key"
     },
     captureEngine: {
+      remoteAiNotice: "自动远程 AI 默认关闭。开启自动处理或主动使用 AI 功能时，必要正文会发送到配置的 AI 网关及其上游。可在采集设置中选择是否允许自动处理。",
+      automaticAiLabel: "允许自动远程 AI 处理（默认关闭）",
+      automaticAiHint: "我同意将采集的标题、消息和批注发送到配置的 AI 网关及其上游，用于自动分类和向量化。关闭后采集保持本地；主动请求摘要、语义检索等 AI 功能仍会发送必要内容。",
       title: "捕获引擎",
       description: "模式和归档控制。",
       modeLabel: "捕获模式",

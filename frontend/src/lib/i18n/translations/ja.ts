@@ -243,6 +243,9 @@ export const jaTranslations = {
       apiKeyRequired: "カスタムモードでは API キーが必要です。"
     },
     captureEngine: {
+      remoteAiNotice: "自動リモート AI は初期設定でオフです。有効化または手動で AI 機能を使うと、必要な内容が設定したゲートウェイと提供者へ送信されます。取得設定で自動処理を選択できます。",
+      automaticAiLabel: "自動リモート AI 処理を許可（初期設定はオフ）",
+      automaticAiHint: "自動分類と埋め込みのため、取得したタイトル・メッセージ・注釈を設定した AI ゲートウェイとその提供者へ送信することに同意します。オフでもローカル保存は続きます。手動で依頼する要約などの AI 機能は必要な内容を送信します。",
       title: "キャプチャエンジン",
       description: "モードとアーカイブの設定。",
       modeLabel: "キャプチャモード",

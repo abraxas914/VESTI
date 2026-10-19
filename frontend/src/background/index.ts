@@ -75,7 +75,7 @@ import {
   exportAnnotationToMyNotes,
   exportAnnotationToNotion
 } from "../lib/services/annotationExportService"
-import { getCaptureSettings } from "../lib/services/captureSettingsService"
+import { getCaptureSettings, isAutomaticAiEnabled } from "../lib/services/captureSettingsService"
 import { exportConversationToNotion } from "../lib/services/conversationExportService"
 import {
   autoConnectDesktop,
@@ -286,13 +286,14 @@ async function showWeeklyPushNotification(): Promise<string> {
 }
 
 async function runVectorizationTask(reason: string): Promise<boolean> {
+  if (!await isAutomaticAiEnabled()) return false
   if (isVectorizing) {
     rerunVectorizationRequested = true
     return false
   }
   isVectorizing = true
   try {
-    const created = await vectorizeAllConversations()
+    const created = await vectorizeAllConversations({ automatic: true })
     logger.info("vectorize", "Vectorization task completed", {
       reason,
       created

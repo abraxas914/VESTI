@@ -422,6 +422,7 @@ function OnboardingPage() {
 
         <div className="onboarding-meta">
           <p>{labels.privacy}</p>
+          <p>{t.settings.captureEngine.remoteAiNotice}</p>
           <p>{labels.supportedPlatforms}</p>
         </div>
 

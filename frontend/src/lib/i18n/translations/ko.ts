@@ -240,6 +240,9 @@ export const koTranslations = {
       apiKeyRequired: "사용자 지정 모드에서는 API 키가 필요합니다."
     },
     captureEngine: {
+      remoteAiNotice: "자동 원격 AI는 기본적으로 꺼져 있습니다. 켜거나 직접 AI 기능을 사용하면 필요한 내용이 설정된 게이트웨이와 제공자에게 전송됩니다. 수집 설정에서 자동 처리를 선택할 수 있습니다.",
+      automaticAiLabel: "자동 원격 AI 처리 허용 (기본 꺼짐)",
+      automaticAiHint: "자동 분류와 임베딩을 위해 수집한 제목, 메시지 및 주석을 설정된 AI 게이트웨이와 제공자에게 보내는 데 동의합니다. 끄면 로컬 수집은 유지됩니다. 직접 요청한 요약 등의 AI 기능은 필요한 내용을 전송합니다.",
       title: "캡처 엔진",
       description: "모드 및 보관 설정입니다.",
       modeLabel: "캡처 모드",
