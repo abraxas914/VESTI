@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { originMatchesRule } from "./originPolicy.mjs";
 
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const MODELSCOPE_API_KEY = (process.env.MODELSCOPE_API_KEY || "").trim();
@@ -72,17 +73,6 @@ function trimTrailingSlashes(value) {
 
 function shouldRetryStatus(status) {
   return status === 429 || status >= 500;
-}
-
-function originMatchesRule(origin, rule) {
-  if (rule === "*") return true;
-  if (rule === "chrome-extension://*") {
-    return origin.startsWith("chrome-extension://");
-  }
-  if (rule.endsWith("*")) {
-    return origin.startsWith(rule.slice(0, -1));
-  }
-  return origin === rule;
 }
 
 function resolveAllowedOrigin(origin) {
