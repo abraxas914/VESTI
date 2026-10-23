@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { fetchWithTimeout } from "./fetchWithTimeout.mjs";
 
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const MODELSCOPE_API_KEY = (process.env.MODELSCOPE_API_KEY || "").trim();
@@ -138,19 +139,6 @@ async function readJsonBody(req) {
   }
   if (!raw) return {};
   return JSON.parse(raw);
-}
-
-async function fetchWithTimeout(url, init, timeoutMs) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort("upstream_timeout"), timeoutMs);
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 function buildErrorPayload(code, message, requestId, extras = {}) {
