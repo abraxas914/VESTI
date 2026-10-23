@@ -1,5 +1,6 @@
 import {
   FALLBACK_PROXY_BASE_URL,
+  PRIMARY_PROXY_BASE_URL,
   buildProxyRouteUrl,
   type ProxyRoute,
 } from "./llmConfig";
@@ -89,7 +90,8 @@ async function fetchAttempt(
 
 /**
  * Sends a Demo request to the configured primary gateway and retries the
- * legacy gateway only for network/timeout errors, HTTP 429, or HTTP 5xx.
+ * legacy gateway only for the built-in primary, on network/timeout errors,
+ * HTTP 429, or HTTP 5xx. Custom gateways never fail over to public services.
  * The exact serialized body is reused and both attempts share one deadline.
  */
 export async function fetchDemoProxy(
@@ -109,7 +111,9 @@ export async function fetchDemoProxy(
 
   const primaryEndpoint = buildProxyRouteUrl(request.primaryBaseUrl, request.route);
   const fallbackEndpoint = buildProxyRouteUrl(FALLBACK_PROXY_BASE_URL, request.route);
-  const canFallback = primaryEndpoint !== fallbackEndpoint;
+  // Public failover is part of the built-in gateway contract only. A custom
+  // gateway's body and credentials must never cross its configured boundary.
+  const canFallback = primaryEndpoint === buildProxyRouteUrl(PRIMARY_PROXY_BASE_URL, request.route);
   let fallbackReason: string | undefined;
 
   try {
